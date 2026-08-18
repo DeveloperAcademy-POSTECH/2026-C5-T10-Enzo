@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Code Tour macOS Tahoe 스타일 와이어프레임" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230A7AFF'/%3E%3Cpath d='M9 9h14v14H9z' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E"
+    />
+    <title>Code Tour — Tahoe Wireframe</title>
+    <style>
+      :root {
+        --ink: #172033;
+        --muted: #65748b;
+        --line: rgba(76, 98, 129, 0.18);
+        --glass: rgba(255, 255, 255, 0.76);
+        --blue: #0a7aff;
+        --blue-soft: #e7f1ff;
+        --green: #25a56a;
+        --amber: #d98d0d;
+        --red: #dc5261;
+        --shadow: 0 18px 46px rgba(54, 74, 107, 0.14);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        min-width: 320px; margin: 0; color: var(--ink);
+        background:
+          radial-gradient(circle at 13% 8%, rgba(61, 144, 255, 0.27), transparent 28rem),
+          radial-gradient(circle at 88% 89%, rgba(123, 222, 199, 0.25), transparent 26rem),
+          linear-gradient(145deg, #f3f8ff 0%, #eaf0fb 48%, #f9fbff 100%);
+      }
+      button, input, textarea { font: inherit; }
+      button { cursor: pointer; }
+      button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(10,122,255,.42); outline-offset: 2px; }
+      .shell { min-height: 100vh; padding: 30px; display: grid; place-items: center; }
+      .window {
+        width: min(1440px, 100%); min-height: 820px; overflow: hidden; display: grid; grid-template-columns: 238px 1fr;
+        border: 1px solid rgba(255,255,255,.8); border-radius: 28px; background: rgba(245,248,253,.62);
+        box-shadow: 0 32px 90px rgba(58,77,108,.24); backdrop-filter: blur(30px);
+      }
+      .sidebar { padding: 28px 16px; background: rgba(255,255,255,.60); border-right: 1px solid var(--line); }
+      .brand { padding: 8px 12px 30px; font-size: 18px; font-weight: 760; letter-spacing: -.04em; }
+      .brand small { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+      .nav { display: grid; gap: 5px; }
+      .nav button { width: 100%; padding: 11px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); text-align: left; font-size: 14px; transition: background .18s, color .18s, transform .18s; }
+      .nav button:hover { background: rgba(10,122,255,.08); color: var(--ink); }
+      .nav button[aria-current="page"] { background: var(--blue); color: white; box-shadow: 0 6px 14px rgba(10,122,255,.25); }
+      .side-note { margin: 28px 8px 0; padding: 14px; border-radius: 16px; background: var(--glass); border: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.5; }
+      main { min-width: 0; padding: 42px 48px; }
+      .screen[hidden] { display: none; }
+      .eyebrow { color: var(--blue); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+      h1 { margin: 6px 0 6px; font-size: clamp(27px, 3vw, 34px); letter-spacing: -.05em; line-height: 1.12; }
+      h2 { margin: 0; font-size: 18px; letter-spacing: -.03em; }
+      h3 { margin: 0; font-size: 15px; }
+      p { margin: 0; color: var(--muted); line-height: 1.55; }
+      .screen-head, .row-between { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+      .primary, .secondary, .quiet, .star {
+        min-height: 40px; border-radius: 13px; padding: 0 15px; border: 1px solid transparent; font-weight: 650; font-size: 14px; transition: transform .18s, box-shadow .18s, background .18s;
+      }
+      .primary:hover, .secondary:hover { transform: translateY(-1px); }
+      .primary { color: white; background: var(--blue); box-shadow: 0 7px 16px rgba(10,122,255,.24); }
+      .secondary { color: var(--ink); background: var(--glass); border-color: var(--line); }
+      .quiet { color: var(--blue); background: transparent; padding-inline: 4px; }
+      .grid { display: grid; gap: 16px; margin-top: 26px; }
+      .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 690px; }
+      .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .card, .panel { border: 1px solid var(--line); background: var(--glass); border-radius: 20px; box-shadow: 0 9px 22px rgba(70,91,122,.05); }
+      .stat { padding: 16px 18px; }
+      .stat span { display: block; color: var(--muted); font-size: 12px; }
+      .stat strong { display: block; margin-top: 6px; font-size: 23px; letter-spacing: -.04em; }
+      .project-card { min-height: 245px; padding: 21px; display: flex; flex-direction: column; gap: 10px; }
+      .path, .meta { color: var(--muted); font-size: 12px; }
+      .actions { margin-top: auto; display: flex; gap: 12px; }
+      .link { padding: 0; border: 0; color: var(--blue); background: none; font-size: 13px; font-weight: 650; }
+      .badge { width: fit-content; padding: 5px 9px; color: white; border-radius: 99px; font-size: 12px; font-weight: 700; }
+      .published { background: var(--green); } .draft { background: var(--amber); } .registered { background: var(--red); }
+      .form-card { max-width: 760px; padding: 24px; display: grid; gap: 16px; margin-top: 26px; }
+      label { display: grid; gap: 7px; font-size: 13px; font-weight: 650; }
+      label span { color: var(--muted); font-weight: 500; }
+      input, textarea { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: rgba(247,250,255,.76); color: var(--ink); padding: 11px 12px; }
+      textarea { min-height: 73px; resize: vertical; }
+      .help { color: var(--amber); font-size: 12px; }
+      .split { display: grid; grid-template-columns: 1.25fr .9fr; gap: 18px; margin-top: 26px; }
+      .panel { padding: 22px; }
+      .tree { display: grid; gap: 11px; margin-top: 18px; font-size: 14px; }
+      .indent { padding-left: 22px; color: var(--muted); }
+      .notice { margin: 20px 0; padding: 12px 14px; border-radius: 14px; background: var(--blue-soft); color: #275386; font-size: 13px; }
+      .editor { display: grid; grid-template-columns: 1fr 300px; gap: 18px; margin-top: 22px; }
+      .editor-stack { display: grid; gap: 14px; }
+      .step-row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+      .step-row:last-child { border: 0; }
+      .step-number { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 800; }
+      .check { display: grid; gap: 11px; margin-top: 16px; }
+      .check div { display: flex; justify-content: space-between; font-size: 13px; }
+      .ok { color: var(--green); } .not-ok { color: var(--amber); }
+      .tour-shell { max-width: 840px; margin: 18px auto 0; }
+      .progress { display: flex; gap: 7px; margin: 24px 0; }
+      .progress i { height: 5px; flex: 1; border-radius: 99px; background: #dce5f2; }
+      .progress i.active { background: var(--blue); }
+      .tour-card { min-height: 420px; padding: clamp(26px, 5vw, 56px); display: grid; align-content: start; gap: 17px; }
+      .tour-card .target { color: var(--blue); font-size: 13px; font-weight: 750; }
+      .tour-card h2 { font-size: clamp(25px, 4vw, 38px); line-height: 1.15; }
+      .tour-card p { max-width: 630px; font-size: 16px; }
+      .metaphor { margin-top: 7px; padding: 14px; border-radius: 15px; background: #f4f8ff; color: #34557e; font-size: 14px; }
+      .tour-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 26px; }
+      .detail { margin-top: 14px; padding: 14px; border-radius: 15px; background: #f7faff; border: 1px solid #dceafe; }
+      .detail[hidden] { display: none; }
+      .stars { display: flex; gap: 9px; margin: 22px 0; }
+      .star { width: 48px; padding: 0; color: #9cadc3; background: var(--glass); border-color: var(--line); font-size: 20px; }
+      .star.selected { color: #e69900; background: #fff7df; border-color: #ffd983; }
+      .low-score, .submitted { margin-top: 12px; padding: 14px; border-radius: 15px; font-size: 13px; }
+      .low-score { background: #fff7e7; color: #895407; } .submitted { background: #eaf9f1; color: #176a43; }
+      .low-score[hidden], .submitted[hidden] { display: none; }
+      @media (max-width: 900px) {
+        .shell { padding: 0; }.window { border-radius: 0; grid-template-columns: 1fr; min-height: 100vh; }.sidebar { border-right: 0; border-bottom: 1px solid var(--line); padding: 13px 16px; }.brand { padding: 0 0 9px; }.side-note { display: none; }.nav { grid-template-columns: repeat(3, 1fr); }.nav button { text-align: center; padding: 9px 5px; font-size: 12px; }main { padding: 30px 20px; }.card-grid, .split, .editor { grid-template-columns: 1fr; }.stat-grid { grid-template-columns: 1fr 1fr; }.screen-head { align-items: stretch; flex-direction: column; }.screen-head .primary { width: 100%; }.project-card { min-height: 210px; }
+      }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="window">
+        <aside class="sidebar">
+          <div class="brand">Code Tour<small>개발자 온보딩 도구</small></div>
+          <nav class="nav" aria-label="화면 이동">
+            <button type="button" data-target="projects" aria-current="page">프로젝트</button>
+            <button type="button" data-target="register">등록</button>
+            <button type="button" data-target="analysis">분석 결과</button>
+            <button type="button" data-target="editor">투어 편집</button>
+            <button type="button" data-target="tour">팀원 투어</button>
+            <button type="button" data-target="rating">평가</button>
+          </nav>
+          <div class="side-note">모든 설명은 로컬에 저장됩니다.<br />팀원에게는 코드 본문을 보여주지 않습니다.</div>
+        </aside>
+        <main>
+          <section class="screen" data-screen="projects" role="tabpanel">
+            <div class="screen-head"><div><div class="eyebrow">Developer space</div><h1>프로젝트</h1><p>등록한 로컬 프로젝트를 관리하고 팀원용 투어를 발행하세요.</p></div><button class="primary" type="button" data-target="register">새 프로젝트 등록</button></div>
+            <div class="grid stat-grid"><div class="card stat"><span>전체 프로젝트</span><strong>3</strong></div><div class="card stat"><span>발행된 투어</span><strong>1</strong></div><div class="card stat"><span>평균 이해도</span><strong>4.3 / 5</strong></div></div>
+            <div class="grid card-grid">
+              <article class="card project-card"><h2>RhythmTrainer</h2><div class="path">~/Projects/RhythmTrainer</div><span class="badge published">발행됨</span><div class="meta">마지막 분석 2026.08.18 · 평균 4.3</div><div class="actions"><button class="link" data-target="editor">열기</button><button class="link" data-target="analysis">재분석</button><button class="link">삭제</button></div></article>
+              <article class="card project-card"><h2>Enzo</h2><div class="path">~/Projects/Enzo</div><span class="badge draft">투어 초안</span><div class="meta">마지막 분석 2026.08.18 · 미발행</div><div class="actions"><button class="link" data-target="editor">열기</button><button class="link" data-target="analysis">재분석</button><button class="link">삭제</button></div></article>
+              <article class="card project-card"><h2>Sample Local App</h2><div class="path">~/Projects/sample-app</div><span class="badge registered">등록됨</span><div class="meta">아직 분석하지 않은 프로젝트</div><div class="actions"><button class="link" data-target="analysis">분석</button><button class="link">삭제</button></div></article>
+            </div>
+          </section>
+          <section class="screen" data-screen="register" role="tabpanel" hidden>
+            <div class="eyebrow">Developer flow · 1/4</div><h1>새 프로젝트 등록</h1><p>폴더를 선택하면 프로젝트 이름을 제안하고, 분석을 시작할 수 있습니다.</p>
+            <form class="card form-card"><label>로컬 프로젝트 폴더<input value="/Users/you/Projects/RhythmTrainer" aria-describedby="path-help" /></label><div class="help" id="path-help">폴더가 없거나 읽을 수 없으면 분석을 시작할 수 없습니다.</div><label>프로젝트 이름<input value="RhythmTrainer" /></label><label>PRD <span>선택</span><textarea>팀원이 낯선 코드베이스의 구조와 핵심 흐름을 쉽게 이해하도록 돕습니다.</textarea></label><label>핵심 플로우 <span>선택</span><textarea>사용자가 리듬을 입력하면 결과가 화면에 표시됩니다.</textarea></label><button class="primary" type="button" data-target="analysis">분석 시작</button></form>
+          </section>
+          <section class="screen" data-screen="analysis" role="tabpanel" hidden>
+            <div class="eyebrow">Developer flow · 2/4</div><h1>분석 결과</h1><p>성공적으로 스캔한 구조를 확인하고, 제외된 항목도 함께 검토하세요.</p>
+            <div class="split"><div class="panel"><h2>프로젝트 구조</h2><div class="tree"><strong>▾ src</strong><strong class="indent">▾ components</strong><span class="indent">TourEditor.tsx</span><span class="indent">ProjectCard.tsx</span><strong class="indent">▸ data</strong><span>README.md</span></div></div><aside class="panel"><h2>스캔 요약</h2><div class="notice">성공한 항목 24개를 읽었습니다. 코드 본문은 팀원 화면에 노출되지 않습니다.</div><h3>제외된 항목</h3><div class="tree"><span>node_modules · 의존성 폴더</span><span>.git · 버전 관리 폴더</span><span>logo.bin · 바이너리 파일</span></div><button class="primary" type="button" data-target="editor" style="margin-top:20px">투어 초안 생성</button></aside></div>
+          </section>
+          <section class="screen" data-screen="editor" role="tabpanel" hidden>
+            <div class="screen-head"><div><div class="eyebrow">Developer flow · 3/4</div><h1>투어 편집</h1><p>AI가 만든 초안을 팀원이 이해하기 쉬운 문장으로 검토합니다.</p></div><button class="secondary" type="button" data-target="tour">발행본 미리 보기</button></div>
+            <div class="notice">AI 분석 기반 초안입니다. 발행 전에는 반드시 문구와 흐름을 검토하세요.</div>
+            <div class="editor"><div class="editor-stack"><section class="panel"><h2>Context</h2><p style="margin-top:8px">처음 보는 팀원이 이 프로젝트가 어떤 문제를 해결하고, 어디서 시작해 어디로 가는지 이해하는 출발점입니다.</p></section><section class="panel"><div class="row-between"><h2>구조</h2><button class="link">단계 추가</button></div><div class="step-row"><span class="step-number">1</span><div><strong>src</strong><p>사용자에게 보이는 화면과 기능이 모이는 작업 공간입니다.</p></div><button class="link">수정</button></div><div class="step-row"><span class="step-number">2</span><div><strong>components</strong><p>화면에서 반복되는 조각을 정리한 서랍장입니다.</p></div><button class="link">수정</button></div></section><section class="panel"><div class="row-between"><h2>핵심 플로우 · 2 / 3단계</h2><button class="link">단계 추가</button></div><div class="step-row"><span class="step-number">1</span><div><strong>입력 화면</strong><p>사용자가 리듬을 입력할 준비를 합니다.</p></div><button class="link">수정</button></div><div class="step-row"><span class="step-number">2</span><div><strong>결과 화면</strong><p>입력한 리듬을 읽기 쉬운 결과로 보여줍니다.</p></div><button class="link">수정</button></div></section></div><aside class="panel"><h2>발행 조건</h2><div class="check"><div><span>Context</span><b class="ok">완료</b></div><div><span>구조 1개 이상</span><b class="ok">완료</b></div><div><span>핵심 플로우 3~7단계</span><b class="not-ok">1단계 부족</b></div></div><button class="secondary" type="button" disabled style="width:100%;margin-top:22px">발행하기</button><p style="margin-top:10px;font-size:12px">핵심 플로우 3단계를 완성하면 발행할 수 있습니다.</p></aside></div>
+          </section>
+          <section class="screen" data-screen="tour" role="tabpanel" hidden>
+            <div class="tour-shell"><div class="eyebrow">Team member guide</div><div class="progress" aria-label="투어 진행도"><i class="active"></i><i></i><i></i><i></i><i></i></div><article class="card tour-card"><div class="target" id="tour-target">Context · 1 / 5</div><h2 id="tour-title">이 프로젝트는 팀원이 코드의 큰 지도를 먼저 읽게 돕습니다.</h2><p id="tour-copy">복잡한 구현을 보기 전에, 프로젝트가 누구를 위해 어떤 문제를 해결하는지 쉬운 언어로 확인합니다.</p><div class="metaphor" id="tour-metaphor">비유: 처음 공항에 도착했을 때 보는 안내 지도처럼, 어디로 가야 하는지 먼저 알려줍니다.</div><button class="quiet" id="more-button" type="button">관련 파일 더 보기</button><div class="detail" id="detail" hidden><strong>관련 파일</strong><p>README.md · 프로젝트의 목적을 정리합니다.<br />src · 실제 화면과 기능이 시작되는 입구입니다.</p><button class="link" id="return-main" type="button">메인 흐름으로 돌아가기</button></div><div class="tour-actions"><button class="secondary" id="prev-step" type="button">이전</button><button class="primary" id="next-step" type="button">다음</button></div></article><p style="text-align:center;margin-top:15px;font-size:12px">이 설명은 AI 분석에서 시작되었으며, 개발자가 검토한 발행본입니다.</p></div>
+          </section>
+          <section class="screen" data-screen="rating" role="tabpanel" hidden>
+            <div class="tour-shell"><div class="eyebrow">Team member guide · 완료</div><h1>이 투어는 이해에 도움이 되었나요?</h1><p>점수는 최신 발행본의 평균 이해도로 프로젝트 목록에만 저장됩니다.</p><div class="card panel" style="margin-top:25px"><h2>이해도 별점</h2><div class="stars" role="radiogroup" aria-label="이해도 별점"><button class="star" type="button" data-rating="1" aria-label="1점">★</button><button class="star" type="button" data-rating="2" aria-label="2점">★</button><button class="star" type="button" data-rating="3" aria-label="3점">★</button><button class="star" type="button" data-rating="4" aria-label="4점">★</button><button class="star" type="button" data-rating="5" aria-label="5점">★</button></div><div class="low-score" id="low-score" hidden>어려웠던 단계가 있군요. <button class="link" type="button" data-target="tour">핵심 플로우를 다시 보기</button></div><button class="primary" id="rating-submit" type="button" disabled style="margin-top:18px">평가 저장</button><div class="submitted" id="submitted" hidden>평가를 로컬에 저장했습니다. 고마워요.</div></div></div>
+          </section>
+        </main>
+      </div>
+    </div>
+    <script>
+      const screens = [...document.querySelectorAll('[data-screen]')];
+      const nav = [...document.querySelectorAll('[data-target]')];
+      const show = (name) => {
+        screens.forEach((screen) => { screen.hidden = screen.dataset.screen !== name; });
+        document.querySelectorAll('.nav [data-target]').forEach((button) => button.toggleAttribute('aria-current', button.dataset.target === name));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+      nav.forEach((button) => button.addEventListener('click', () => show(button.dataset.target)));
+
+      const tour = [
+        ['Context · 1 / 5', '이 프로젝트는 팀원이 코드의 큰 지도를 먼저 읽게 돕습니다.', '복잡한 구현을 보기 전에, 프로젝트가 누구를 위해 어떤 문제를 해결하는지 쉬운 언어로 확인합니다.', '비유: 처음 공항에 도착했을 때 보는 안내 지도처럼, 어디로 가야 하는지 먼저 알려줍니다.'],
+        ['구조 · 2 / 5', 'src는 사용자에게 보이는 화면과 기능이 시작되는 입구입니다.', '이 폴더는 프로젝트가 실제로 무엇을 보여 주고 어떤 일을 하는지 구성하는 곳입니다.', '비유: 건물 현관에서 각 층으로 가는 표지판을 보는 것과 같습니다.'],
+        ['구조 · 3 / 5', 'components는 반복되는 화면 조각을 정리한 서랍장입니다.', '같은 종류의 화면 요소를 한 곳에 모아 일관된 경험을 만듭니다.', '비유: 자주 쓰는 도구를 종류별로 보관하는 공구함입니다.'],
+        ['핵심 플로우 · 4 / 5', '사용자가 입력 화면에서 원하는 리듬을 준비합니다.', '팀원이 실제 사용자의 첫 행동이 어디서 시작되는지 이해합니다.', '비유: 요리를 시작하기 전 재료를 도마 위에 올려두는 단계입니다.'],
+        ['핵심 플로우 · 5 / 5', '결과 화면이 입력을 읽기 쉬운 피드백으로 보여줍니다.', '사용자의 행동이 어떤 결과로 끝나는지 확인한 뒤 투어를 마칩니다.', '비유: 조리한 음식이 접시에 담겨 식탁에 도착하는 순간입니다.'],
+      ];
+      let step = 0;
+      const drawTour = () => {
+        const [target, title, copy, metaphor] = tour[step];
+        document.querySelector('#tour-target').textContent = target;
+        document.querySelector('#tour-title').textContent = title;
+        document.querySelector('#tour-copy').textContent = copy;
+        document.querySelector('#tour-metaphor').textContent = metaphor;
+        document.querySelectorAll('.progress i').forEach((item, index) => item.classList.toggle('active', index <= step));
+        document.querySelector('#prev-step').disabled = step === 0;
+        document.querySelector('#next-step').textContent = step === tour.length - 1 ? '평가하기' : '다음';
+      };
+      document.querySelector('#next-step').addEventListener('click', () => { if (step === tour.length - 1) show('rating'); else { step += 1; drawTour(); } });
+      document.querySelector('#prev-step').addEventListener('click', () => { if (step) { step -= 1; drawTour(); } });
+      document.querySelector('#more-button').addEventListener('click', () => document.querySelector('#detail').hidden = false);
+      document.querySelector('#return-main').addEventListener('click', () => document.querySelector('#detail').hidden = true);
+      let rating = 0;
+      document.querySelectorAll('[data-rating]').forEach((button) => button.addEventListener('click', () => {
+        rating = Number(button.dataset.rating);
+        document.querySelectorAll('[data-rating]').forEach((star) => star.classList.toggle('selected', Number(star.dataset.rating) <= rating));
+        document.querySelector('#rating-submit').disabled = false;
+        document.querySelector('#low-score').hidden = rating > 3;
+      }));
+      document.querySelector('#rating-submit').addEventListener('click', () => { document.querySelector('#submitted').hidden = false; });
+      drawTour();
+    </script>
+  </body>
+</html>

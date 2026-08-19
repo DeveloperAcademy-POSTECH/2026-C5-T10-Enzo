@@ -1,0 +1,139 @@
+@Tutorial(time: 25) {
+    @Intro(title: "개발자가 만든 세계에 돼지 가두기") {
+        지금 만들 세계에는 개발자가 선언한 벽·바닥·돼지·가짜 소파만 존재합니다. 현실의 소파는 카메라로 보이더라도 노드가 아니고, 돼지가 갈 수 있는 목적지도 아닙니다.
+
+        이 장의 목표는 SceneKit이 나쁘다는 결론이 아닙니다. SceneKit만으로 만든 이 장면이 현실과 분리된 **닫힌 세계**라는 사실을 돼지의 움직임으로 확인하는 것입니다.
+    }
+
+    @Section(title: "먼저, 왜 이 세계를 만들까요?") {
+        @ContentAndMedia {
+            기존 SceneKit 앱을 즉시 다시 만들 필요는 없습니다. 다만 새로운 공간 경험에서는 앱 안에서 선언한 노드만 다루는 것과, 실제 공간을 관찰해 그 안에서 콘텐츠가 동작하게 하는 것이 전혀 다른 출발점이 됩니다.
+
+            이 장에서는 전자만 구현합니다. 현실 물체와 상호작용하는 코드가 빠진 상태를 실패가 아니라 의도적인 출발점으로 봅니다.
+        }
+
+        @Steps {
+            @Step {
+                이번 장에서 확인할 세 가지를 기억하세요. 돼지는 코드로 만든 씬 안에서만 존재합니다. 현실의 소파는 노드·앵커·기하 정보가 없으므로 돼지의 목적지가 될 수 없습니다. 다음 장에서 현실을 관찰하는 기준을 더해야 이 분리가 바뀝니다.
+            }
+        }
+    }
+
+    @Section(title: "SwiftUI에 SceneKit 세계 띄우기") {
+        @ContentAndMedia {
+            현재 실행 중인 `C3_Piggy`의 `SceneContainerView` 패턴처럼, `SCNView`를 `UIViewRepresentable`로 감쌉니다. 이 뷰는 현실을 읽지 않습니다. 전달받은 `SCNScene`만 화면에 렌더링합니다.
+        }
+
+        @Steps {
+            @Step {
+                `SCNView`와 탭 제스처를 연결합니다. 탭은 나중에 돼지를 가짜 소파로 움직이는 규칙만 실행합니다.
+
+                @Code(name: "ClosedWorldSceneView.swift", file: "01-ClosedWorld-01-01.swift")
+
+                실행하면 개발자가 만든 3D 씬이 SwiftUI 화면에 나타납니다. 아직 카메라·AR 세션·현실 사물 인식 코드는 없습니다.
+            }
+        }
+    }
+
+    @Section(title: "존재할 수 있는 물체를 선언하기") {
+        @ContentAndMedia {
+            닫힌 세계에는 자동으로 생기는 물체가 없습니다. 모델 파일도, 모델이 없을 때 대신 보일 폴백 박스도 개발자가 명시해야 합니다.
+        }
+
+        @Steps {
+            @Step {
+                `C3_Piggy`에서 사용 중인 `AssetLoader` 패턴을 이용해 모델을 노드로 불러옵니다. 에셋이 빠져도 폴백 노드는 여전히 개발자가 선언한 물체입니다.
+
+                @Code(name: "AssetLoader.swift", file: "01-ClosedWorld-02-01.swift")
+
+                실행 확인: `Piggy.usdc` 또는 대체 박스가 나타납니다. 어느 쪽도 현실의 소파를 새 노드로 만들지 않습니다.
+            }
+        }
+    }
+
+    @Section(title: "벽을 세워 세계의 경계 만들기") {
+        @ContentAndMedia {
+            바닥과 네 개의 벽을 노드로 추가합니다. 좌표 원점과 방의 크기는 현실 방을 측정한 값이 아니라, 개발자가 이 세계를 위해 정한 숫자입니다.
+        }
+
+        @Steps {
+            @Step {
+                `RoomBuilder`로 바닥과 벽을 만듭니다. `C3_Piggy`의 `IslandBuilder`처럼 모든 오브젝트를 루트 노드 아래에 명시적으로 추가하는 방식을 작은 방에 적용합니다.
+
+                @Code(name: "RoomBuilder.swift", file: "01-ClosedWorld-03-01.swift")
+
+                @Code(name: "ClosedWorld.swift", file: "01-ClosedWorld-03-02.swift")
+
+                실행 확인: 화면에 방의 경계가 보입니다. 방 바깥에는 개발자가 `addChildNode`로 추가한 것이 없습니다.
+            }
+        }
+    }
+
+    @Section(title: "돼지를 숫자로 정한 자리에 놓기") {
+        @ContentAndMedia {
+            실제 모델의 크기는 파일마다 다를 수 있으므로, `C3_Piggy`의 돼지 모델 정규화 패턴을 사용합니다. 하지만 정규화를 마친 뒤의 위치도 여전히 코드에 적힌 숫자입니다.
+        }
+
+        @Steps {
+            @Step {
+                돼지 모델을 불러와 높이를 맞추고, `hardcodedPosition`에 둡니다.
+
+                @Code(name: "PigPlacement.swift", file: "01-ClosedWorld-04-01.swift")
+
+                실행 확인: 돼지는 방 안에 안정적으로 서지만, 그 좌표는 현실 바닥이나 현실 가구와 연결되어 있지 않습니다.
+            }
+        }
+    }
+
+    @Section(title: "한 노드에 모인 책임 살펴보기") {
+        @ContentAndMedia {
+            SceneKit에서는 노드 하나가 geometry·physics·action을 함께 가질 수 있습니다. 이 구조를 관찰한 뒤, 나중에 Entity와 Component가 책임을 나누는 이유를 비교할 수 있습니다.
+        }
+
+        @Steps {
+            @Step {
+                `NodeInspector`로 한 노드에 붙은 기능을 텍스트로 확인합니다.
+
+                @Code(name: "NodeInspector.swift", file: "01-ClosedWorld-05-01.swift")
+
+                실행 확인: 한 `SCNNode`에서 geometry, physics body, 실행 중인 action을 모두 읽을 수 있습니다.
+            }
+        }
+    }
+
+    @Section(title: "가짜 소파로만 숨기") {
+        @ContentAndMedia {
+            이제 개발자가 `Wood_Color.usdc`를 가짜 소파로 선언하고, 돼지에게 그 좌표로 움직이라는 규칙을 줍니다. 현실의 소파가 눈앞에 있어도 이 세계에는 그 소파를 나타내는 노드가 없습니다.
+        }
+
+        @Steps {
+            @Step {
+                먼저 가짜 소파 노드를 추가합니다. 이것이 돼지의 유일한 숨는 장소입니다.
+
+                @Code(name: "FakeSofa.swift", file: "01-ClosedWorld-06-01.swift")
+            }
+
+            @Step {
+                탭하면 돼지를 가짜 소파의 하드코딩된 위치로 움직이는 `SCNAction`을 실행합니다.
+
+                @Code(name: "HideAction.swift", file: "01-ClosedWorld-06-02.swift")
+
+                실행 확인: 돼지는 가짜 소파까지 이동합니다. 현실 소파는 노드·목적지 좌표·상호작용 규칙 어느 것도 없으므로 이 액션에 관여하지 않습니다.
+            }
+        }
+    }
+
+    @Section(title: "닫힌 세계에서 멈추기") {
+        @ContentAndMedia {
+            돼지는 이제 방 안에서 움직일 수 있지만, 개발자가 만든 세계 안에서만 움직입니다. 현실을 관찰하는 세션, 현실 바닥을 기준으로 한 앵커, 현실 가구의 기하 정보가 없기 때문입니다.
+
+            다음 단계에서는 이 세 요소를 하나씩 더해, 돼지가 현실과 연결되는 순간을 만들 수 있습니다.
+        }
+
+        @Steps {
+            @Step {
+                지금은 현실을 관찰하지 않는 SceneKit 세계의 경계를 분명히 기억하세요. 다음 장에서 세션·앵커·기하 정보를 추가하면, 돼지가 현실과 어떤 관계를 맺는지 직접 비교할 수 있습니다.
+            }
+        }
+    }
+}

@@ -153,14 +153,14 @@ Expected: `valid`.
 - Consumes: validated `main` commit and the `Deploy DocC` workflow.
 - Produces: the GitHub Pages project URL for the repository.
 
-- [x] **Step 1: Commit the catalog, script, workflow, design, and plan**
+- [ ] **Step 1: Commit the catalog, script, workflow, design, and plan**
 
 ```bash
 git add Tutorials scripts .github README.md docs/superpowers
 git commit -m "Deploy DocC tutorial with GitHub Pages"
 ```
 
-- [x] **Step 2: Push the `main` commit to `origin`**
+- [ ] **Step 2: Push the `main` commit to `origin`**
 
 ```bash
 git push origin main
@@ -169,8 +169,6 @@ git push origin main
 - [ ] **Step 3: Enable GitHub Pages to use GitHub Actions**
 
 Set the repository Pages source to **GitHub Actions** in Settings → Pages, then confirm that the `Deploy DocC` workflow starts from the pushed commit.
-
-> Blocked: the current repository credential can push to `main`, but it does not have `admin` or `maintain` permission, which is required to change the Pages source. A repository maintainer must enable **Settings → Pages → Source: GitHub Actions**.
 
 - [ ] **Step 4: Verify the published page**
 

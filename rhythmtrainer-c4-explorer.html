@@ -1817,16 +1817,37 @@
       return Boolean(point) && Number.isFinite(point.x) && Number.isFinite(point.y);
     }
 
+    function isPointOnNodeBoundary(point, node) {
+      if (!isFinitePoint(point) || !node) return false;
+      const withinX = point.x >= node.x && point.x <= node.x + node.w;
+      const withinY = point.y >= node.y && point.y <= node.y + node.h;
+      return (withinX && (point.y === node.y || point.y === node.y + node.h))
+        || (withinY && (point.x === node.x || point.x === node.x + node.w));
+    }
+
+    function currentBoundaryAnchor(node, other, explicitAnchor) {
+      return isPointOnNodeBoundary(explicitAnchor, node) ? explicitAnchor : anchorFor(node, other);
+    }
+
     function relationshipPolyline(nodes, relationship) {
       const from = nodes.get(relationship.from);
       const to = nodes.get(relationship.to);
       if (!from || !to) return [];
-      const start = anchorFor(from, to, relationship.sourceAnchor);
-      const end = anchorFor(to, from, relationship.targetAnchor);
-      const requested = [start, ...(relationship.waypoints ?? []), end].filter(isFinitePoint);
-      return pathCrossesUnrelatedNodes(nodes, relationship, requested, 8)
-        ? findObstacleFreePath(nodes, relationship, start, end, 8)
-        : requested;
+      const start = currentBoundaryAnchor(from, to, relationship.sourceAnchor);
+      const end = currentBoundaryAnchor(to, from, relationship.targetAnchor);
+      const unrelated = [...nodes.values()].filter((node) => ![relationship.from, relationship.to].includes(node.id));
+      const hasClearance = (point) => isFinitePoint(point) && !unrelated.some((node) => pointInRect(point, { left: node.x - 8, right: node.x + node.w + 8, top: node.y - 8, bottom: node.y + node.h + 8 }));
+      const requestedWaypoints = (relationship.waypoints ?? []).filter(hasClearance);
+      const labelWaypoint = hasClearance(relationship.labelPosition) ? [relationship.labelPosition] : [];
+      const routeStops = [start, ...requestedWaypoints, ...labelWaypoint, end]
+        .filter((point, index, all) => index === 0 || point.x !== all[index - 1].x || point.y !== all[index - 1].y);
+      const path = [];
+      for (let index = 1; index < routeStops.length; index += 1) {
+        const leg = findObstacleFreePath(nodes, relationship, routeStops[index - 1], routeStops[index], 8);
+        path.push(...(index === 1 ? leg : leg.slice(1)));
+      }
+      const deduplicated = path.filter((point, index) => index === 0 || point.x !== path[index - 1].x || point.y !== path[index - 1].y);
+      return simplifyOrthogonalPath(deduplicated);
     }
 
     function relationshipPath(points) {
@@ -1848,8 +1869,17 @@
       const abD = orientation(a, b, d);
       const cdA = orientation(c, d, a);
       const cdB = orientation(c, d, b);
-      return (abC === 0 && abD === 0 && cdA === 0 && cdB === 0)
-        || (abC >= 0 && abD <= 0 || abC <= 0 && abD >= 0) && (cdA >= 0 && cdB <= 0 || cdA <= 0 && cdB >= 0);
+      const onSegment = (start, point, end) => point.x >= Math.min(start.x, end.x) && point.x <= Math.max(start.x, end.x)
+        && point.y >= Math.min(start.y, end.y) && point.y <= Math.max(start.y, end.y);
+      if (abC === 0 && abD === 0 && cdA === 0 && cdB === 0) {
+        return Math.max(Math.min(a.x, b.x), Math.min(c.x, d.x)) <= Math.min(Math.max(a.x, b.x), Math.max(c.x, d.x))
+          && Math.max(Math.min(a.y, b.y), Math.min(c.y, d.y)) <= Math.min(Math.max(a.y, b.y), Math.max(c.y, d.y));
+      }
+      if (abC === 0 && onSegment(a, c, b)) return true;
+      if (abD === 0 && onSegment(a, d, b)) return true;
+      if (cdA === 0 && onSegment(c, a, d)) return true;
+      if (cdB === 0 && onSegment(c, b, d)) return true;
+      return (abC > 0) !== (abD > 0) && (cdA > 0) !== (cdB > 0);
     }
 
     function segmentIntersectsRect(start, end, node, padding = 0) {
@@ -1872,7 +1902,9 @@
         if (index === 0 || index === points.length - 1) return true;
         const previous = points[index - 1];
         const next = points[index + 1];
-        return !((previous.x === point.x && point.x === next.x) || (previous.y === point.y && point.y === next.y));
+        const liesBetween = (value, first, second) => value >= Math.min(first, second) && value <= Math.max(first, second);
+        return !((previous.x === point.x && point.x === next.x && liesBetween(point.y, previous.y, next.y))
+          || (previous.y === point.y && point.y === next.y && liesBetween(point.x, previous.x, next.x)));
       });
     }
 
@@ -1922,7 +1954,7 @@
     }
 
     function relationshipLabelPoint(points, override) {
-      if (override && Number.isFinite(override.x) && Number.isFinite(override.y)) return override;
+      if (override && Number.isFinite(override.x) && Number.isFinite(override.y)) return projectPointToPolyline(override, points);
       if (points.length < 2) return { x: 0, y: 0 };
       let longest = { length: -1, start: points[0], end: points[1] };
       for (let index = 1; index < points.length; index += 1) {
@@ -1932,6 +1964,34 @@
         if (length > longest.length) longest = { length, start, end };
       }
       return { x: (longest.start.x + longest.end.x) / 2, y: (longest.start.y + longest.end.y) / 2 };
+    }
+
+    function projectPointToSegment(point, start, end) {
+      const dx = end.x - start.x; const dy = end.y - start.y;
+      const lengthSquared = dx * dx + dy * dy;
+      if (lengthSquared === 0) return { x: start.x, y: start.y };
+      const ratio = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared));
+      return { x: start.x + dx * ratio, y: start.y + dy * ratio };
+    }
+
+    function pointToPolylineDistance(point, points) {
+      if (points.length < 2) return Infinity;
+      return Math.min(...points.slice(1).map((end, index) => {
+        const projected = projectPointToSegment(point, points[index], end);
+        return Math.hypot(point.x - projected.x, point.y - projected.y);
+      }));
+    }
+
+    function projectPointToPolyline(point, points) {
+      if (points.length < 2) return { x: 0, y: 0 };
+      let nearest = projectPointToSegment(point, points[0], points[1]);
+      let distance = Math.hypot(point.x - nearest.x, point.y - nearest.y);
+      for (let index = 1; index < points.length; index += 1) {
+        const candidate = projectPointToSegment(point, points[index - 1], points[index]);
+        const candidateDistance = Math.hypot(point.x - candidate.x, point.y - candidate.y);
+        if (candidateDistance < distance) { nearest = candidate; distance = candidateDistance; }
+      }
+      return nearest;
     }
 
     function getRelationshipLabelLayout(relationship) {
@@ -2092,11 +2152,14 @@
       setPanelAccessibility,
       getLayoutMode,
       anchorFor,
+      isPointOnNodeBoundary,
       relationshipPolyline,
       relationshipPath,
+      segmentsIntersect,
       segmentIntersectsRect,
       relationshipTraversesUnrelatedNode,
       relationshipLabelPoint,
+      pointToPolylineDistance,
       getRelationshipLabelLayout,
       buildRelationshipMarkup,
       clampScale,

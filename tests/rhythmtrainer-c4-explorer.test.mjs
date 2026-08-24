@@ -464,6 +464,56 @@ test("defines resilient toolbar geometry for an open Inspector", () => {
   assert.match(html, /\.back-button\s*\{[^}]*min-width:\s*2\.5rem/s);
 });
 
+test("anchors every final relationship on its current source and target boundaries", () => {
+  const { api, model } = explorerRuntime();
+  const onBoundary = (point, node) => {
+    const withinX = point.x >= node.x && point.x <= node.x + node.w;
+    const withinY = point.y >= node.y && point.y <= node.y + node.h;
+    return (withinX && (point.y === node.y || point.y === node.y + node.h)) || (withinY && (point.x === node.x || point.x === node.x + node.w));
+  };
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      const points = api.relationshipPolyline(nodes, relationship);
+      assert.ok(onBoundary(points[0], nodes.get(relationship.from)), `${view.id}:${relationship.id} begins on source boundary`);
+      assert.ok(onBoundary(points.at(-1), nodes.get(relationship.to)), `${view.id}:${relationship.id} ends on target boundary`);
+    }
+  }
+});
+
+test("keeps each relationship label center on its final rendered route", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.pointToPolylineDistance, "function");
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      const points = api.relationshipPolyline(nodes, relationship);
+      const label = api.relationshipLabelPoint(points, relationship.labelPosition);
+      assert.ok(api.pointToPolylineDistance(label, points) <= 1, `${view.id}:${relationship.id} label is on its final route`);
+    }
+  }
+});
+
+test("treats reversed geometry as the same lane and separates every opposing pair", () => {
+  const { api, model } = explorerRuntime();
+  const canonicalSegments = (points) => points.slice(1).map((point, index) => {
+    const a = points[index]; const b = point;
+    return [a, b].map(({ x, y }) => `${x},${y}`).sort().join("|");
+  }).sort().join(";");
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const forward of view.relationships) for (const reverse of view.relationships.filter((candidate) => candidate.from === forward.to && candidate.to === forward.from)) {
+      assert.notEqual(canonicalSegments(api.relationshipPolyline(nodes, forward)), canonicalSegments(api.relationshipPolyline(nodes, reverse)), `${view.id}:${forward.id}/${reverse.id} uses a distinct lane`);
+    }
+  }
+});
+
+test("handles collinear segment overlap without treating disjoint collinear segments as intersections", () => {
+  const { api } = explorerRuntime();
+  assert.equal(api.segmentsIntersect({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }, { x: 30, y: 0 }), false);
+  assert.equal(api.segmentsIntersect({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 8, y: 0 }, { x: 20, y: 0 }), true);
+});
+
 test("filters non-finite relationship route points before making SVG paths", () => {
   const { api } = explorerRuntime();
   assert.equal(api.relationshipPath([{ x: 0, y: 0 }, { x: Infinity, y: 2 }]), "");

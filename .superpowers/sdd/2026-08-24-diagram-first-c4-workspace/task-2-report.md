@@ -61,3 +61,31 @@ The pre-existing untracked `output/` directory was not staged or altered.
 
 - Legacy CSS selectors and the exported relationship-summary helper remain for compatibility with existing rendering tests; no legacy document sections are present in the new shell.
 - SVG relationship rendering still uses the existing fixed 1020×640 coordinate space; later SVG-focused work can refine viewport transforms and pan/zoom state.
+
+## Fix round 1 evidence
+
+Addressed the panel-reopen finding by adding persistent `toolbar-left-panel-toggle` and `toolbar-right-panel-toggle` controls inside `#top-toolbar`, outside both side panels. Both controls dispatch the existing independent reducer actions and mirror `aria-expanded` state, so either panel can be reopened after its own column collapses.
+
+Added focused regression coverage for toolbar placement, accessible labels, panel boundaries, and independent left/right close→reopen transitions.
+
+RED: the new toolbar contract initially failed because neither persistent toolbar control existed; the reducer close→reopen test passed against the existing reducer.
+
+GREEN:
+
+```bash
+node --test --test-name-pattern="persistent panel controls|reopens each workspace panel" tests/rhythmtrainer-c4-explorer.test.mjs
+```
+
+Final output: `ℹ tests 2`, `ℹ pass 2`, `ℹ fail 0`.
+
+```bash
+node --test tests/rhythmtrainer-c4-explorer.test.mjs
+```
+
+Final output: `ℹ tests 15`, `ℹ pass 15`, `ℹ fail 0`.
+
+```bash
+git diff --check
+```
+
+Final output: no whitespace errors.

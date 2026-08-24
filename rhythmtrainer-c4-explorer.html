@@ -68,12 +68,15 @@
     .panel-tab[aria-selected="true"] { border-bottom-color: var(--blue); color: var(--blue-deep); font-weight: 700; }
     .panel-content { display: grid; gap: .5rem; padding: 1rem; }
     .panel-note { margin: 1rem; color: var(--muted); font-size: .78rem; line-height: 1.55; }
-    .top-toolbar { position: relative; z-index: 3; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .85rem; align-items: center; min-height: 4.5rem; padding: .75rem 1rem; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(16px); }
+    .top-toolbar { position: relative; z-index: 3; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: .85rem; align-items: center; min-height: 4.5rem; padding: .75rem 1rem; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(16px); }
     .toolbar-context { min-width: 0; }
     .toolbar-context .view-kicker, .toolbar-context .view-title, .toolbar-context .view-description { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .toolbar-context .view-kicker { margin: 0; }
     .toolbar-context .view-title { margin: .1rem 0 0; font-size: 1.05rem; }
     .toolbar-context .view-description { margin: .1rem 0 0; font-size: .75rem; }
+    .toolbar-actions { display: flex; gap: .35rem; }
+    .toolbar-action { width: 2.25rem; height: 2.25rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); color: var(--ink); cursor: pointer; }
+    .toolbar-action[aria-expanded="true"] { border-color: var(--blue); background: var(--blue-soft); color: var(--blue-deep); }
     .canvas-tools { position: absolute; z-index: 4; right: 1rem; bottom: 1rem; display: flex; gap: .35rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--surface); box-shadow: var(--shadow); }
     .canvas-tool { width: 2rem; height: 2rem; border: 0; border-radius: .35rem; background: transparent; color: var(--ink); cursor: pointer; }
     .canvas-tool[aria-pressed="true"] { background: var(--blue-soft); color: var(--blue-deep); }
@@ -422,6 +425,10 @@
           <p id="view-description" class="view-description"></p>
         </div>
         <nav id="breadcrumb" class="breadcrumb" aria-label="현재 아키텍처 위치"></nav>
+        <div class="toolbar-actions" aria-label="패널 열기 및 닫기">
+          <button id="toolbar-left-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="left" aria-controls="left-panel" aria-expanded="true" aria-label="왼쪽 탐색 패널">☰</button>
+          <button id="toolbar-right-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="right" aria-controls="right-inspector" aria-expanded="false" aria-label="선택한 요소 패널">▣</button>
+        </div>
       </header>
       <div id="diagram-viewport" class="diagram-viewport" tabindex="0">
         <svg id="diagram-svg" class="diagram-svg" viewBox="0 0 1020 640" role="group" aria-label="C4 다이어그램">
@@ -1072,11 +1079,15 @@
       });
       const leftToggle = document.getElementById("left-panel-toggle");
       const rightToggle = document.getElementById("right-panel-toggle");
+      const toolbarLeftToggle = document.getElementById("toolbar-left-panel-toggle");
+      const toolbarRightToggle = document.getElementById("toolbar-right-panel-toggle");
       if (leftToggle) {
         leftToggle.setAttribute("aria-expanded", String(workspaceState.leftPanelOpen));
         leftToggle.textContent = workspaceState.leftPanelOpen ? "패널 닫기" : "패널 열기";
       }
       if (rightToggle) rightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
+      if (toolbarLeftToggle) toolbarLeftToggle.setAttribute("aria-expanded", String(workspaceState.leftPanelOpen));
+      if (toolbarRightToggle) toolbarRightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
     }
 
     function renderEvidence(nodeId) {
@@ -1222,6 +1233,8 @@
       document.getElementById("back-button").addEventListener("click", navigateUp);
       document.getElementById("left-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-left-panel" }));
       document.getElementById("right-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-right-panel" }));
+      document.getElementById("toolbar-left-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-left-panel" }));
+      document.getElementById("toolbar-right-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-right-panel" }));
       document.querySelectorAll("[data-left-tab]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-left-tab", tab: button.dataset.leftTab })));
       document.querySelectorAll("[data-inspector-tab]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-inspector-tab", tab: button.dataset.inspectorTab })));
       document.querySelectorAll("[data-tool]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-tool", tool: button.dataset.tool })));

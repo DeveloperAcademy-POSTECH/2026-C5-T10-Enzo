@@ -148,6 +148,35 @@ test("declares full-viewport workspace chrome instead of document sections", () 
   assert.doesNotMatch(html, /class="provenance"/);
 });
 
+test("keeps persistent panel controls in the top toolbar", () => {
+  const toolbar = html.match(/<header id="top-toolbar"[\s\S]*?<\/header>/)?.[0] ?? "";
+  assert.match(toolbar, /id="toolbar-left-panel-toggle"/);
+  assert.match(toolbar, /id="toolbar-right-panel-toggle"/);
+  assert.match(toolbar, /aria-label="왼쪽 탐색 패널"/);
+  assert.match(toolbar, /aria-label="선택한 요소 패널"/);
+  assert.doesNotMatch(toolbar, /id="left-panel"/);
+  assert.doesNotMatch(toolbar, /id="right-inspector"/);
+});
+
+test("reopens each workspace panel independently after closing it", () => {
+  const { api, model } = explorerRuntime();
+  const initial = api.createWorkspaceState();
+
+  const leftClosed = api.reduceWorkspace(model, initial, { type: "toggle-left-panel" });
+  const leftReopened = api.reduceWorkspace(model, leftClosed, { type: "toggle-left-panel" });
+  assert.equal(leftClosed.leftPanelOpen, false);
+  assert.equal(leftReopened.leftPanelOpen, true);
+  assert.equal(leftReopened.rightPanelOpen, false);
+
+  const rightOpened = api.reduceWorkspace(model, leftReopened, { type: "toggle-right-panel" });
+  const rightClosed = api.reduceWorkspace(model, rightOpened, { type: "toggle-right-panel" });
+  const rightReopened = api.reduceWorkspace(model, rightClosed, { type: "toggle-right-panel" });
+  assert.equal(rightOpened.rightPanelOpen, true);
+  assert.equal(rightClosed.rightPanelOpen, false);
+  assert.equal(rightReopened.rightPanelOpen, true);
+  assert.equal(rightReopened.leftPanelOpen, true);
+});
+
 test("drills from context to both component views and stops at level three", () => {
   const { api, model } = explorerRuntime();
   assert.equal(typeof api.createNavigationState, "function", "navigation state factory must exist");

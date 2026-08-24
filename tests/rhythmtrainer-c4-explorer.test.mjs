@@ -113,6 +113,41 @@ test("exports navigation helpers and rejects dangling relationships", () => {
   assert.equal(api.validateModel(badRole).valid, false);
 });
 
+test("starts as a diagram-first workspace and reduces panel state independently", () => {
+  const { api, model } = explorerRuntime();
+  const initial = api.createWorkspaceState();
+  assert.deepEqual(JSON.parse(JSON.stringify(initial)), {
+    currentView: "context",
+    selectedNode: null,
+    leftPanelOpen: true,
+    rightPanelOpen: false,
+    leftTab: "views",
+    inspectorTab: "overview",
+    tool: "select",
+    viewports: {}
+  });
+
+  const noLeft = api.reduceWorkspace(model, initial, { type: "toggle-left-panel" });
+  assert.equal(noLeft.leftPanelOpen, false);
+  assert.equal(noLeft.rightPanelOpen, false);
+
+  const selected = api.reduceWorkspace(model, noLeft, { type: "select-node", nodeId: "learner" });
+  assert.equal(selected.selectedNode, "learner");
+  assert.equal(selected.rightPanelOpen, true);
+  assert.equal(selected.leftPanelOpen, false);
+});
+
+test("declares full-viewport workspace chrome instead of document sections", () => {
+  assert.match(html, /id="left-panel"/);
+  assert.match(html, /id="diagram-viewport"/);
+  assert.match(html, /id="diagram-svg"/);
+  assert.match(html, /id="right-inspector"/);
+  assert.match(html, /id="canvas-tools"/);
+  assert.match(html, /id="fallback-summary"/);
+  assert.doesNotMatch(html, /id="relationship-summary"/);
+  assert.doesNotMatch(html, /class="provenance"/);
+});
+
 test("drills from context to both component views and stops at level three", () => {
   const { api, model } = explorerRuntime();
   assert.equal(typeof api.createNavigationState, "function", "navigation state factory must exist");

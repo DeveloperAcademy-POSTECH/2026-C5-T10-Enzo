@@ -30,9 +30,60 @@
       --space-5: 2rem;
       --space-6: 3rem;
       --shadow: 0 20px 60px rgba(32, 56, 78, 0.1);
+      --canvas-background: #f3f6f9;
     }
 
     * { box-sizing: border-box; }
+
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    .workspace-shell {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: var(--left-column, 17.5rem) minmax(0, 1fr) var(--right-column, 0rem);
+      background: var(--canvas-background);
+    }
+    .workspace-shell[data-left-open="false"] { --left-column: 0rem; }
+    .workspace-shell[data-right-open="true"] { --right-column: 21rem; }
+    .canvas-region { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+    .diagram-viewport { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
+    .diagram-svg { width: 100%; height: 100%; display: block; }
+    .diagram-nodes { position: absolute; inset: 0; z-index: 2; }
+
+    .side-panel {
+      min-width: 0;
+      overflow: hidden;
+      border-color: var(--line);
+      background: var(--surface);
+      color: var(--ink);
+    }
+    .left-panel { border-right: 1px solid var(--line); }
+    .right-inspector { border-left: 1px solid var(--line); }
+    .panel-heading, .inspector-toolbar { padding: 1.25rem; }
+    .panel-heading { border-bottom: 1px solid var(--line); }
+    .panel-title { margin: .2rem 0 .85rem; font-size: 1.05rem; }
+    .panel-toggle { border: 1px solid var(--line); border-radius: .45rem; padding: .4rem .6rem; background: var(--surface-soft); color: var(--ink); cursor: pointer; }
+    .panel-tabs { display: flex; gap: .25rem; padding: .75rem 1rem 0; }
+    .panel-tab { border: 0; border-bottom: 2px solid transparent; padding: .45rem .55rem; background: transparent; color: var(--muted); cursor: pointer; }
+    .panel-tab[aria-selected="true"] { border-bottom-color: var(--blue); color: var(--blue-deep); font-weight: 700; }
+    .panel-content { display: grid; gap: .5rem; padding: 1rem; }
+    .panel-note { margin: 1rem; color: var(--muted); font-size: .78rem; line-height: 1.55; }
+    .top-toolbar { position: relative; z-index: 3; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .85rem; align-items: center; min-height: 4.5rem; padding: .75rem 1rem; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(16px); }
+    .toolbar-context { min-width: 0; }
+    .toolbar-context .view-kicker, .toolbar-context .view-title, .toolbar-context .view-description { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .toolbar-context .view-kicker { margin: 0; }
+    .toolbar-context .view-title { margin: .1rem 0 0; font-size: 1.05rem; }
+    .toolbar-context .view-description { margin: .1rem 0 0; font-size: .75rem; }
+    .canvas-tools { position: absolute; z-index: 4; right: 1rem; bottom: 1rem; display: flex; gap: .35rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--surface); box-shadow: var(--shadow); }
+    .canvas-tool { width: 2rem; height: 2rem; border: 0; border-radius: .35rem; background: transparent; color: var(--ink); cursor: pointer; }
+    .canvas-tool[aria-pressed="true"] { background: var(--blue-soft); color: var(--blue-deep); }
+    .canvas-legend { position: absolute; z-index: 3; left: 1rem; bottom: 1rem; display: flex; gap: .75rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: .55rem; background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--muted); font-size: .7rem; }
+    .canvas-legend span { display: inline-flex; gap: .3rem; align-items: center; }
+    .canvas-legend .legend-swatch { display: inline-block; width: .65rem; height: .65rem; border-radius: .15rem; }
+    .inspector-toolbar { display: flex; justify-content: space-between; gap: .5rem; align-items: start; border-bottom: 1px solid var(--line); }
+    #inspector-content { height: calc(100% - 5.25rem); overflow: auto; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .fallback-summary { padding: 1rem; }
 
     body {
       margin: 0;
@@ -342,63 +393,72 @@
   </style>
 </head>
 <body>
-  <main class="app-shell">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">Source-backed software architecture</p>
-        <h1 class="brand-title">엇박 · C4 Architecture Explorer</h1>
-        <p class="brand-copy">큰 맥락에서 실행 단위와 내부 컴포넌트까지 내려갑니다. 파란 노드를 클릭해 다음 수준으로 이동하세요.</p>
+  <main id="workspace" class="workspace-shell" data-left-open="true" data-right-open="false">
+    <aside id="left-panel" class="side-panel left-panel" aria-label="아키텍처 탐색">
+      <div class="panel-heading">
+        <p class="eyebrow">RhythmTrainer</p>
+        <h1 class="panel-title">아키텍처 탐색</h1>
+        <button id="left-panel-toggle" class="panel-toggle" type="button" aria-controls="left-panel" aria-expanded="true">패널 닫기</button>
       </div>
-      <nav id="level-nav" class="level-nav" aria-label="C4 수준 탐색">
+      <div class="panel-tabs" role="tablist" aria-label="탐색 패널">
+        <button class="panel-tab" type="button" role="tab" data-left-tab="views" aria-selected="true">뷰</button>
+        <button class="panel-tab" type="button" role="tab" data-left-tab="layers" aria-selected="false">레이어</button>
+      </div>
+      <nav id="level-nav" class="level-nav panel-content" aria-label="C4 수준 탐색">
         <button class="level-step" type="button" data-level="1"><strong>L1</strong><span>Context</span></button>
         <button class="level-step" type="button" data-level="2"><strong>L2</strong><span>Container</span></button>
         <button class="level-step" type="button" data-level="3"><strong>L3</strong><span>Component</span></button>
         <button class="level-step" type="button" disabled><strong>L4</strong><span>Code · 제외</span></button>
       </nav>
-    </header>
+      <p class="panel-note">노드를 선택해 책임과 연결 근거를 확인하고, 드릴다운으로 다음 C4 수준을 탐색하세요.</p>
+    </aside>
 
-    <section class="workspace">
-      <div class="toolbar">
+    <section class="canvas-region" aria-label="C4 다이어그램 작업공간">
+      <header id="top-toolbar" class="top-toolbar">
         <button id="back-button" class="back-button" type="button">← 상위 수준</button>
-        <nav id="breadcrumb" class="breadcrumb" aria-label="현재 아키텍처 위치"></nav>
-      </div>
-
-      <div class="view-intro">
-        <div>
+        <div class="toolbar-context">
           <p id="view-kicker" class="view-kicker"></p>
           <h2 id="view-title" class="view-title"></h2>
           <p id="view-description" class="view-description"></p>
         </div>
-        <div class="scope-chip">다이어그램 범위<strong id="scope-name"></strong></div>
-      </div>
-
-      <div class="explorer-grid">
-        <section class="diagram-panel" aria-label="C4 다이어그램">
-          <div id="diagram-stage" class="diagram-stage">
-            <svg id="relationship-layer" class="relationship-layer" viewBox="0 0 1020 640" role="img" aria-label="컴포넌트 관계선"></svg>
-            <div id="diagram-nodes" class="diagram-nodes"></div>
-          </div>
-          <section id="relationship-summary" class="relationship-summary" aria-labelledby="relationship-summary-title">
-            <h3 id="relationship-summary-title">관계 흐름</h3>
-            <ol id="relationship-summary-list" class="relationship-summary-list"></ol>
-          </section>
-          <div class="legend" aria-label="다이어그램 범례">
-            <span class="legend-item"><span class="legend-swatch"></span>내부 시스템·요소</span>
-            <span class="legend-item"><span class="legend-swatch person"></span>사용자</span>
-            <span class="legend-item"><span class="legend-swatch external"></span>외부 시스템·컨테이너</span>
-            <span class="legend-item"><span class="legend-swatch gap"></span>구현됨 · 미배선</span>
-          </div>
-        </section>
-
-        <aside id="evidence-panel" class="evidence-panel" aria-live="polite" aria-label="선택한 요소의 코드 근거"></aside>
+        <nav id="breadcrumb" class="breadcrumb" aria-label="현재 아키텍처 위치"></nav>
+      </header>
+      <div id="diagram-viewport" class="diagram-viewport" tabindex="0">
+        <svg id="diagram-svg" class="diagram-svg" viewBox="0 0 1020 640" role="group" aria-label="C4 다이어그램">
+          <g id="diagram-world"></g>
+        </svg>
+        <div id="diagram-nodes" class="diagram-nodes" aria-label="다이어그램 요소"></div>
+        <div id="canvas-tools" class="canvas-tools" role="toolbar" aria-label="캔버스 도구">
+          <button type="button" class="canvas-tool" data-tool="select" aria-pressed="true" title="선택 도구">↖</button>
+          <button type="button" class="canvas-tool" data-tool="hand" aria-pressed="false" title="이동 도구">✋</button>
+        </div>
+        <div class="canvas-legend" aria-label="다이어그램 범례">
+          <span><i class="legend-swatch"></i>내부</span>
+          <span><i class="legend-swatch person"></i>사용자</span>
+          <span><i class="legend-swatch external"></i>외부</span>
+          <span><i class="legend-swatch gap"></i>미배선</span>
+        </div>
       </div>
     </section>
 
-    <footer class="provenance">
-      <p><strong>분석 근거</strong><br>Source: <code>/Users/yang-eunseo/Downloads/C4_즐/2026-C4-T11</code><br>Commit: <code>bff9f2a6b38fe50e5f4f65c91ef95da402bd928f</code></p>
-      <p><strong>모델 범위</strong><br><code>build/</code>, 외부 패키지, 프로토타입, 테스트·고아 파일 제외<br>Level 4 코드 다이어그램은 의도적으로 제외했습니다.</p>
-    </footer>
+    <aside id="right-inspector" class="side-panel right-inspector" aria-live="polite" aria-label="선택한 요소 정보">
+      <div class="inspector-toolbar">
+        <div class="panel-tabs" role="tablist" aria-label="Inspector 탭">
+          <button class="panel-tab" type="button" role="tab" data-inspector-tab="overview" aria-selected="true">개요</button>
+          <button class="panel-tab" type="button" role="tab" data-inspector-tab="flow" aria-selected="false">흐름</button>
+          <button class="panel-tab" type="button" role="tab" data-inspector-tab="evidence" aria-selected="false">근거</button>
+          <button class="panel-tab" type="button" role="tab" data-inspector-tab="model" aria-selected="false">모델</button>
+        </div>
+        <button id="right-panel-toggle" class="panel-toggle" type="button" aria-controls="right-inspector" aria-expanded="false">닫기</button>
+      </div>
+      <div id="inspector-content"></div>
+    </aside>
+    <div id="workspace-announcer" class="sr-only" aria-live="polite"></div>
   </main>
+  <section id="fallback-summary" class="fallback-summary" hidden>
+    <h1>엇박 리듬 훈련 시스템 · System Context</h1>
+    <p>리듬을 연습하는 사용자가 iPhone과 Apple Watch를 사용해 음원을 분석하고 박자를 연습하는 온디바이스 소프트웨어 시스템입니다.</p>
+  </section>
 
   <script id="architecture-model" type="application/json">
   {
@@ -407,7 +467,13 @@
       "analyzedCommit": "bff9f2a6b38fe50e5f4f65c91ef95da402bd928f",
       "sourceRoot": "/Users/yang-eunseo/Downloads/C4_즐/2026-C4-T11",
       "level4": "omitted",
-      "scope": "RhythmTrainer iPhone App + RhythmTrainer Watch App"
+      "scope": "RhythmTrainer iPhone App + RhythmTrainer Watch App",
+      "provenance": {
+        "source": "/Users/yang-eunseo/Downloads/C4_즐/2026-C4-T11",
+        "commit": "bff9f2a6b38fe50e5f4f65c91ef95da402bd928f",
+        "excluded": ["build/", "외부 패키지", "프로토타입", "테스트·고아 파일"],
+        "note": "Level 4 코드 다이어그램은 의도적으로 제외했습니다."
+      }
     },
     "views": {
       "context": {
@@ -792,6 +858,37 @@
       return model.views[viewId]?.nodes.find((node) => node.id === nodeId) ?? null;
     }
 
+    function createWorkspaceState() {
+      return {
+        currentView: "context",
+        selectedNode: null,
+        leftPanelOpen: true,
+        rightPanelOpen: false,
+        leftTab: "views",
+        inspectorTab: "overview",
+        tool: "select",
+        viewports: {}
+      };
+    }
+
+    function reduceWorkspace(model, state, action) {
+      const next = { ...state };
+      if (action.type === "toggle-left-panel") next.leftPanelOpen = !state.leftPanelOpen;
+      if (action.type === "toggle-right-panel") next.rightPanelOpen = !state.rightPanelOpen;
+      if (action.type === "select-node" && getNodeById(model, state.currentView, action.nodeId)) {
+        next.selectedNode = action.nodeId;
+        next.rightPanelOpen = true;
+      }
+      if (action.type === "clear-selection") {
+        next.selectedNode = null;
+        next.rightPanelOpen = false;
+      }
+      if (action.type === "set-left-tab" && ["views", "layers"].includes(action.tab)) next.leftTab = action.tab;
+      if (action.type === "set-inspector-tab" && ["overview", "flow", "evidence", "model"].includes(action.tab)) next.inspectorTab = action.tab;
+      if (action.type === "set-tool" && ["select", "hand"].includes(action.tool)) next.tool = action.tool;
+      return next;
+    }
+
     function validateModel(model) {
       const ALLOWED_VISUAL_ROLES = new Set(["person", "softwareSystem", "application", "mobileApplication", "dataStore", "component"]);
       const errors = [];
@@ -890,12 +987,38 @@
     }
 
     let architectureModel = null;
-    let navigationState = createNavigationState();
+    let workspaceState = createWorkspaceState();
+    // Kept as a compatibility snapshot for callers of the original navigation helpers.
+    let navigationState = { currentView: workspaceState.currentView, selectedNode: workspaceState.selectedNode };
+
+    function applyWorkspaceState(next) {
+      workspaceState = next;
+      navigationState = { currentView: next.currentView, selectedNode: next.selectedNode };
+      renderWorkspaceChrome();
+    }
+
+    function dispatchWorkspace(action) {
+      if (!architectureModel) return;
+      applyWorkspaceState(reduceWorkspace(architectureModel, workspaceState, action));
+      renderDiagram(workspaceState.currentView);
+    }
 
     function viewAction(action) {
       if (!architectureModel || typeof document === "undefined") return;
-      navigationState = reduceNavigation(architectureModel, navigationState, action);
-      renderDiagram(navigationState.currentView);
+      if (action.type === "select-node") {
+        dispatchWorkspace(action);
+        return;
+      }
+      if (action.type === "activate-node") {
+        const node = getNodeById(architectureModel, navigationState.currentView, action.nodeId);
+        if (node && !node.drilldown) {
+          dispatchWorkspace({ type: "select-node", nodeId: action.nodeId });
+          return;
+        }
+      }
+      const next = reduceNavigation(architectureModel, navigationState, action);
+      applyWorkspaceState({ ...workspaceState, ...next });
+      renderDiagram(workspaceState.currentView);
     }
 
     function navigateTo(viewId) {
@@ -932,14 +1055,39 @@
       });
     }
 
+    function renderWorkspaceChrome() {
+      if (typeof document === "undefined") return;
+      const shell = document.getElementById("workspace");
+      if (!shell) return;
+      shell.dataset.leftOpen = String(workspaceState.leftPanelOpen);
+      shell.dataset.rightOpen = String(workspaceState.rightPanelOpen);
+      document.querySelectorAll("[data-left-tab]").forEach((button) => {
+        button.setAttribute("aria-selected", String(button.dataset.leftTab === workspaceState.leftTab));
+      });
+      document.querySelectorAll("[data-inspector-tab]").forEach((button) => {
+        button.setAttribute("aria-selected", String(button.dataset.inspectorTab === workspaceState.inspectorTab));
+      });
+      document.querySelectorAll("[data-tool]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.tool === workspaceState.tool));
+      });
+      const leftToggle = document.getElementById("left-panel-toggle");
+      const rightToggle = document.getElementById("right-panel-toggle");
+      if (leftToggle) {
+        leftToggle.setAttribute("aria-expanded", String(workspaceState.leftPanelOpen));
+        leftToggle.textContent = workspaceState.leftPanelOpen ? "패널 닫기" : "패널 열기";
+      }
+      if (rightToggle) rightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
+    }
+
     function renderEvidence(nodeId) {
-      const panel = document.getElementById("evidence-panel");
-      const node = nodeId ? getNodeById(architectureModel, navigationState.currentView, nodeId) : null;
+      const panel = document.getElementById("inspector-content") ?? document.getElementById("right-inspector");
+      if (!panel) return;
+      const node = nodeId ? getNodeById(architectureModel, workspaceState.currentView, nodeId) : null;
       if (node) {
         panel.innerHTML = buildEvidenceMarkup(node);
         return;
       }
-      const view = architectureModel.views[navigationState.currentView];
+      const view = architectureModel.views[workspaceState.currentView];
       const guidance = view.level < 3
         ? "화살표가 있는 파란 노드를 선택하면 다음 C4 수준으로 내려갑니다. 회색 노드는 시스템 경계 밖의 의존성입니다."
         : "컴포넌트를 선택하면 책임, 입력·출력, 그리고 실제 소스 파일 근거를 확인할 수 있습니다.";
@@ -976,7 +1124,8 @@
     }
 
     function drawRelationships(view) {
-      const svg = document.getElementById("relationship-layer");
+      const svg = document.getElementById("diagram-svg") ?? document.getElementById("relationship-layer");
+      if (!svg) return;
       const nodes = new Map(view.nodes.map((node) => [node.id, node]));
       const totals = new Map();
       const seen = new Map();
@@ -1008,12 +1157,16 @@
           paths.push(`${path}<foreignObject x="${labelX}" y="${labelY}" width="150" height="72"><div xmlns="http://www.w3.org/1999/xhtml" class="relationship-label${statusClass}">${escapeHTML(relationship.description + gapText)}<small>[${escapeHTML(relationship.technology ?? "")}]</small></div></foreignObject>`);
         }
       }
-      svg.innerHTML = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f91a3"></path></marker><marker id="arrow-gap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a45a08"></path></marker></defs>${paths.join("")}`;
+      const diagramWorld = svg.querySelector("#diagram-world");
+      const relationshipMarkup = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f91a3"></path></marker><marker id="arrow-gap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a45a08"></path></marker></defs>${paths.join("")}`;
+      if (diagramWorld) diagramWorld.innerHTML = relationshipMarkup;
+      else svg.innerHTML = relationshipMarkup;
     }
 
     function renderRelationshipSummary(view) {
       const names = new Map(view.nodes.map((node) => [node.id, node.name]));
       const summary = document.getElementById("relationship-summary");
+      if (!summary) return;
       summary.classList.toggle("is-visible", getRelationshipLabelMode(view) === "indexed" || getLayoutMode(window.innerWidth) === "compact");
       document.getElementById("relationship-summary-list").innerHTML = view.relationships.map((relationship, index) => (
         buildRelationshipSummary(
@@ -1027,35 +1180,35 @@
 
     function updateLayoutMode() {
       document.body.dataset.layout = getLayoutMode(window.innerWidth);
-      if (architectureModel) drawRelationships(architectureModel.views[navigationState.currentView]);
+      if (architectureModel) drawRelationships(architectureModel.views[workspaceState.currentView]);
     }
 
     function renderDiagram(viewId) {
       const view = architectureModel.views[viewId];
       if (!view) return;
-      navigationState.currentView = viewId;
-      document.getElementById("view-kicker").textContent = `C4 Level ${view.level} · ${view.title}`;
-      document.getElementById("view-title").textContent = view.scopeName;
-      document.getElementById("view-description").textContent = view.description;
-      document.getElementById("scope-name").textContent = view.scopeName;
-      document.getElementById("back-button").disabled = !getParentViewId(viewId);
+      workspaceState = { ...workspaceState, currentView: viewId };
+      navigationState = { currentView: viewId, selectedNode: workspaceState.selectedNode };
+      const kicker = document.getElementById("view-kicker");
+      const title = document.getElementById("view-title");
+      const description = document.getElementById("view-description");
+      const backButton = document.getElementById("back-button");
+      if (kicker) kicker.textContent = `C4 Level ${view.level} · ${view.title}`;
+      if (title) title.textContent = view.scopeName;
+      if (description) description.textContent = view.description;
+      if (backButton) backButton.disabled = !getParentViewId(viewId);
       renderBreadcrumb(viewId);
       renderLevelNav(view.level);
+      renderWorkspaceChrome();
 
       const nodeLayer = document.getElementById("diagram-nodes");
-      nodeLayer.innerHTML = view.nodes.map((node) => buildNodeMarkup(node, node.id === navigationState.selectedNode)).join("");
+      if (!nodeLayer) return;
+      nodeLayer.innerHTML = view.nodes.map((node) => buildNodeMarkup(node, node.id === workspaceState.selectedNode)).join("");
       nodeLayer.querySelectorAll("button[data-node-id]").forEach((button) => {
-        button.addEventListener("click", () => {
-          navigationState = reduceNavigation(architectureModel, navigationState, {
-            type: "activate-node",
-            nodeId: button.dataset.nodeId
-          });
-          renderDiagram(navigationState.currentView);
-        });
+        button.addEventListener("click", () => viewAction({ type: "activate-node", nodeId: button.dataset.nodeId }));
       });
       drawRelationships(view);
       renderRelationshipSummary(view);
-      renderEvidence(navigationState.selectedNode);
+      renderEvidence(workspaceState.selectedNode);
     }
 
     function boot() {
@@ -1063,10 +1216,15 @@
       const validation = validateModel(architectureModel);
       if (!validation.valid) {
         console.error("Invalid C4 architecture model", validation.errors);
-        document.getElementById("evidence-panel").innerHTML = '<p class="evidence-empty" role="alert">아키텍처 모델을 불러오지 못했습니다.</p>';
+        document.getElementById("inspector-content").innerHTML = '<p class="evidence-empty" role="alert">아키텍처 모델을 불러오지 못했습니다.</p>';
         return;
       }
       document.getElementById("back-button").addEventListener("click", navigateUp);
+      document.getElementById("left-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-left-panel" }));
+      document.getElementById("right-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-right-panel" }));
+      document.querySelectorAll("[data-left-tab]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-left-tab", tab: button.dataset.leftTab })));
+      document.querySelectorAll("[data-inspector-tab]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-inspector-tab", tab: button.dataset.inspectorTab })));
+      document.querySelectorAll("[data-tool]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-tool", tool: button.dataset.tool })));
       document.querySelector('.level-step[data-level="1"]').addEventListener("click", () => navigateTo("context"));
       document.querySelector('.level-step[data-level="2"]').addEventListener("click", () => navigateTo("containers"));
       document.querySelector('.level-step[data-level="3"]').addEventListener("click", () => navigateTo(navigationState.currentView));
@@ -1080,6 +1238,8 @@
       getParentViewId,
       getBreadcrumbs,
       getNodeById,
+      createWorkspaceState,
+      reduceWorkspace,
       createNavigationState,
       reduceNavigation,
       buildNodeMarkup,

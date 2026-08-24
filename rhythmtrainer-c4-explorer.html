@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>엇박 · C4 Architecture Explorer</title>
+</head>
+<body>
+  <main>
+    <h1>엇박 C4 Architecture Explorer</h1>
+    <p>실제 RhythmTrainer 코드를 근거로 Level 1부터 Level 3까지 탐색합니다.</p>
+  </main>
+
+  <script id="architecture-model" type="application/json">
+  {
+    "meta": {
+      "project": "엇박 (RhythmTrainer)",
+      "analyzedCommit": "bff9f2a6b38fe50e5f4f65c91ef95da402bd928f",
+      "sourceRoot": "/Users/yang-eunseo/Downloads/C4_즐/2026-C4-T11",
+      "level4": "omitted",
+      "scope": "RhythmTrainer iPhone App + RhythmTrainer Watch App"
+    },
+    "views": {
+      "context": {
+        "id": "context",
+        "level": 1,
+        "parent": null,
+        "title": "System Context",
+        "scopeName": "엇박 리듬 훈련 시스템",
+        "description": "사용자와 엇박 시스템, 시스템이 읽는 외부 음원 경계를 보여줍니다.",
+        "nodes": [
+          {
+            "id": "learner",
+            "name": "리듬을 연습하는 사용자",
+            "type": "Person",
+            "technology": "iPhone + paired Apple Watch",
+            "description": "곡을 고르고 Apple Watch를 착용한 팔을 흔들며 리듬을 연습합니다.",
+            "status": "person",
+            "evidence": ["README.md"],
+            "inputs": ["곡 선택", "연습 시작·종료", "팔 스윙"],
+            "outputs": ["연습 진행 확인", "실시간 경고", "구간별 점수"],
+            "x": 60, "y": 190, "w": 230, "h": 150
+          },
+          {
+            "id": "rhythm-system",
+            "name": "엇박 리듬 훈련 시스템",
+            "type": "Software System",
+            "technology": "iOS + watchOS · On-device",
+            "description": "음원을 온디바이스로 분석하고 Watch에서 실시간 박자 판정과 코칭을 수행합니다.",
+            "status": "active",
+            "drilldown": "containers",
+            "evidence": ["README.md", "RhythmTrainer/RhythmTrainerApp.swift", "RhythmTrainerWatch Watch App/RhythmTrainerWatchApp.swift"],
+            "inputs": ["사용자 선택 음원", "팔 움직임"],
+            "outputs": ["BeatGrid", "햅틱·이탈 경고", "SessionResult"],
+            "x": 385, "y": 150, "w": 270, "h": 220
+          },
+          {
+            "id": "file-store",
+            "name": "사용자 파일 저장소",
+            "type": "External Software System",
+            "technology": "Files / iCloud Drive",
+            "description": "사용자가 고른 분석·재생용 음원의 보안 범위 URL을 제공합니다.",
+            "status": "external",
+            "evidence": ["RhythmTrainer/Services/SongUploadService.swift"],
+            "inputs": ["사용자가 보관한 오디오 파일"],
+            "outputs": ["Security-scoped audio URL"],
+            "x": 750, "y": 190, "w": 220, "h": 150
+          }
+        ],
+        "relationships": [
+          {
+            "id": "context-user-uses-system",
+            "from": "learner",
+            "to": "rhythm-system",
+            "label": "곡을 선택하고 리듬을 연습합니다",
+            "technology": "iPhone / Apple Watch UI",
+            "status": "active"
+          },
+          {
+            "id": "context-system-reads-file",
+            "from": "rhythm-system",
+            "to": "file-store",
+            "label": "사용자가 선택한 음원을 읽습니다",
+            "technology": "Security-scoped URL / AVFoundation",
+            "status": "active"
+          }
+        ]
+      },
+      "containers": {
+        "id": "containers",
+        "level": 2,
+        "parent": "context",
+        "title": "Container Diagram",
+        "scopeName": "엇박 리듬 훈련 시스템",
+        "description": "배포·실행되는 iPhone 앱과 Watch 앱의 책임과 통신 경계를 보여줍니다.",
+        "nodes": [
+          {
+            "id": "file-store",
+            "name": "사용자 파일 저장소",
+            "type": "External Software System",
+            "technology": "Files / iCloud Drive",
+            "description": "분석·재생할 음원 URL을 iPhone 앱에 제공합니다.",
+            "status": "external",
+            "evidence": ["RhythmTrainer/Services/SongUploadService.swift"],
+            "inputs": ["사용자 오디오 파일"],
+            "outputs": ["Security-scoped audio URL"],
+            "x": 50, "y": 185, "w": 210, "h": 140
+          },
+          {
+            "id": "iphone-app",
+            "name": "RhythmTrainer iPhone App",
+            "type": "Container",
+            "technology": "SwiftUI · AVFoundation · ONNX Runtime",
+            "description": "곡 선택, BeatThis 분석, 재생·가사, Watch 세션 조정, 결과 표시를 담당합니다.",
+            "status": "active",
+            "drilldown": "iphone-components",
+            "evidence": ["RhythmTrainer/RhythmTrainerApp.swift", "RhythmTrainer/ViewModels/AppFlowViewModel.swift", "RhythmTrainer.xcodeproj/project.pbxproj"],
+            "inputs": ["오디오 URL", "Watch 시작·이탈·결과"],
+            "outputs": ["Song + BeatGrid", "예약 오디오 재생", "결과 화면"],
+            "x": 355, "y": 135, "w": 270, "h": 240
+          },
+          {
+            "id": "watch-app",
+            "name": "RhythmTrainer Watch App",
+            "type": "Container",
+            "technology": "SwiftUI · CoreMotion · HealthKit",
+            "description": "팔 스윙을 감지하고 정박 판정, 햅틱·경고, 결과 생성을 자체 완결합니다.",
+            "status": "active",
+            "drilldown": "watch-components",
+            "evidence": ["RhythmTrainerWatch Watch App/RhythmTrainerWatchApp.swift", "RhythmTrainerWatch Watch App/ContentView.swift", "RhythmTrainer.xcodeproj/project.pbxproj"],
+            "inputs": ["Song ID + BeatGrid", "팔 스윙", "세션 종료 신호"],
+            "outputs": ["곡 시작 시각", "이탈 상태", "SessionResult"],
+            "x": 720, "y": 135, "w": 250, "h": 240
+          }
+        ],
+        "relationships": [
+          {
+            "id": "container-file-to-phone",
+            "from": "file-store", "to": "iphone-app",
+            "label": "음원 URL을 제공합니다", "technology": "Security-scoped URL", "status": "active"
+          },
+          {
+            "id": "container-phone-to-watch-package",
+            "from": "iphone-app", "to": "watch-app",
+            "label": "Song + BeatGrid를 전송합니다", "technology": "WCSession transferUserInfo", "status": "active"
+          },
+          {
+            "id": "container-watch-to-phone-live",
+            "from": "watch-app", "to": "iphone-app",
+            "label": "시작 시각과 이탈 상태를 알립니다", "technology": "WCSession sendMessage", "status": "active"
+          },
+          {
+            "id": "container-watch-to-phone-result",
+            "from": "watch-app", "to": "iphone-app",
+            "label": "SessionResult를 전송합니다", "technology": "WCSession transferUserInfo", "status": "active"
+          },
+          {
+            "id": "container-phone-watch-clock",
+            "from": "iphone-app", "to": "watch-app",
+            "label": "두 기기의 시계를 동기화합니다", "technology": "NTP-style ping over WCSession", "status": "active"
+          }
+        ]
+      },
+      "iphone-components": {
+        "id": "iphone-components",
+        "level": 3,
+        "parent": "containers",
+        "title": "Component Diagram",
+        "scopeName": "RhythmTrainer iPhone App",
+        "description": "음원 처리와 BeatThis 분석, 연습 흐름, Watch 통신을 구성하는 핵심 컴포넌트입니다.",
+        "nodes": [
+          {
+            "id": "iphone-ui", "name": "Presentation & Navigation", "type": "Component", "technology": "SwiftUI",
+            "description": "온보딩, 탭 셸, 곡 선택, 분석·연습·결과 화면을 구성합니다.", "status": "active",
+            "evidence": ["RhythmTrainer/RhythmTrainerApp.swift", "RhythmTrainer/AppRootView.swift", "RhythmTrainer/AppShellView.swift", "RhythmTrainer/Views/PracticeJourneyView.swift"],
+            "inputs": ["사용자 행동", "AppFlow 화면 상태", "SessionResult"], "outputs": ["곡 선택", "시작·종료 명령", "결과 표현"],
+            "x": 35, "y": 30, "w": 210, "h": 145
+          },
+          {
+            "id": "app-flow", "name": "Practice Flow Coordinator", "type": "Component", "technology": "Combine · @MainActor",
+            "description": "분석→Watch 준비→연습→종료→결과의 상태 전이를 조정합니다.", "status": "active",
+            "evidence": ["RhythmTrainer/ViewModels/AppFlowViewModel.swift"],
+            "inputs": ["선택한 Song", "Watch 시작·이탈·결과"], "outputs": ["Screen 상태", "분석·재생·통신 명령"],
+            "x": 285, "y": 30, "w": 220, "h": 145
+          },
+          {
+            "id": "audio-io", "name": "Audio I/O & Playback", "type": "Component", "technology": "AVFoundation",
+            "description": "오디오를 44.1kHz mono Float32 PCM으로 변환하고 예약 시각에 재생합니다.", "status": "active",
+            "evidence": ["RhythmTrainer/Services/SongUploadService.swift", "RhythmTrainer/ViewModels/PhonePlaybackClock.swift"],
+            "inputs": ["Security-scoped audio URL", "songStartUptime"], "outputs": ["PCM samples", "재생 위치"],
+            "x": 545, "y": 30, "w": 210, "h": 145
+          },
+          {
+            "id": "beat-adapter", "name": "Beat Analysis Adapter", "type": "Component", "technology": "Swift / Objective-C bridge",
+            "description": "PCM을 네이티브 분석기로 전달하고 결과를 BeatGrid로 변환합니다.", "status": "active",
+            "evidence": ["RhythmTrainer/Services/BeatAnalysisService.swift"],
+            "inputs": ["PCM samples + sample rate"], "outputs": ["BeatGrid"],
+            "x": 790, "y": 30, "w": 190, "h": 145
+          },
+          {
+            "id": "result-scoring", "name": "Result Scoring", "type": "Component", "technology": "Swift domain logic",
+            "description": "마디 정확도를 전체 점수와 가사 구간별 점수로 변환합니다.", "status": "active",
+            "evidence": ["RhythmTrainer/Models/LyricScoring.swift", "RhythmTrainer/Views/SessionResultView.swift"],
+            "inputs": ["SessionResult", "BeatGrid", "Lyrics"], "outputs": ["전체·가사 구간 점수"],
+            "x": 35, "y": 265, "w": 210, "h": 145
+          },
+          {
+            "id": "phone-connectivity", "name": "Phone Connectivity Gateway", "type": "Component", "technology": "WatchConnectivity",
+            "description": "곡 패키지, 시계 동기화, 시작·이탈·종료·결과 메시지를 처리합니다.", "status": "active",
+            "evidence": ["RhythmTrainer/WatchConnectivity/PhoneConnectivityManager.swift", "RhythmTrainer/WatchConnectivity/ConnectivityMessageKeys.swift"],
+            "inputs": ["Song + BeatGrid", "Watch messages"], "outputs": ["WCSession messages", "AppFlow callbacks"],
+            "x": 285, "y": 265, "w": 220, "h": 145
+          },
+          {
+            "id": "beatthis-engine", "name": "BeatThis Native Engine", "type": "Component", "technology": "Objective-C++ · C++ · ONNX Runtime",
+            "description": "멜 스펙트로그램, ONNX 추론, 후처리로 beat time과 beat count를 추출합니다.", "status": "active",
+            "evidence": ["RhythmTrainer/Services/Library/BeatThis_Bridging-Header/BeatThisBridge.mm", "RhythmTrainer/Services/Library/BeatThis_Source/beat_this_api.cpp", "RhythmTrainer/Services/beat_this.onnx"],
+            "inputs": ["Float PCM buffer", "sample rate", "ONNX model"], "outputs": ["beat times", "beat counts"],
+            "x": 545, "y": 265, "w": 210, "h": 155
+          },
+          {
+            "id": "persistence", "name": "Persistence Repository", "type": "Component", "technology": "SwiftData",
+            "description": "연습 세션과 BeatGrid 캐시 타입은 구현되어 있지만 현재 앱 진입점과 흐름에 주입되지 않았습니다.", "status": "gap",
+            "evidence": ["RhythmTrainer/Models/PracticeSessionStore.swift", "RhythmTrainer/RhythmTrainerApp.swift"],
+            "inputs": ["PracticeSession", "BeatGrid"], "outputs": ["저장된 세션", "캐시된 BeatGrid"],
+            "x": 790, "y": 265, "w": 190, "h": 155
+          },
+          {
+            "id": "watch-app-external", "name": "RhythmTrainer Watch App", "type": "Container", "technology": "watchOS",
+            "description": "곡과 BeatGrid를 받아 자체 판정하고 시작·이탈·결과를 돌려주는 상대 컨테이너입니다.", "status": "external",
+            "evidence": ["RhythmTrainerWatch Watch App/Services/WatchConnectivityManager.swift"],
+            "inputs": ["Song + BeatGrid", "session stop"], "outputs": ["start", "alert state", "SessionResult"],
+            "x": 360, "y": 485, "w": 280, "h": 120
+          }
+        ],
+        "relationships": [
+          {"id": "iphone-ui-flow", "from": "iphone-ui", "to": "app-flow", "label": "사용자 명령을 전달하고 화면 상태를 구독합니다", "technology": "SwiftUI / Combine", "status": "active"},
+          {"id": "iphone-flow-audio", "from": "app-flow", "to": "audio-io", "label": "PCM 변환과 예약 재생을 요청합니다", "technology": "Swift calls", "status": "active"},
+          {"id": "iphone-flow-adapter", "from": "app-flow", "to": "beat-adapter", "label": "PCM 분석을 요청합니다", "technology": "Task.detached / Swift call", "status": "active"},
+          {"id": "iphone-adapter-native", "from": "beat-adapter", "to": "beatthis-engine", "label": "정박 검출을 위임합니다", "technology": "BeatThisBridge.detectBeats", "status": "active"},
+          {"id": "iphone-flow-connectivity", "from": "app-flow", "to": "phone-connectivity", "label": "곡 패키지를 보내고 세션 콜백을 받습니다", "technology": "Closure callbacks", "status": "active"},
+          {"id": "iphone-ui-scoring", "from": "iphone-ui", "to": "result-scoring", "label": "결과를 표시 점수로 변환합니다", "technology": "LyricScoring.perLyric", "status": "active"},
+          {"id": "iphone-flow-persistence-gap", "from": "app-flow", "to": "persistence", "label": "저장·캐시 연결이 구현 흐름에 없습니다", "technology": "SwiftData injection absent", "status": "gap"},
+          {"id": "iphone-connectivity-watch", "from": "phone-connectivity", "to": "watch-app-external", "label": "곡·시계·세션 메시지를 교환합니다", "technology": "WCSession", "status": "active"}
+        ]
+      },
+      "watch-components": {
+        "id": "watch-components",
+        "level": 3,
+        "parent": "containers",
+        "title": "Component Diagram",
+        "scopeName": "RhythmTrainer Watch App",
+        "description": "센서 입력부터 정박 판정, 코칭, 결과 전송까지 Watch에서 자체 완결되는 핵심 파이프라인입니다.",
+        "nodes": [
+          {
+            "id": "iphone-app-external", "name": "RhythmTrainer iPhone App", "type": "Container", "technology": "iOS",
+            "description": "곡과 BeatGrid를 보내고 Watch가 만든 세션 상태와 결과를 받는 상대 컨테이너입니다.", "status": "external",
+            "evidence": ["RhythmTrainer/WatchConnectivity/PhoneConnectivityManager.swift"],
+            "inputs": ["start", "alert state", "SessionResult"], "outputs": ["Song + BeatGrid", "session stop", "clock ping"],
+            "x": 35, "y": 30, "w": 210, "h": 135
+          },
+          {
+            "id": "watch-connectivity", "name": "Watch Connectivity Gateway", "type": "Component", "technology": "WatchConnectivity",
+            "description": "곡·BeatGrid를 수신하고 시작·이탈·결과·종료 메시지를 처리합니다.", "status": "active",
+            "evidence": ["RhythmTrainerWatch Watch App/Services/WatchConnectivityManager.swift", "RhythmTrainerWatch Watch App/Services/ConnectivityMessageKeys.swift"],
+            "inputs": ["WCSession package", "stop / clock ping"], "outputs": ["song callback", "start / alert / result"],
+            "x": 285, "y": 30, "w": 220, "h": 135
+          },
+          {
+            "id": "watch-ui", "name": "Watch UI Orchestrator", "type": "Component", "technology": "SwiftUI",
+            "description": "waiting→ready→practicing→done 화면과 서비스 수명주기를 연결합니다.", "status": "active",
+            "evidence": ["RhythmTrainerWatch Watch App/ContentView.swift"],
+            "inputs": ["song callback", "judge state", "사용자 시작·종료"], "outputs": ["service start·stop", "햅틱·화면 경고"],
+            "x": 545, "y": 30, "w": 210, "h": 135
+          },
+          {
+            "id": "background-runtime", "name": "Background Runtime", "type": "Component", "technology": "HealthKit",
+            "description": "HKWorkoutSession으로 화면이 꺼진 동안에도 센서와 판정 실행을 유지합니다.", "status": "active",
+            "evidence": ["RhythmTrainerWatch Watch App/Services/WorkoutSessionManager.swift", "RhythmTrainerWatch-Watch-App-Info.plist"],
+            "inputs": ["start / stop", "HealthKit authorization"], "outputs": ["background workout session state"],
+            "x": 790, "y": 30, "w": 190, "h": 135
+          },
+          {
+            "id": "motion-capture", "name": "Motion Capture", "type": "Component", "technology": "CoreMotion · 50Hz",
+            "description": "deviceMotion에서 사용자 가속도 크기와 timestamp를 수집합니다.", "status": "active",
+            "evidence": ["RhythmTrainerWatch Watch App/Services/ArmSwingDetector.swift"],
+            "inputs": ["CMDeviceMotion samples"], "outputs": ["timestamp + acceleration magnitude", "swing uptime callback"],
+            "x": 35, "y": 245, "w": 210, "h": 145
+          },
+          {
+            "id": "swing-detector", "name": "Swing Detector", "type": "Component", "technology": "Pure Swift state machine",
+            "description": "가속도 상승·하강·재상승 전환에서 팔 스윙 최저점을 검출합니다.", "status": "active",
+            "evidence": ["RhythmTrainerWatch Watch App/Services/SwingPeakDetector.swift"],
+            "inputs": ["timestamp + magnitude"], "outputs": ["swing trough timestamp"],
+            "x": 285, "y": 245, "w": 220, "h": 145
+          },
+          {
+            "id": "rhythm-judge", "name": "Rhythm Judge", "type": "Component", "technology": "Combine · 20ms Timer",
+            "description": "카운트인, 정박 발화, 스윙 등록, 놓침 감지, 세션 종료를 조정합니다.", "status": "active",
+            "evidence": ["RhythmTrainerWatch Watch App/Services/RhythmJudge.swift"],
+            "inputs": ["BeatGrid", "songStartUptime", "swing uptime"], "outputs": ["verdict stream", "offBeat", "SessionResult data"],
+            "x": 545, "y": 245, "w": 210, "h": 145
+          },
+          {
+            "id": "beat-matcher", "name": "Beat Matcher", "type": "Component", "technology": "Pure Swift · binary search",
+            "description": "가장 가까운 정박과 스윙을 비교해 정확·빠름·느림·놓침을 계산합니다.", "status": "active",
+            "evidence": ["RhythmTrainerWatch Watch App/Services/BeatMatcher.swift"],
+            "inputs": ["beat times", "swing position", "current position"], "outputs": ["Verdict", "bar accuracies"],
+            "x": 790, "y": 245, "w": 190, "h": 145
+          },
+          {
+            "id": "rhythm-coach", "name": "Rhythm Coach", "type": "Component", "technology": "Pure Swift state machine",
+            "description": "3연속 이탈 시 경고하고 2연속 정확 시 정상으로 복귀합니다.", "status": "active",
+            "evidence": ["RhythmTrainerWatch Watch App/Services/RhythmCoach.swift"],
+            "inputs": ["BeatMatcher.Verdict"], "outputs": ["normal / offBeat state"],
+            "x": 545, "y": 485, "w": 210, "h": 120
+          }
+        ],
+        "relationships": [
+          {"id": "watch-phone-in", "from": "iphone-app-external", "to": "watch-connectivity", "label": "Song + BeatGrid와 제어 신호를 보냅니다", "technology": "WCSession", "status": "active"},
+          {"id": "watch-connectivity-ui", "from": "watch-connectivity", "to": "watch-ui", "label": "수신한 songID + BeatGrid를 전달합니다", "technology": "onSongReceived closure", "status": "active"},
+          {"id": "watch-ui-motion", "from": "watch-ui", "to": "motion-capture", "label": "센서 수집을 시작하고 종료합니다", "technology": "ArmSwingDetector.start / stop", "status": "active"},
+          {"id": "watch-motion-swing", "from": "motion-capture", "to": "swing-detector", "label": "가속도 표본을 처리합니다", "technology": "process(timestamp, magnitude)", "status": "active"},
+          {"id": "watch-motion-judge", "from": "motion-capture", "to": "rhythm-judge", "label": "검출된 swing uptime을 전달합니다", "technology": "onSwing closure", "status": "active"},
+          {"id": "watch-ui-judge", "from": "watch-ui", "to": "rhythm-judge", "label": "BeatGrid를 로드하고 판정을 시작·종료합니다", "technology": "load / start / stop", "status": "active"},
+          {"id": "watch-judge-matcher", "from": "rhythm-judge", "to": "beat-matcher", "label": "스윙·시간을 판정하고 마디 정확도를 계산합니다", "technology": "registerSwing / advance / barAccuracies", "status": "active"},
+          {"id": "watch-judge-coach", "from": "rhythm-judge", "to": "rhythm-coach", "label": "각 판정으로 코칭 상태를 갱신합니다", "technology": "RhythmCoach.record", "status": "active"},
+          {"id": "watch-judge-ui", "from": "rhythm-judge", "to": "watch-ui", "label": "이탈·종료 상태를 알립니다", "technology": "onOffBeatChanged / onFinished", "status": "active"},
+          {"id": "watch-ui-background", "from": "watch-ui", "to": "background-runtime", "label": "백그라운드 세션을 시작·종료합니다", "technology": "HKWorkoutSession", "status": "active"},
+          {"id": "watch-ui-connectivity", "from": "watch-ui", "to": "watch-connectivity", "label": "시작·이탈·결과를 전송합니다", "technology": "sendMessage / transferUserInfo", "status": "active"},
+          {"id": "watch-phone-out", "from": "watch-connectivity", "to": "iphone-app-external", "label": "세션 상태와 결과를 돌려줍니다", "technology": "WCSession", "status": "active"}
+        ]
+      }
+    }
+  }
+  </script>
+
+  <script id="explorer-logic" type="text/javascript">
+  (() => {
+    "use strict";
+
+    function getParentViewId(viewId) {
+      return ({
+        containers: "context",
+        "iphone-components": "containers",
+        "watch-components": "containers"
+      })[viewId] ?? null;
+    }
+
+    function getBreadcrumbs(viewId) {
+      const chain = [];
+      let cursor = viewId;
+      while (cursor) {
+        chain.unshift(cursor);
+        cursor = getParentViewId(cursor);
+      }
+      return chain;
+    }
+
+    function getNodeById(model, viewId, nodeId) {
+      return model.views[viewId]?.nodes.find((node) => node.id === nodeId) ?? null;
+    }
+
+    function validateModel(model) {
+      const errors = [];
+      for (const [viewId, view] of Object.entries(model.views ?? {})) {
+        const ids = new Set((view.nodes ?? []).map((node) => node.id));
+        for (const relationship of view.relationships ?? []) {
+          if (!ids.has(relationship.from)) errors.push(`${viewId}:${relationship.id}:missing-source`);
+          if (!ids.has(relationship.to)) errors.push(`${viewId}:${relationship.id}:missing-target`);
+        }
+        if (view.level === 3 && view.nodes.some((node) => node.drilldown)) {
+          errors.push(`${viewId}:unexpected-level4-drilldown`);
+        }
+      }
+      return { valid: errors.length === 0, errors };
+    }
+
+    window.RhythmC4Explorer = {
+      validateModel,
+      getParentViewId,
+      getBreadcrumbs,
+      getNodeById
+    };
+  })();
+  </script>
+</body>
+</html>

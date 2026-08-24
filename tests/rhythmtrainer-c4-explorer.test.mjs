@@ -229,6 +229,53 @@ test("renders explicit C4 boundaries around member elements", () => {
   assert.match(markup, /\[Software System\]/);
 });
 
+test("keeps every C4 boundary around its declared members", () => {
+  const { model } = explorerRuntime();
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const boundary of view.boundaries) {
+      for (const memberId of boundary.members) {
+        const node = nodes.get(memberId);
+        assert.ok(node.x >= boundary.x, `${view.id}:${boundary.id} contains ${memberId} on the left`);
+        assert.ok(node.y >= boundary.y, `${view.id}:${boundary.id} contains ${memberId} on the top`);
+        assert.ok(node.x + node.w <= boundary.x + boundary.w, `${view.id}:${boundary.id} contains ${memberId} on the right`);
+        assert.ok(node.y + node.h <= boundary.y + boundary.h, `${view.id}:${boundary.id} contains ${memberId} on the bottom`);
+      }
+    }
+  }
+
+  const boundary = model.views.containers.boundaries[0];
+  const members = boundary.members.map((id) => model.views.containers.nodes.find((node) => node.id === id));
+  assert.ok(members.every((node) => node.x >= boundary.x + 24 && node.y >= boundary.y + 24));
+  assert.ok(members.every((node) => node.x + node.w <= boundary.x + boundary.w - 24 && node.y + node.h <= boundary.y + boundary.h - 24));
+});
+
+test("keeps generated Person silhouettes inside each current node height", () => {
+  const { api, model } = explorerRuntime();
+  const people = Object.values(model.views).flatMap((view) => view.nodes.filter((node) => node.visualRole === "person"));
+
+  for (const person of people) {
+    const geometry = api.getPersonGeometry(person);
+    assert.ok(geometry.head.cy - geometry.head.r >= 0, `${person.id} head starts within the node`);
+    assert.ok(geometry.head.cy + geometry.head.r <= person.h, `${person.id} head ends within the node`);
+    assert.ok(geometry.body.top >= 0, `${person.id} body starts within the node`);
+    assert.ok(geometry.body.joinY <= person.h - 2, `${person.id} body join stays above the bottom edge`);
+    assert.equal(geometry.body.bottom, person.h - 2, `${person.id} body ends at the local bottom edge`);
+  }
+});
+
+test("lays out multi-line node text sections without overlapping baselines", () => {
+  const { api, model } = explorerRuntime();
+  const node = model.views.containers.nodes.find((candidate) => candidate.id === "iphone-app");
+  const layout = api.getSvgTextLayout(node);
+
+  assert.ok(layout.name.lines.length > 1, "real iPhone node name wraps");
+  assert.ok(layout.meta.lines.length > 1, "real iPhone node technology wraps");
+  assert.ok(layout.name.lastBaseline < layout.meta.baseline, "metadata starts after the full name");
+  assert.ok(layout.meta.lastBaseline < layout.description.baseline, "description starts after the full metadata");
+  assert.ok(layout.description.lastBaseline < layout.affordanceBaseline, "drill-down starts after the full description");
+});
+
 test("adapts relationship output for compact layouts without external dependencies", () => {
   const { api, model } = explorerRuntime();
   assert.equal(typeof api.getLayoutMode, "function", "layout mode resolver must exist");

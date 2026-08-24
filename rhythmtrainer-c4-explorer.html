@@ -528,7 +528,7 @@
         "scopeName": "엇박 리듬 훈련 시스템",
         "description": "배포·실행되는 iPhone 앱과 Watch 앱의 책임과 통신 경계를 보여줍니다.",
         "worldSize": {"width": 1800, "height": 1000},
-        "boundaries": [{"id":"rhythm-boundary","name":"엇박 리듬 훈련 시스템","type":"Software System","members":["iphone-app","watch-app"],"x":360,"y":150,"w":1040,"h":700}],
+        "boundaries": [{"id":"rhythm-boundary","name":"엇박 리듬 훈련 시스템","type":"Software System","members":["iphone-app","watch-app"],"x":320,"y":90,"w":700,"h":330}],
         "nodes": [
           {
             "id": "learner", "name": "리듬을 연습하는 사용자", "type": "Person", "visualRole": "person", "technology": "",
@@ -927,13 +927,34 @@
       return next;
     }
 
+    function getPersonGeometry(node) {
+      const w = node.w;
+      const h = node.h;
+      const headRadius = Math.max(8, Math.min(26, w * 0.16, h * 0.24));
+      const headTop = Math.max(4, h * 0.08);
+      const headCy = Math.min(h - headRadius - 4, headTop + headRadius);
+      const bodyTop = Math.min(h - 2, Math.max(headCy + headRadius + 8, h * 0.44));
+      const joinY = Math.min(h - 2, Math.max(bodyTop + 10, h * 0.58));
+      return {
+        head: { cx: w / 2, cy: headCy, r: headRadius },
+        body: {
+          sideInset: Math.min(26, w * 0.15),
+          shoulderInset: Math.min(72, w * 0.4),
+          top: bodyTop,
+          joinY,
+          bottom: h - 2
+        }
+      };
+    }
+
     function buildShapeGeometry(node) {
       const w = node.w;
       const h = node.h;
       const common = `<rect class="node-surface" x="1" y="1" width="${w - 2}" height="${h - 2}" rx="20"/>`;
       if (node.visualRole === "person") {
-        return `<circle class="semantic-person-head" cx="${w / 2}" cy="34" r="26"/>
-          <path class="node-surface semantic-person-body" d="M 26 118 Q 26 66 72 66 H ${w - 72} Q ${w - 26} 66 ${w - 26} 118 V ${h - 2} H 26 Z"/>`;
+        const person = getPersonGeometry(node);
+        return `<circle class="semantic-person-head" cx="${person.head.cx}" cy="${person.head.cy}" r="${person.head.r}"/>
+          <path class="node-surface semantic-person-body" d="M ${person.body.sideInset} ${person.body.joinY} Q ${person.body.sideInset} ${person.body.top} ${person.body.shoulderInset} ${person.body.top} H ${w - person.body.shoulderInset} Q ${w - person.body.sideInset} ${person.body.top} ${w - person.body.sideInset} ${person.body.joinY} V ${person.body.bottom} H ${person.body.sideInset} Z"/>`;
       }
       if (node.visualRole === "softwareSystem") {
         return `<path class="node-surface" d="M 1 1 H ${w - 30} L ${w - 1} 30 V ${h - 1} H 1 Z"/>
@@ -970,6 +991,30 @@
       ).join("")}</text>`;
     }
 
+    function getSvgTextLayout(node) {
+      const person = node.visualRole === "person" ? getPersonGeometry(node) : null;
+      const nameLines = wrapSvgText(node.name, 22);
+      const meta = node.technology ? `[${node.type}: ${node.technology}]` : `[${node.type}]`;
+      const metaLines = wrapSvgText(meta, 30);
+      const nameBaseline = person ? person.body.top + 18 : 58;
+      const nameLineHeight = 24;
+      const metaLineHeight = 18;
+      const descriptionLineHeight = 20;
+      const metaBaseline = nameBaseline + (nameLines.length - 1) * nameLineHeight + 20;
+      const descriptionBaseline = metaBaseline + (metaLines.length - 1) * metaLineHeight + 20;
+      const affordanceBaseline = node.h - 22;
+      const descriptionLimit = node.drilldown || node.status === "gap" ? affordanceBaseline - 12 : node.h - 14;
+      const descriptionCapacity = Math.max(0, Math.floor((descriptionLimit - descriptionBaseline) / descriptionLineHeight) + 1);
+      const descriptionLines = wrapSvgText(node.description, 30).slice(0, Math.min(3, descriptionCapacity));
+      const lastBaseline = (baseline, lines, lineHeight) => baseline + Math.max(lines.length - 1, 0) * lineHeight;
+      return {
+        name: { lines: nameLines, baseline: nameBaseline, lastBaseline: lastBaseline(nameBaseline, nameLines, nameLineHeight), lineHeight: nameLineHeight },
+        meta: { lines: metaLines, baseline: metaBaseline, lastBaseline: lastBaseline(metaBaseline, metaLines, metaLineHeight), lineHeight: metaLineHeight },
+        description: { lines: descriptionLines, baseline: descriptionBaseline, lastBaseline: lastBaseline(descriptionBaseline, descriptionLines, descriptionLineHeight), lineHeight: descriptionLineHeight },
+        affordanceBaseline
+      };
+    }
+
     function buildBoundaryMarkup(boundary) {
       return `<g class="c4-boundary" data-boundary-id="${escapeHTML(boundary.id)}">
         <rect x="${boundary.x}" y="${boundary.y}" width="${boundary.w}" height="${boundary.h}" rx="28"/>
@@ -979,9 +1024,7 @@
     }
 
     function buildSvgNodeMarkup(node, selected) {
-      const meta = node.technology ? `[${node.type}: ${node.technology}]` : `[${node.type}]`;
-      const textY = node.visualRole === "person" ? 118 : 58;
-      const descriptionY = textY + 52;
+      const layout = getSvgTextLayout(node);
       const drilldown = node.drilldown
         ? `<g class="node-open" data-open-node-id="${escapeHTML(node.id)}"><text x="24" y="${node.h - 22}">Open L${node.type === "Software System" ? 2 : 3} →</text></g>`
         : "";
@@ -993,9 +1036,9 @@
           role="button" tabindex="0" aria-pressed="${selected ? "true" : "false"}">
         <title>${escapeHTML(`${node.name}, ${node.type}, ${node.description}`)}</title>
         ${buildShapeGeometry(node)}
-        ${svgTextLines(wrapSvgText(node.name, 22), 24, textY, "node-name", 24)}
-        ${svgTextLines(wrapSvgText(meta, 30), 24, textY + 28, "node-meta", 18)}
-        ${svgTextLines(wrapSvgText(node.description, 30).slice(0, 3), 24, descriptionY, "node-description", 20)}
+        ${svgTextLines(layout.name.lines, 24, layout.name.baseline, "node-name", layout.name.lineHeight)}
+        ${svgTextLines(layout.meta.lines, 24, layout.meta.baseline, "node-meta", layout.meta.lineHeight)}
+        ${svgTextLines(layout.description.lines, 24, layout.description.baseline, "node-description", layout.description.lineHeight)}
         ${drilldown}${status}
       </g>`;
     }
@@ -1304,8 +1347,10 @@
       reduceWorkspace,
       createNavigationState,
       reduceNavigation,
+      getPersonGeometry,
       buildShapeGeometry,
       wrapSvgText,
+      getSvgTextLayout,
       buildSvgNodeMarkup,
       buildBoundaryMarkup,
       renderSvgWorld,

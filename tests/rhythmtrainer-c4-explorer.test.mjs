@@ -390,6 +390,80 @@ test("keeps dense component relationship label surfaces at least 12 units apart"
   }
 });
 
+test("keeps every emitted node text line inside its role-specific text bounds", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.getNodeTextBounds, "function");
+  assert.equal(typeof api.estimateSvgTextWidth, "function");
+
+  for (const view of Object.values(model.views)) {
+    for (const node of view.nodes) {
+      const bounds = api.getNodeTextBounds(node);
+      const layout = api.getSvgTextLayout(node);
+      for (const section of ["name", "meta", "description"]) {
+        const fontSize = layout[section].fontSize;
+        for (const line of layout[section].lines) {
+          assert.ok(api.estimateSvgTextWidth(line, fontSize) <= bounds.width, `${view.id}:${node.id}:${section} stays within its text width`);
+        }
+        assert.ok(layout[section].baseline >= bounds.top, `${view.id}:${node.id}:${section} starts inside the text region`);
+        assert.ok(layout[section].lastBaseline <= bounds.bottom, `${view.id}:${node.id}:${section} ends inside the text region`);
+      }
+      if (layout.name.lines.length > 1) assert.ok(layout.name.lines.at(-1).length >= 3, `${view.id}:${node.id} has no orphan title line`);
+    }
+  }
+});
+
+test("sizes inline relationship labels from wrapped technology as well as description", () => {
+  const { api, model } = explorerRuntime();
+  const allRelationships = Object.values(model.views).flatMap((view) => view.relationships);
+  const securityScoped = allRelationships.find((relationship) => relationship.technology === "Security-scoped URL / AVFoundation");
+  assert.ok(securityScoped, "the long Security-scoped technology label is modeled");
+
+  for (const relationship of allRelationships) {
+    const layout = api.getRelationshipLabelLayout(relationship);
+    assert.ok(layout.descriptionLines.length > 0, `${relationship.id} keeps description text`);
+    if (relationship.technology) {
+      assert.ok(layout.technologyLines.length > 0, `${relationship.id} keeps technology text`);
+      assert.ok(layout.technologyLines.every((line) => api.estimateSvgTextWidth(line, 10) <= layout.width - 30), `${relationship.id} wraps technology within its label`);
+    }
+    assert.ok(layout.height >= layout.descriptionLines.length * 16 + layout.technologyLines.length * 13 + 14, `${relationship.id} reserves label height for both text sections`);
+  }
+  const contextNodes = new Map(model.views.context.nodes.map((node) => [node.id, node]));
+  assert.match(api.buildRelationshipMarkup(contextNodes, securityScoped), /relationship-technology/);
+});
+
+test("reserves every C4 boundary title band above its member nodes", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.getBoundaryLabelBounds, "function");
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const boundary of view.boundaries) {
+      const label = api.getBoundaryLabelBounds(boundary);
+      for (const memberId of boundary.members) {
+        const node = nodes.get(memberId);
+        const intersects = label.left < node.x + node.w && label.right > node.x && label.top < node.y + node.h && label.bottom > node.y;
+        assert.equal(intersects, false, `${view.id}:${boundary.id} title band clears ${memberId}`);
+      }
+    }
+  }
+});
+
+test("routes every relationship around unrelated node rectangles", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.relationshipTraversesUnrelatedNode, "function");
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      assert.equal(api.relationshipTraversesUnrelatedNode(nodes, relationship, 6).length, 0, `${view.id}:${relationship.id} avoids unrelated nodes`);
+    }
+  }
+});
+
+test("defines resilient toolbar geometry for an open Inspector", () => {
+  assert.match(html, /\.top-toolbar\s*\{[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\) auto auto/s);
+  assert.match(html, /\.top-toolbar\s*\{[^}]*overflow:\s*hidden/s);
+  assert.match(html, /\.back-button\s*\{[^}]*min-width:\s*2\.5rem/s);
+});
+
 test("filters non-finite relationship route points before making SVG paths", () => {
   const { api } = explorerRuntime();
   assert.equal(api.relationshipPath([{ x: 0, y: 0 }, { x: Infinity, y: 2 }]), "");

@@ -317,14 +317,42 @@ test("renders every relationship as a labelled one-way SVG arrow", () => {
   assert.doesNotMatch(html, /relationship-summary/);
 });
 
-test("keeps opposite directions on separate routed paths", () => {
+test("keeps every opposing relationship pair on distinct paths and label positions", () => {
   const { api, model } = explorerRuntime();
-  const view = model.views.containers;
-  const nodes = new Map(view.nodes.map((node) => [node.id, node]));
-  const forward = view.relationships.find((rel) => rel.id === "clock-probe");
-  const reverse = view.relationships.find((rel) => rel.id === "clock-response");
-  assert.notDeepEqual(api.relationshipPolyline(nodes, forward), api.relationshipPolyline(nodes, reverse));
-  assert.notEqual(api.buildRelationshipMarkup(nodes, forward), api.buildRelationshipMarkup(nodes, reverse));
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const forward of view.relationships) {
+      for (const reverse of view.relationships.filter((candidate) => candidate.from === forward.to && candidate.to === forward.from)) {
+        assert.notDeepEqual(api.relationshipPolyline(nodes, forward), api.relationshipPolyline(nodes, reverse), `${view.id}:${forward.id}/${reverse.id} path differs`);
+        assert.notDeepEqual(api.relationshipLabelPoint(api.relationshipPolyline(nodes, forward), forward.labelPosition), api.relationshipLabelPoint(api.relationshipPolyline(nodes, reverse), reverse.labelPosition), `${view.id}:${forward.id}/${reverse.id} label differs`);
+      }
+    }
+  }
+});
+
+test("gives every dense component relationship an explicit clear label route", () => {
+  const { api, model } = explorerRuntime();
+  for (const viewId of ["iphone-components", "watch-components"]) {
+    const view = model.views[viewId];
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      assert.ok(relationship.labelPosition, `${viewId}:${relationship.id} has an explicit label position`);
+      assert.ok(Array.isArray(relationship.waypoints) && relationship.waypoints.length > 0, `${viewId}:${relationship.id} has an explicit route`);
+      const points = api.relationshipPolyline(nodes, relationship);
+      assert.ok(points.every((point) => Number.isFinite(point.x) && Number.isFinite(point.y)), `${viewId}:${relationship.id} keeps finite route points`);
+      const label = api.relationshipLabelPoint(points, relationship.labelPosition);
+      const { width, height } = api.getRelationshipLabelLayout(relationship);
+      for (const node of view.nodes) {
+        const clearsNode = label.x + width / 2 <= node.x - 6 || label.x - width / 2 >= node.x + node.w + 6 || label.y + height / 2 <= node.y - 6 || label.y - height / 2 >= node.y + node.h + 6;
+        assert.ok(clearsNode, `${viewId}:${relationship.id} label clears ${node.id}`);
+      }
+    }
+  }
+});
+
+test("filters non-finite relationship route points before making SVG paths", () => {
+  const { api } = explorerRuntime();
+  assert.equal(api.relationshipPath([{ x: 0, y: 0 }, { x: Infinity, y: 2 }]), "");
 });
 
 test("reserves enough horizontal space for context relationship labels", () => {

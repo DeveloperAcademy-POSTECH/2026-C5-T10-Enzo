@@ -237,35 +237,11 @@
 
     .relationship-path { fill: none; stroke: var(--line-strong); stroke-width: 1.8; }
     .relationship-path.status-gap { stroke: var(--gap); stroke-dasharray: 7 6; }
-    .relationship-label-box { fill: rgba(255,255,255,.94); stroke: var(--line); stroke-width: 1; rx: 6; }
-    .relationship-label-text { fill: var(--ink); font-size: 11px; font-weight: 650; }
-    .relationship-tech-text { fill: var(--muted); font-size: 9px; }
-    .relationship-label {
-      padding: 4px 6px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: rgba(255,255,255,.94);
-      color: var(--ink);
-      font-size: 10px;
-      font-weight: 700;
-      line-height: 1.22;
-      text-align: center;
-    }
-    .relationship-label small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; font-weight: 550; }
-    .relationship-label.status-gap { border-style: dashed; border-color: var(--gap); color: #6e3a04; }
-    .relationship-index {
-      display: grid;
-      place-items: center;
-      width: 30px;
-      height: 24px;
-      border: 1px solid var(--line-strong);
-      border-radius: 999px;
-      background: #fff;
-      color: var(--ink);
-      font-size: 10px;
-      font-weight: 800;
-    }
-    .relationship-index.status-gap { border-style: dashed; border-color: var(--gap); color: var(--gap); }
+    .relationship-label-surface { fill: rgba(255,255,255,.96); stroke: var(--line); stroke-width: 1; }
+    .relationship.status-gap .relationship-label-surface { fill: var(--gap-soft); stroke: var(--gap); stroke-dasharray: 5 4; }
+    .relationship-description { fill: var(--ink); font-size: 12px; font-weight: 700; }
+    .relationship-technology { fill: var(--muted); font-size: 10px; font-weight: 550; }
+    .relationship.status-gap .relationship-description, .relationship.status-gap .relationship-technology { fill: #6e3a04; }
 
     .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .legend-item { display: inline-flex; gap: 6px; align-items: center; }
@@ -273,17 +249,6 @@
     .legend-swatch.person { background: var(--person); }
     .legend-swatch.external { background: var(--external); }
     .legend-swatch.gap { border: 2px dashed var(--gap); background: var(--gap-soft); }
-
-    .relationship-summary { display: none; margin-top: 24px; }
-    .relationship-summary.is-visible { display: block; }
-    .relationship-summary h3 { margin: 0 0 12px; font-size: 15px; line-height: 1.35; }
-    .relationship-summary-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
-    .relationship-summary-item { padding: 14px 16px; border-left: 3px solid var(--line-strong); border-radius: 0 10px 10px 0; background: #f0f4f7; }
-    .relationship-summary-item.status-gap { border-left-color: var(--gap); background: var(--gap-soft); }
-    .relationship-summary-item strong, .relationship-summary-item span, .relationship-summary-item small { display: block; }
-    .relationship-summary-item strong { font-size: 12px; line-height: 1.45; }
-    .relationship-summary-item span { margin-top: 5px; font-size: 12px; line-height: 1.5; }
-    .relationship-summary-item small { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
 
     .evidence-panel { position: sticky; top: 24px; overflow: hidden; }
     .evidence-head { padding: 24px 26px; color: #fff; background: var(--blue-deep); }
@@ -340,10 +305,6 @@
       .explorer-grid { grid-template-columns: 1fr; gap: 24px; }
       .diagram-panel { padding: 16px; border-radius: 16px; }
       .diagram-stage { min-height: 0; aspect-ratio: auto; overflow: visible; background-size: 16px 16px; }
-      .relationship-layer { display: none; }
-      .relationship-summary { display: block; }
-      .relationship-summary-list { grid-template-columns: 1fr; gap: 12px; }
-      .relationship-summary-item { padding: 15px 16px; }
       .legend { gap: 12px; font-size: 11px; }
       .evidence-panel { position: static; }
       .evidence-head { padding: 24px 22px; }
@@ -358,7 +319,6 @@
 
     @media (prefers-contrast: more) {
       .toolbar, .diagram-panel, .evidence-panel { border-color: var(--ink); box-shadow: none; }
-      .relationship-summary-item { border: 1px solid var(--line-strong); border-left-width: 4px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -578,31 +538,37 @@
           {
             "id": "container-file-to-phone",
             "from": "file-store", "to": "iphone-app",
-            "description": "음원 URL을 제공합니다", "technology": "Security-scoped URL", "status": "active"
+            "description": "음원 URL을 제공합니다", "technology": "Security-scoped URL", "status": "active",
+            "sourceAnchor": {"x":260,"y":255}, "targetAnchor": {"x":355,"y":300}, "waypoints": [{"x":300,"y":430}], "labelPosition": {"x":300,"y":430}
           },
           {
             "id": "container-phone-to-watch-package",
             "from": "iphone-app", "to": "watch-app",
-            "description": "Song + BeatGrid를 전송합니다", "technology": "WCSession transferUserInfo", "status": "active"
+            "description": "Song + BeatGrid를 전송합니다", "technology": "WCSession transferUserInfo", "status": "active",
+            "sourceAnchor": {"x":625,"y":180}, "targetAnchor": {"x":720,"y":180}, "waypoints": [{"x":675,"y":62}], "labelPosition": {"x":675,"y":48}
           },
           {
             "id": "container-watch-to-phone-live",
             "from": "watch-app", "to": "iphone-app",
-            "description": "시작 시각과 이탈 상태를 알립니다", "technology": "WCSession sendMessage", "status": "active"
+            "description": "시작 시각과 이탈 상태를 알립니다", "technology": "WCSession sendMessage", "status": "active",
+            "sourceAnchor": {"x":720,"y":230}, "targetAnchor": {"x":625,"y":230}, "waypoints": [{"x":675,"y":450}], "labelPosition": {"x":675,"y":450}
           },
           {
             "id": "container-watch-to-phone-result",
             "from": "watch-app", "to": "iphone-app",
-            "description": "SessionResult를 전송합니다", "technology": "WCSession transferUserInfo", "status": "active"
+            "description": "SessionResult를 전송합니다", "technology": "WCSession transferUserInfo", "status": "active",
+            "sourceAnchor": {"x":970,"y":270}, "targetAnchor": {"x":625,"y":270}, "waypoints": [{"x":1035,"y":450}], "labelPosition": {"x":1035,"y":450}
           },
           {
             "id": "clock-probe",
             "from": "iphone-app", "to": "watch-app",
-            "description": "시계 오프셋 측정을 요청합니다", "technology": "WCSession · sendMessage", "status": "active"
+            "description": "시계 오프셋 측정을 요청합니다", "technology": "WCSession · sendMessage", "status": "active",
+            "sourceAnchor": {"x":625,"y":320}, "targetAnchor": {"x":720,"y":320}, "waypoints": [{"x":675,"y":105}], "labelPosition": {"x":840,"y":66}
           }
           ,{
             "id": "clock-response", "from": "watch-app", "to": "iphone-app",
-            "description": "Watch 기준 시각을 응답합니다", "technology": "WCSession · replyHandler", "status": "active"
+            "description": "Watch 기준 시각을 응답합니다", "technology": "WCSession · replyHandler", "status": "active",
+            "sourceAnchor": {"x":970,"y":340}, "targetAnchor": {"x":625,"y":340}, "waypoints": [{"x":1045,"y":105}], "labelPosition": {"x":1045,"y":105}
           }
         ]
       },
@@ -683,19 +649,19 @@
           }
         ],
         "relationships": [
-          {"id": "iphone-ui-to-flow", "from": "iphone-ui", "to": "app-flow", "description": "사용자 명령을 전달합니다", "technology": "SwiftUI actions", "status": "active"},
-          {"id": "iphone-flow-to-ui", "from": "app-flow", "to": "iphone-ui", "description": "화면 상태와 결과를 제공합니다", "technology": "Combine observation", "status": "active"},
+          {"id": "iphone-ui-to-flow", "from": "iphone-ui", "to": "app-flow", "description": "사용자 명령을 전달합니다", "technology": "SwiftUI actions", "status": "active", "sourceAnchor":{"x":245,"y":76},"targetAnchor":{"x":285,"y":76},"waypoints":[{"x":265,"y":8}],"labelPosition":{"x":265,"y":8}},
+          {"id": "iphone-flow-to-ui", "from": "app-flow", "to": "iphone-ui", "description": "화면 상태와 결과를 제공합니다", "technology": "Combine observation", "status": "active", "sourceAnchor":{"x":285,"y":136},"targetAnchor":{"x":245,"y":136},"waypoints":[{"x":265,"y":214}],"labelPosition":{"x":265,"y":214}},
           {"id": "iphone-flow-audio", "from": "app-flow", "to": "audio-io", "description": "PCM 변환과 예약 재생을 요청합니다", "technology": "Swift calls", "status": "active"},
           {"id": "iphone-flow-adapter", "from": "app-flow", "to": "beat-adapter", "description": "PCM 분석을 요청합니다", "technology": "Task.detached / Swift call", "status": "active"},
           {"id": "iphone-adapter-native", "from": "beat-adapter", "to": "beatthis-engine", "description": "정박 검출을 위임합니다", "technology": "BeatThisBridge.detectBeats", "status": "active"},
-          {"id": "iphone-flow-connectivity", "from": "app-flow", "to": "phone-connectivity", "description": "곡 패키지 전송을 요청합니다", "technology": "Swift closure command", "status": "active"},
-          {"id": "iphone-connectivity-callback", "from": "phone-connectivity", "to": "app-flow", "description": "Watch 세션 콜백을 제공합니다", "technology": "Closure callback", "status": "active"},
+          {"id": "iphone-flow-connectivity", "from": "app-flow", "to": "phone-connectivity", "description": "곡 패키지 전송을 요청합니다", "technology": "Swift closure command", "status": "active", "sourceAnchor":{"x":430,"y":175},"targetAnchor":{"x":430,"y":265},"waypoints":[{"x":530,"y":220}],"labelPosition":{"x":530,"y":220}},
+          {"id": "iphone-connectivity-callback", "from": "phone-connectivity", "to": "app-flow", "description": "Watch 세션 콜백을 제공합니다", "technology": "Closure callback", "status": "active", "sourceAnchor":{"x":350,"y":265},"targetAnchor":{"x":350,"y":175},"waypoints":[{"x":260,"y":220}],"labelPosition":{"x":260,"y":220}},
           {"id": "iphone-ui-scoring", "from": "iphone-ui", "to": "result-scoring", "description": "결과를 표시 점수로 변환합니다", "technology": "LyricScoring.perLyric", "status": "active"},
-          {"id": "iphone-flow-persistence-gap", "from": "app-flow", "to": "persistence", "description": "저장·캐시 연결이 구현 흐름에 없습니다", "technology": "SwiftData injection absent", "status": "gap"},
-          {"id": "iphone-package-outbound", "from": "phone-connectivity", "to": "watch-app-external", "description": "Song + BeatGrid 패키지를 전송합니다", "technology": "WCSession · transferUserInfo", "status": "active"},
-          {"id": "iphone-clock-request", "from": "phone-connectivity", "to": "watch-app-external", "description": "시계 오프셋 측정을 요청합니다", "technology": "WCSession · sendMessage", "status": "active"},
-          {"id": "iphone-realtime-outbound", "from": "phone-connectivity", "to": "watch-app-external", "description": "시작·이탈 상태를 전송합니다", "technology": "WCSession · sendMessage", "status": "active"},
-          {"id": "iphone-session-result", "from": "watch-app-external", "to": "phone-connectivity", "description": "SessionResult를 전송합니다", "technology": "WCSession · transferUserInfo", "status": "active"},
+          {"id": "iphone-flow-persistence-gap", "from": "app-flow", "to": "persistence", "description": "저장·캐시 연결이 구현 흐름에 없습니다", "technology": "SwiftData injection absent", "status": "gap", "sourceAnchor":{"x":505,"y":120},"targetAnchor":{"x":790,"y":360},"waypoints":[{"x":670,"y":470}],"labelPosition":{"x":670,"y":470}},
+          {"id": "iphone-package-outbound", "from": "phone-connectivity", "to": "watch-app-external", "description": "Song + BeatGrid 패키지를 전송합니다", "technology": "WCSession · transferUserInfo", "status": "active", "sourceAnchor":{"x":320,"y":410},"targetAnchor":{"x":400,"y":485},"waypoints":[{"x":290,"y":455}],"labelPosition":{"x":290,"y":455}},
+          {"id": "iphone-clock-request", "from": "phone-connectivity", "to": "watch-app-external", "description": "시계 오프셋 측정을 요청합니다", "technology": "WCSession · sendMessage", "status": "active", "sourceAnchor":{"x":370,"y":410},"targetAnchor":{"x":455,"y":485},"waypoints":[{"x":435,"y":445}],"labelPosition":{"x":435,"y":445}},
+          {"id": "iphone-realtime-outbound", "from": "phone-connectivity", "to": "watch-app-external", "description": "시작·이탈 상태를 전송합니다", "technology": "WCSession · sendMessage", "status": "active", "sourceAnchor":{"x":450,"y":410},"targetAnchor":{"x":545,"y":485},"waypoints":[{"x":585,"y":445}],"labelPosition":{"x":585,"y":445}},
+          {"id": "iphone-session-result", "from": "watch-app-external", "to": "phone-connectivity", "description": "SessionResult를 전송합니다", "technology": "WCSession · transferUserInfo", "status": "active", "sourceAnchor":{"x":610,"y":485},"targetAnchor":{"x":485,"y":410},"waypoints":[{"x":720,"y":445}],"labelPosition":{"x":720,"y":445}},
           {"id": "iphone-file-to-audio", "from": "file-store", "to": "audio-io", "description": "선택한 음원의 보안 범위 URL을 제공합니다", "technology": "Security-scoped URL", "status": "active"}
         ]
       },
@@ -1066,17 +1032,6 @@
       return width <= 760 ? "compact" : "diagram";
     }
 
-    function buildRelationshipSummary(relationship, fromName, toName, index = null) {
-      const statusClass = relationship.status === "gap" ? " status-gap" : "";
-      const statusText = relationship.status === "gap" ? " · 구현됨 · 미배선" : "";
-      const indexText = Number.isInteger(index) ? `R${index} · ` : "";
-      return `<li class="relationship-summary-item${statusClass}"><strong>${indexText}${escapeHTML(fromName)} → ${escapeHTML(toName)}</strong><span>${escapeHTML(relationship.description + statusText)}</span><small>[${escapeHTML(relationship.technology ?? "")} ]</small></li>`;
-    }
-
-    function getRelationshipLabelMode(view) {
-      return view.relationships.length <= 2 ? "full" : "indexed";
-    }
-
     let architectureModel = null;
     let workspaceState = createWorkspaceState();
     // Kept as a compatibility snapshot for callers of the original navigation helpers.
@@ -1189,88 +1144,82 @@
       panel.innerHTML = `<div class="evidence-head"><p class="evidence-kicker">How to explore</p><h3 class="evidence-title">${escapeHTML(view.scopeName)}</h3><p class="evidence-meta">C4 Level ${view.level}</p></div><p class="evidence-empty">${escapeHTML(guidance)}</p>`;
     }
 
-    function anchorPoints(from, to) {
-      const fromCenter = { x: from.x + from.w / 2, y: from.y + from.h / 2 };
-      const toCenter = { x: to.x + to.w / 2, y: to.y + to.h / 2 };
-      const dx = toCenter.x - fromCenter.x;
-      const dy = toCenter.y - fromCenter.y;
+    function anchorFor(node, other, override) {
+      if (override && Number.isFinite(override.x) && Number.isFinite(override.y)) return override;
+      const center = { x: node.x + node.w / 2, y: node.y + node.h / 2 };
+      const otherCenter = { x: other.x + other.w / 2, y: other.y + other.h / 2 };
+      const dx = otherCenter.x - center.x;
+      const dy = otherCenter.y - center.y;
       if (Math.abs(dx) >= Math.abs(dy)) {
-        return {
-          start: { x: dx >= 0 ? from.x + from.w : from.x, y: fromCenter.y },
-          end: { x: dx >= 0 ? to.x : to.x + to.w, y: toCenter.y }
-        };
+        return { x: dx >= 0 ? node.x + node.w : node.x, y: center.y };
       }
-      return {
-        start: { x: fromCenter.x, y: dy >= 0 ? from.y + from.h : from.y },
-        end: { x: toCenter.x, y: dy >= 0 ? to.y : to.y + to.h }
-      };
+      return { x: center.x, y: dy >= 0 ? node.y + node.h : node.y };
     }
 
-    function relationshipCurve(from, to, offset) {
-      const { start, end } = anchorPoints(from, to);
-      const dx = end.x - start.x;
-      const dy = end.y - start.y;
-      const length = Math.max(Math.hypot(dx, dy), 1);
-      const control = {
-        x: (start.x + end.x) / 2 - (dy / length) * offset,
-        y: (start.y + end.y) / 2 + (dx / length) * offset
-      };
-      return { start, end, control };
+    function relationshipPolyline(nodes, relationship) {
+      const from = nodes.get(relationship.from);
+      const to = nodes.get(relationship.to);
+      if (!from || !to) return [];
+      const start = anchorFor(from, to, relationship.sourceAnchor);
+      const end = anchorFor(to, from, relationship.targetAnchor);
+      return [start, ...(relationship.waypoints ?? []), end];
     }
+
+    function relationshipPath(points) {
+      if (points.length < 2) return "";
+      return points.reduce((path, point, index) => `${path}${index ? " L" : "M"} ${point.x} ${point.y}`, "");
+    }
+
+    function relationshipLabelPoint(points, override) {
+      if (override && Number.isFinite(override.x) && Number.isFinite(override.y)) return override;
+      if (points.length < 2) return { x: 0, y: 0 };
+      let longest = { length: -1, start: points[0], end: points[1] };
+      for (let index = 1; index < points.length; index += 1) {
+        const start = points[index - 1];
+        const end = points[index];
+        const length = Math.hypot(end.x - start.x, end.y - start.y);
+        if (length > longest.length) longest = { length, start, end };
+      }
+      return { x: (longest.start.x + longest.end.x) / 2, y: (longest.start.y + longest.end.y) / 2 };
+    }
+
+    function buildRelationshipMarkup(nodes, relationship) {
+      const points = relationshipPolyline(nodes, relationship);
+      if (points.length < 2) return "";
+      const label = relationshipLabelPoint(points, relationship.labelPosition);
+      const statusClass = relationship.status === "gap" ? " status-gap" : "";
+      const descriptionLines = wrapSvgText(relationship.description, 28);
+      const widestLine = Math.max(...descriptionLines.map((line) => Array.from(line).length), 1);
+      const labelWidth = Math.max(148, Math.min(280, widestLine * 7.5 + 30));
+      const hasTechnology = Boolean(relationship.technology);
+      const labelHeight = descriptionLines.length * 16 + (hasTechnology ? 18 : 0) + 14;
+      const descriptionStart = -((descriptionLines.length - 1) * 8) - (hasTechnology ? 7 : 0);
+      const technologyY = descriptionStart + (descriptionLines.length - 1) * 16 + 17;
+      const descriptionText = `<text class="relationship-description" x="0" y="${descriptionStart}" text-anchor="middle">${descriptionLines.map((line, index) =>
+        `<tspan x="0" dy="${index ? 16 : 0}">${escapeHTML(line)}</tspan>`
+      ).join("")}</text>`;
+      const technologyText = hasTechnology
+        ? `<text class="relationship-technology" x="0" y="${technologyY}" text-anchor="middle">[${escapeHTML(relationship.technology)}]</text>`
+        : "";
+      return `<g class="relationship${statusClass}" data-relationship-id="${escapeHTML(relationship.id)}">
+        <path class="relationship-path${statusClass}" d="${relationshipPath(points)}" marker-end="url(#arrow${relationship.status === "gap" ? "-gap" : ""})"/>
+        <g class="relationship-label" transform="translate(${label.x} ${label.y})">
+          <rect class="relationship-label-surface" x="${-labelWidth / 2}" y="${-labelHeight / 2}" width="${labelWidth}" height="${labelHeight}" rx="8"/>
+          ${descriptionText}${technologyText}
+        </g>
+      </g>`;
+    }
+
+    const ARROW_MARKERS = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f91a3"/></marker><marker id="arrow-gap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a45a08"/></marker></defs>`;
 
     function drawRelationships(view) {
       const svg = document.getElementById("diagram-svg") ?? document.getElementById("relationship-layer");
       if (!svg) return;
       const nodes = new Map(view.nodes.map((node) => [node.id, node]));
-      const totals = new Map();
-      const seen = new Map();
-      for (const relationship of view.relationships) {
-        const key = [relationship.from, relationship.to].sort().join("|");
-        totals.set(key, (totals.get(key) ?? 0) + 1);
-      }
-      const paths = [];
-      const labelMode = getRelationshipLabelMode(view);
-      for (const [relationshipIndex, relationship] of view.relationships.entries()) {
-        const from = nodes.get(relationship.from);
-        const to = nodes.get(relationship.to);
-        if (!from || !to) continue;
-        const key = [relationship.from, relationship.to].sort().join("|");
-        const index = seen.get(key) ?? 0;
-        seen.set(key, index + 1);
-        const offset = (index - (totals.get(key) - 1) / 2) * 34;
-        const curve = relationshipCurve(from, to, offset);
-        const statusClass = relationship.status === "gap" ? " status-gap" : "";
-        const gapText = relationship.status === "gap" ? " · 구현됨 · 미배선" : "";
-        const path = `<path class="relationship-path${statusClass}" d="M ${curve.start.x} ${curve.start.y} Q ${curve.control.x} ${curve.control.y} ${curve.end.x} ${curve.end.y}" marker-end="url(#arrow${relationship.status === "gap" ? "-gap" : ""})"></path>`;
-        if (labelMode === "indexed") {
-          const labelX = Math.max(2, Math.min(984, curve.control.x - 15));
-          const labelY = Math.max(2, Math.min(610, curve.control.y - 12));
-          paths.push(`${path}<foreignObject x="${labelX}" y="${labelY}" width="32" height="26"><div xmlns="http://www.w3.org/1999/xhtml" class="relationship-index${statusClass}">R${relationshipIndex + 1}</div></foreignObject>`);
-        } else {
-          const labelX = Math.max(2, Math.min(868, curve.control.x - 75));
-          const labelY = Math.max(2, Math.min(566, curve.control.y - 35));
-          paths.push(`${path}<foreignObject x="${labelX}" y="${labelY}" width="150" height="72"><div xmlns="http://www.w3.org/1999/xhtml" class="relationship-label${statusClass}">${escapeHTML(relationship.description + gapText)}<small>[${escapeHTML(relationship.technology ?? "")}]</small></div></foreignObject>`);
-        }
-      }
       const relationshipLayer = svg.querySelector("#diagram-world .relationship-layer");
-      const relationshipMarkup = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f91a3"></path></marker><marker id="arrow-gap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a45a08"></path></marker></defs>${paths.join("")}`;
+      const relationshipMarkup = `${ARROW_MARKERS}${view.relationships.map((relationship) => buildRelationshipMarkup(nodes, relationship)).join("")}`;
       if (relationshipLayer) relationshipLayer.innerHTML = relationshipMarkup;
       else svg.innerHTML = relationshipMarkup;
-    }
-
-    function renderRelationshipSummary(view) {
-      const names = new Map(view.nodes.map((node) => [node.id, node.name]));
-      const summary = document.getElementById("relationship-summary");
-      if (!summary) return;
-      summary.classList.toggle("is-visible", getRelationshipLabelMode(view) === "indexed" || getLayoutMode(window.innerWidth) === "compact");
-      document.getElementById("relationship-summary-list").innerHTML = view.relationships.map((relationship, index) => (
-        buildRelationshipSummary(
-          relationship,
-          names.get(relationship.from) ?? relationship.from,
-          names.get(relationship.to) ?? relationship.to,
-          index + 1
-        )
-      )).join("");
     }
 
     function updateLayoutMode() {
@@ -1310,7 +1259,6 @@
         });
       });
       drawRelationships(view);
-      renderRelationshipSummary(view);
       renderEvidence(workspaceState.selectedNode);
     }
 
@@ -1356,8 +1304,11 @@
       renderSvgWorld,
       buildEvidenceMarkup,
       getLayoutMode,
-      buildRelationshipSummary,
-      getRelationshipLabelMode,
+      anchorFor,
+      relationshipPolyline,
+      relationshipPath,
+      relationshipLabelPoint,
+      buildRelationshipMarkup,
       navigateTo,
       navigateUp,
       selectNode,

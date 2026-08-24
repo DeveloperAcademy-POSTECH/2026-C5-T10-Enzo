@@ -76,10 +76,18 @@ test("keeps iPhone/watch communication directional and file input wired", () => 
   const byId = new Map(phone.relationships.map((relationship) => [relationship.id, relationship]));
   assert.doesNotMatch(byId.get("iphone-flow-connectivity").description, /받고|콜백/);
   assert.equal(byId.get("iphone-connectivity-watch"), undefined);
-  assert.deepEqual(byId.get("iphone-package-outbound"), { id: "iphone-package-outbound", from: "phone-connectivity", to: "watch-app-external", description: "Song + BeatGrid 패키지를 전송합니다", technology: "WCSession · transferUserInfo", status: "active" });
-  assert.deepEqual(byId.get("iphone-clock-request"), { id: "iphone-clock-request", from: "phone-connectivity", to: "watch-app-external", description: "시계 오프셋 측정을 요청합니다", technology: "WCSession · sendMessage", status: "active" });
-  assert.deepEqual(byId.get("iphone-realtime-outbound"), { id: "iphone-realtime-outbound", from: "phone-connectivity", to: "watch-app-external", description: "시작·이탈 상태를 전송합니다", technology: "WCSession · sendMessage", status: "active" });
-  assert.deepEqual(byId.get("iphone-session-result"), { id: "iphone-session-result", from: "watch-app-external", to: "phone-connectivity", description: "SessionResult를 전송합니다", technology: "WCSession · transferUserInfo", status: "active" });
+  for (const [id, description, technology, from, to] of [
+    ["iphone-package-outbound", "Song + BeatGrid 패키지를 전송합니다", "WCSession · transferUserInfo", "phone-connectivity", "watch-app-external"],
+    ["iphone-clock-request", "시계 오프셋 측정을 요청합니다", "WCSession · sendMessage", "phone-connectivity", "watch-app-external"],
+    ["iphone-realtime-outbound", "시작·이탈 상태를 전송합니다", "WCSession · sendMessage", "phone-connectivity", "watch-app-external"],
+    ["iphone-session-result", "SessionResult를 전송합니다", "WCSession · transferUserInfo", "watch-app-external", "phone-connectivity"]
+  ]) {
+    const relationship = byId.get(id);
+    assert.equal(relationship.from, from);
+    assert.equal(relationship.to, to);
+    assert.equal(relationship.description, description);
+    assert.equal(relationship.technology, technology);
+  }
   assert.equal(byId.get("iphone-connectivity-callback")?.from, "phone-connectivity");
   assert.equal(byId.get("iphone-connectivity-callback")?.to, "app-flow");
   const fileToAudio = phone.relationships.find(({ from, to }) => from === "file-store" && to === "audio-io");
@@ -276,38 +284,47 @@ test("lays out multi-line node text sections without overlapping baselines", () 
   assert.ok(layout.description.lastBaseline < layout.affordanceBaseline, "drill-down starts after the full description");
 });
 
-test("adapts relationship output for compact layouts without external dependencies", () => {
-  const { api, model } = explorerRuntime();
+test("keeps the workspace offline without a relationship summary fallback", () => {
+  const { api } = explorerRuntime();
   assert.equal(typeof api.getLayoutMode, "function", "layout mode resolver must exist");
-  assert.equal(typeof api.buildRelationshipSummary, "function", "relationship summary builder must exist");
   assert.equal(api.getLayoutMode(761), "diagram");
   assert.equal(api.getLayoutMode(760), "compact");
   assert.equal(api.getLayoutMode(320), "compact");
-
-  const gap = model.views["iphone-components"].relationships.find((relationship) => relationship.status === "gap");
-  const summary = api.buildRelationshipSummary(gap, "Practice Flow Coordinator", "Persistence Repository");
-  assert.match(summary, /Practice Flow Coordinator → Persistence Repository/);
-  assert.match(summary, /저장·캐시 연결이 구현 흐름에 없습니다/);
-  assert.match(summary, /SwiftData injection absent/);
-  assert.match(summary, /구현됨 · 미배선/);
 
   const externalResources = [
     ...html.matchAll(/<(?:script|link|img)[^>]+(?:src|href)=["']([^"']+)["']/gi)
   ].map((match) => match[1]).filter((url) => /^https?:\/\//.test(url));
   assert.deepEqual(externalResources, []);
   assert.doesNotMatch(html, /\bfetch\s*\(/);
+  assert.doesNotMatch(html, /relationship-summary/);
 });
 
-test("uses full labels only for sparse views and numbered labels for dense views", () => {
+test("renders every relationship as a labelled one-way SVG arrow", () => {
   const { api, model } = explorerRuntime();
-  assert.equal(typeof api.getRelationshipLabelMode, "function", "relationship label mode resolver must exist");
-  assert.equal(api.getRelationshipLabelMode(model.views.context), "full");
-  assert.equal(api.getRelationshipLabelMode(model.views.containers), "indexed");
-  assert.equal(api.getRelationshipLabelMode(model.views["iphone-components"]), "indexed");
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      const markup = api.buildRelationshipMarkup(nodes, relationship);
+      assert.match(markup, /class="relationship-path/);
+      assert.match(markup, /marker-end="url\(#arrow/);
+      assert.match(markup, new RegExp(relationship.description.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+      if (relationship.technology) {
+        assert.match(markup, new RegExp(`\\[${relationship.technology.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\]`));
+      }
+    }
+  }
+  assert.doesNotMatch(html, />R\d+</);
+  assert.doesNotMatch(html, /relationship-summary/);
+});
 
-  const gap = model.views["iphone-components"].relationships.find((relationship) => relationship.status === "gap");
-  const summary = api.buildRelationshipSummary(gap, "Practice Flow Coordinator", "Persistence Repository", 7);
-  assert.match(summary, /R7 · Practice Flow Coordinator → Persistence Repository/);
+test("keeps opposite directions on separate routed paths", () => {
+  const { api, model } = explorerRuntime();
+  const view = model.views.containers;
+  const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+  const forward = view.relationships.find((rel) => rel.id === "clock-probe");
+  const reverse = view.relationships.find((rel) => rel.id === "clock-response");
+  assert.notDeepEqual(api.relationshipPolyline(nodes, forward), api.relationshipPolyline(nodes, reverse));
+  assert.notEqual(api.buildRelationshipMarkup(nodes, forward), api.buildRelationshipMarkup(nodes, reverse));
 });
 
 test("reserves enough horizontal space for context relationship labels", () => {

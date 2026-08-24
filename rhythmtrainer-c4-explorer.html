@@ -928,9 +928,9 @@
           {"id": "watch-phone-in", "from": "iphone-app-external", "to": "watch-connectivity", "description": "Song + BeatGrid와 제어 신호를 보냅니다", "technology": "WCSession", "status": "active", "sourceAnchor":{"x":1120,"y":80},"targetAnchor":{"x":505,"y":80},"waypoints":[{"x":1370.52,"y":100},{"x":1629.48,"y":100}],"labelPosition":{"x":1500,"y":100}},
           {"id": "watch-connectivity-ui", "from": "watch-connectivity", "to": "watch-ui", "description": "수신한 songID + BeatGrid를 전달합니다", "technology": "onSongReceived closure", "status": "active", "sourceAnchor":{"x":505,"y":75},"targetAnchor":{"x":545,"y":75},"waypoints":[{"x":1371.6,"y":237},{"x":1628.4,"y":237}],"labelPosition":{"x":1500,"y":237}},
           {"id": "watch-ui-motion", "from": "watch-ui", "to": "motion-capture", "description": "센서 수집을 시작하고 종료합니다", "technology": "ArmSwingDetector.start / stop", "status": "active", "sourceAnchor":{"x":650,"y":180},"targetAnchor":{"x":140,"y":245},"waypoints":[{"x":1394.88,"y":760},{"x":1605.12,"y":760}],"labelPosition":{"x":1500,"y":760}},
-          {"id": "watch-motion-swing", "from": "motion-capture", "to": "swing-detector", "description": "가속도 표본을 처리합니다", "technology": "process(timestamp, magnitude)", "status": "active", "sourceAnchor":{"x":245,"y":300},"targetAnchor":{"x":285,"y":300},"waypoints":[{"x":40.3,"y":450},{"x":239.7,"y":450}],"labelPosition":{"x":140,"y":450}},
+          {"id": "watch-motion-swing", "from": "motion-capture", "to": "swing-detector", "description": "가속도 표본을 처리합니다", "technology": "process(timestamp, magnitude)", "status": "active", "sourceAnchor":{"x":245,"y":300},"targetAnchor":{"x":285,"y":300},"waypoints":[{"x":40.3,"y":430},{"x":40.3,"y":450},{"x":239.7,"y":450}],"labelPosition":{"x":140,"y":450}},
           {"id": "watch-motion-judge", "from": "motion-capture", "to": "rhythm-judge", "description": "검출된 swing uptime을 전달합니다", "technology": "onSwing closure", "status": "active", "sourceAnchor":{"x":245,"y":360},"targetAnchor":{"x":545,"y":320},"waypoints":[{"x":286.6,"y":450},{"x":513.4,"y":450}],"labelPosition":{"x":400,"y":450}},
-          {"id": "watch-ui-judge", "from": "watch-ui", "to": "rhythm-judge", "description": "BeatGrid를 로드하고 판정을 시작·종료합니다", "technology": "load / start / stop", "status": "active", "sourceAnchor":{"x":700,"y":245},"targetAnchor":{"x":700,"y":265},"waypoints":[{"x":1405.08,"y":450},{"x":1594.92,"y":450}],"labelPosition":{"x":1500,"y":450}},
+          {"id": "watch-ui-judge", "from": "watch-ui", "to": "rhythm-judge", "description": "BeatGrid를 로드하고 판정을 시작·종료합니다", "technology": "load / start / stop", "status": "active", "sourceAnchor":{"x":755,"y":200},"targetAnchor":{"x":545,"y":360},"waypoints":[{"x":1405.08,"y":430},{"x":1405.08,"y":450},{"x":1594.92,"y":450}],"labelPosition":{"x":1500,"y":450}},
           {"id": "watch-judge-matcher", "from": "rhythm-judge", "to": "beat-matcher", "description": "스윙·시간을 판정하고 마디 정확도를 계산합니다", "technology": "registerSwing / advance / barAccuracies", "status": "active", "sourceAnchor":{"x":755,"y":320},"targetAnchor":{"x":790,"y":320},"waypoints":[{"x":774.1,"y":450},{"x":1025.9,"y":450}],"labelPosition":{"x":900,"y":450}},
           {"id": "watch-judge-coach", "from": "rhythm-judge", "to": "rhythm-coach", "description": "각 판정으로 코칭 상태를 갱신합니다", "technology": "RhythmCoach.record", "status": "active", "sourceAnchor":{"x":650,"y":390},"targetAnchor":{"x":650,"y":485},"waypoints":[{"x":536.84,"y":680},{"x":763.16,"y":680}],"labelPosition":{"x":650,"y":680}},
           {"id": "watch-judge-ui", "from": "rhythm-judge", "to": "watch-ui", "description": "이탈·종료 상태를 알립니다", "technology": "onOffBeatChanged / onFinished", "status": "active", "sourceAnchor":{"x":600,"y":265},"targetAnchor":{"x":600,"y":245},"waypoints":[{"x":799.9,"y":760},{"x":1000.1,"y":760}],"labelPosition":{"x":900,"y":760}},
@@ -1912,6 +1912,25 @@
         - Math.max(Math.min(a.y, b.y), Math.min(c.y, d.y)));
     }
 
+    function orthogonalProperIntersection(a, b, c, d) {
+      const firstHorizontal = a.y === b.y;
+      const firstVertical = a.x === b.x;
+      const secondHorizontal = c.y === d.y;
+      const secondVertical = c.x === d.x;
+      if ((!firstHorizontal && !firstVertical) || (!secondHorizontal && !secondVertical)) return null;
+      if ((firstHorizontal && secondHorizontal) || (firstVertical && secondVertical)) return null;
+      const horizontalStart = firstHorizontal ? a : c;
+      const horizontalEnd = firstHorizontal ? b : d;
+      const verticalStart = firstHorizontal ? c : a;
+      const verticalEnd = firstHorizontal ? d : b;
+      const intersection = { x: verticalStart.x, y: horizontalStart.y };
+      const insideHorizontal = intersection.x > Math.min(horizontalStart.x, horizontalEnd.x)
+        && intersection.x < Math.max(horizontalStart.x, horizontalEnd.x);
+      const insideVertical = intersection.y > Math.min(verticalStart.y, verticalEnd.y)
+        && intersection.y < Math.max(verticalStart.y, verticalEnd.y);
+      return insideHorizontal && insideVertical ? intersection : null;
+    }
+
     function segmentsIntersect(a, b, c, d) {
       const abC = orientation(a, b, c);
       const abD = orientation(a, b, d);
@@ -2002,6 +2021,21 @@
         const insideEndpoint = endpointNodes.some((node) => point.x > node.x && point.x < node.x + node.w && point.y > node.y && point.y < node.y + node.h);
         if (!insideUnrelated && !insideEndpoint) points.push(point);
       }
+      const adjacentEdges = new Set();
+      const connectConsecutive = (indices, coordinate) => {
+        indices.sort((first, second) => coordinate(points[first]) - coordinate(points[second]));
+        for (let index = 1; index < indices.length; index += 1) {
+          adjacentEdges.add([indices[index - 1], indices[index]].sort((first, second) => first - second).join("|"));
+        }
+      };
+      const rows = new Map();
+      const columns = new Map();
+      points.forEach((point, index) => {
+        rows.set(point.y, [...(rows.get(point.y) ?? []), index]);
+        columns.set(point.x, [...(columns.get(point.x) ?? []), index]);
+      });
+      for (const indices of rows.values()) connectConsecutive(indices, (point) => point.x);
+      for (const indices of columns.values()) connectConsecutive(indices, (point) => point.y);
       const startIndex = points.findIndex((point) => point.x === start.x && point.y === start.y);
       const endIndex = points.findIndex((point) => point.x === end.x && point.y === end.y);
       if (startIndex < 0 || endIndex < 0) return [start, end];
@@ -2018,9 +2052,21 @@
           if (visited.has(index) || index === current) continue;
           const a = points[current]; const b = points[index];
           if (a.x !== b.x && a.y !== b.y) continue;
+          if (!adjacentEdges.has([current, index].sort((first, second) => first - second).join("|"))) continue;
           if (unrelated.some((node) => segmentIntersectsRect(a, b, node, padding))) continue;
           if (endpointNodes.some((node) => segmentTraversesNodeInterior(a, b, node))) continue;
-          if (forbiddenSegments.some((segment) => positiveCollinearOverlapLength(a, b, segment.start, segment.end) > 0)) continue;
+          const previousSegment = forbiddenSegments[forbiddenSegments.length - 1];
+          if (forbiddenSegments.some((segment) => {
+            if (!segmentsIntersect(a, b, segment.start, segment.end)) return false;
+            const candidateTouchesStart = (a.x === start.x && a.y === start.y) || (b.x === start.x && b.y === start.y);
+            const existingEndsAtStart = (segment.start.x === start.x && segment.start.y === start.y)
+              || (segment.end.x === start.x && segment.end.y === start.y);
+            const adjacentSharedEndpoint = segment === previousSegment
+              && candidateTouchesStart
+              && existingEndsAtStart
+              && positiveCollinearOverlapLength(a, b, segment.start, segment.end) === 0;
+            return !adjacentSharedEndpoint;
+          })) continue;
           const candidate = distance[current] + Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + 1;
           if (candidate < distance[index]) { distance[index] = candidate; previous[index] = current; }
         }
@@ -2241,6 +2287,7 @@
       relationshipPath,
       segmentsIntersect,
       positiveCollinearOverlapLength,
+      orthogonalProperIntersection,
       segmentIntersectsRect,
       segmentTraversesNodeInterior,
       relationshipTraversesUnrelatedNode,

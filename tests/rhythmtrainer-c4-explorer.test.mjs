@@ -554,6 +554,58 @@ test("keeps all 34 final relationships free of positive collinear self-overlap",
   assert.equal(relationshipCount, 34);
 });
 
+test("keeps all 34 final relationships free of proper orthogonal self-intersections", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.orthogonalProperIntersection, "function");
+
+  assert.deepEqual(JSON.parse(JSON.stringify(api.orthogonalProperIntersection(
+    { x: 0, y: 5 }, { x: 10, y: 5 },
+    { x: 4, y: 0 }, { x: 4, y: 10 }
+  ))), { x: 4, y: 5 }, "detects a horizontal × vertical interior crossing");
+  assert.equal(api.orthogonalProperIntersection(
+    { x: 0, y: 0 }, { x: 10, y: 0 },
+    { x: 10, y: 0 }, { x: 10, y: 10 }
+  ), null, "allows an adjacent shared endpoint");
+  assert.equal(api.orthogonalProperIntersection(
+    { x: 0, y: 0 }, { x: 10, y: 0 },
+    { x: 2, y: 0 }, { x: 8, y: 0 }
+  ), null, "leaves collinear overlap to its dedicated invariant");
+
+  const formerWatchUiJudge = [
+    { x: 700, y: 245 }, { x: 700, y: 255.246 },
+    { x: 1405.08, y: 255.246 }, { x: 1405.08, y: 450 },
+    { x: 1594.92, y: 450 }, { x: 1594.92, y: 254.754 },
+    { x: 525.246, y: 254.754 }, { x: 525.246, y: 265 },
+    { x: 700, y: 265 }
+  ];
+  assert.deepEqual(JSON.parse(JSON.stringify(api.orthogonalProperIntersection(
+    formerWatchUiJudge[0], formerWatchUiJudge[1],
+    formerWatchUiJudge[5], formerWatchUiJudge[6]
+  ))), { x: 700, y: 254.754 }, "detects the concrete pre-fix watch-ui-judge crossing");
+
+  const failures = [];
+  let relationshipCount = 0;
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      relationshipCount += 1;
+      const points = api.relationshipPolyline(nodes, relationship);
+      const segments = points.slice(1).map((end, index) => ({ start: points[index], end }));
+      for (let index = 0; index < segments.length; index += 1) {
+        for (let other = index + 2; other < segments.length; other += 1) {
+          const intersection = api.orthogonalProperIntersection(
+            segments[index].start, segments[index].end,
+            segments[other].start, segments[other].end
+          );
+          if (intersection) failures.push(`${view.id}:${relationship.id}:${index + 1}×${other + 1}@${intersection.x},${intersection.y}`);
+        }
+      }
+    }
+  }
+  assert.equal(relationshipCount, 34);
+  assert.deepEqual(failures, []);
+});
+
 test("separates all 14 opposing relationship pairs without a shared positive-length lane", () => {
   const { api, model } = explorerRuntime();
   let opposingPairCount = 0;

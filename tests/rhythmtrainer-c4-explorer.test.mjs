@@ -376,6 +376,30 @@ test("filters non-finite relationship route points before making SVG paths", () 
   assert.equal(api.relationshipPath([{ x: 0, y: 0 }, { x: Infinity, y: 2 }]), "");
 });
 
+test("clamps, pans, zooms around the pointer, and fits the SVG world", () => {
+  const { api } = explorerRuntime();
+  assert.equal(api.clampScale(0.1), 0.25);
+  assert.equal(api.clampScale(3), 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(api.panViewport({ x: 10, y: 20, scale: 1 }, 5, -4))), {
+    x: 15, y: 16, scale: 1
+  });
+
+  const zoomed = api.zoomViewportAt({ x: 0, y: 0, scale: 1 }, { x: 100, y: 50 }, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(zoomed)), { x: -100, y: -50, scale: 2 });
+
+  const fitted = api.fitViewport({ width: 1800, height: 1000 }, { width: 1000, height: 700 }, 50);
+  assert.ok(fitted.scale >= 0.25 && fitted.scale <= 2);
+  assert.ok(Number.isFinite(fitted.x) && Number.isFinite(fitted.y));
+
+  const constrained = api.constrainViewport(
+    { x: -9999, y: 9999, scale: 1 },
+    { width: 1800, height: 1000 },
+    { width: 1000, height: 700 },
+    160
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(constrained)), { x: -960, y: 160, scale: 1 });
+});
+
 test("reserves enough horizontal space for context relationship labels", () => {
   const { model } = explorerRuntime();
   const nodes = [...model.views.context.nodes].sort((a, b) => a.x - b.x);

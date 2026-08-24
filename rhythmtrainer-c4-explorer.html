@@ -47,6 +47,8 @@
     .workspace-shell[data-right-open="true"] { --right-column: 21rem; }
     .canvas-region { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
     .diagram-viewport { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
+    .diagram-viewport[data-panning="true"] { cursor: grabbing; }
+    .diagram-viewport[data-tool="hand"] { cursor: grab; }
     .diagram-svg { width: 100%; height: 100%; display: block; }
 
     .side-panel {
@@ -79,6 +81,7 @@
     .canvas-tools { position: absolute; z-index: 4; right: 1rem; bottom: 1rem; display: flex; gap: .35rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--surface); box-shadow: var(--shadow); }
     .canvas-tool { width: 2rem; height: 2rem; border: 0; border-radius: .35rem; background: transparent; color: var(--ink); cursor: pointer; }
     .canvas-tool[aria-pressed="true"] { background: var(--blue-soft); color: var(--blue-deep); }
+    .canvas-zoom-value { display: inline-grid; min-width: 3.2rem; place-items: center; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; }
     .canvas-legend { position: absolute; z-index: 3; left: 1rem; bottom: 1rem; display: flex; gap: .75rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: .55rem; background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--muted); font-size: .7rem; }
     .canvas-legend span { display: inline-flex; gap: .3rem; align-items: center; }
     .canvas-legend .legend-swatch { display: inline-block; width: .65rem; height: .65rem; border-radius: .15rem; }
@@ -368,6 +371,10 @@
         <div id="canvas-tools" class="canvas-tools" role="toolbar" aria-label="캔버스 도구">
           <button type="button" class="canvas-tool" data-tool="select" aria-pressed="true" title="선택 도구">↖</button>
           <button type="button" class="canvas-tool" data-tool="hand" aria-pressed="false" title="이동 도구">✋</button>
+          <span id="zoom-value" class="canvas-zoom-value" aria-label="현재 확대 비율">100%</span>
+          <button type="button" class="canvas-tool" data-action="zoom-out" title="축소">−</button>
+          <button type="button" class="canvas-tool" data-action="fit-view" title="화면에 맞추기">Fit</button>
+          <button type="button" class="canvas-tool" data-action="zoom-in" title="확대">+</button>
         </div>
         <div class="canvas-legend" aria-label="다이어그램 범례">
           <span><i class="legend-swatch"></i>내부</span>
@@ -1032,20 +1039,139 @@
       return width <= 760 ? "compact" : "diagram";
     }
 
+    function clampScale(scale) {
+      return Math.min(2, Math.max(0.25, scale));
+    }
+
+    function panViewport(viewport, dx, dy) {
+      return { ...viewport, x: viewport.x + dx, y: viewport.y + dy };
+    }
+
+    function zoomViewportAt(viewport, point, nextScale) {
+      const scale = clampScale(nextScale);
+      const ratio = scale / viewport.scale;
+      return {
+        x: point.x - (point.x - viewport.x) * ratio,
+        y: point.y - (point.y - viewport.y) * ratio,
+        scale
+      };
+    }
+
+    function fitViewport(worldSize, frameSize, padding = 72) {
+      const usableWidth = Math.max(1, frameSize.width - padding * 2);
+      const usableHeight = Math.max(1, frameSize.height - padding * 2);
+      const scale = clampScale(Math.min(usableWidth / worldSize.width, usableHeight / worldSize.height));
+      return {
+        x: (frameSize.width - worldSize.width * scale) / 2,
+        y: (frameSize.height - worldSize.height * scale) / 2,
+        scale
+      };
+    }
+
+    function constrainViewport(viewport, worldSize, frameSize, margin = 160) {
+      const minX = Math.min(margin, frameSize.width - worldSize.width * viewport.scale - margin);
+      const minY = Math.min(margin, frameSize.height - worldSize.height * viewport.scale - margin);
+      return {
+        x: Math.min(margin, Math.max(minX, viewport.x)),
+        y: Math.min(margin, Math.max(minY, viewport.y)),
+        scale: clampScale(viewport.scale)
+      };
+    }
+
     let architectureModel = null;
     let workspaceState = createWorkspaceState();
     // Kept as a compatibility snapshot for callers of the original navigation helpers.
     let navigationState = { currentView: workspaceState.currentView, selectedNode: workspaceState.selectedNode };
 
+    function localPoint(event, element) {
+      const rect = element.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    }
+
+    function currentViewport() {
+      return workspaceState.viewports[workspaceState.currentView] ?? { x: 0, y: 0, scale: 1 };
+    }
+
+    function currentViewportFrame() {
+      const viewport = document.getElementById("diagram-viewport");
+      const rect = viewport?.getBoundingClientRect();
+      return { width: Math.max(1, rect?.width ?? 1), height: Math.max(1, rect?.height ?? 1) };
+    }
+
+    function syncSvgCoordinateSystem() {
+      const svg = document.getElementById("diagram-svg");
+      if (!svg) return;
+      const frame = currentViewportFrame();
+      svg.setAttribute("viewBox", `0 0 ${frame.width} ${frame.height}`);
+    }
+
+    function applyViewportTransform(viewportState) {
+      document.getElementById("diagram-world")
+        ?.setAttribute("transform", `translate(${viewportState.x} ${viewportState.y}) scale(${viewportState.scale})`);
+    }
+
+    function renderCanvasTools() {
+      if (typeof document === "undefined") return;
+      const viewport = document.getElementById("diagram-viewport");
+      const zoomValue = document.getElementById("zoom-value");
+      if (viewport) viewport.dataset.tool = workspaceState.tool;
+      if (zoomValue) zoomValue.textContent = `${Math.round(currentViewport().scale * 100)}%`;
+    }
+
+    function setViewport(viewportState) {
+      if (!architectureModel || typeof document === "undefined") return;
+      const frame = currentViewportFrame();
+      const worldSize = architectureModel.views[workspaceState.currentView].worldSize;
+      const finite = [viewportState.x, viewportState.y, viewportState.scale].every(Number.isFinite);
+      const safeViewport = constrainViewport(
+        finite ? viewportState : fitViewport(worldSize, frame, 72),
+        worldSize,
+        frame,
+        160
+      );
+      workspaceState = {
+        ...workspaceState,
+        viewports: { ...workspaceState.viewports, [workspaceState.currentView]: safeViewport }
+      };
+      applyViewportTransform(safeViewport);
+      renderCanvasTools();
+    }
+
+    function ensureViewportForCurrentView() {
+      if (!architectureModel || typeof document === "undefined") return;
+      const saved = workspaceState.viewports[workspaceState.currentView];
+      if (saved) {
+        applyViewportTransform(saved);
+        renderCanvasTools();
+        return;
+      }
+      const frame = currentViewportFrame();
+      const worldSize = architectureModel.views[workspaceState.currentView].worldSize;
+      setViewport(fitViewport(worldSize, frame, 72));
+    }
+
+    function zoomBy(factor) {
+      const frame = currentViewportFrame();
+      const center = { x: frame.width / 2, y: frame.height / 2 };
+      const viewportState = currentViewport();
+      setViewport(zoomViewportAt(viewportState, center, viewportState.scale * factor));
+    }
+
     function applyWorkspaceState(next) {
       workspaceState = next;
       navigationState = { currentView: next.currentView, selectedNode: next.selectedNode };
       renderWorkspaceChrome();
+      renderCanvasTools();
+    }
+
+    function updateWorkspace(action) {
+      if (!architectureModel) return;
+      applyWorkspaceState(reduceWorkspace(architectureModel, workspaceState, action));
     }
 
     function dispatchWorkspace(action) {
       if (!architectureModel) return;
-      applyWorkspaceState(reduceWorkspace(architectureModel, workspaceState, action));
+      updateWorkspace(action);
       renderDiagram(workspaceState.currentView);
     }
 
@@ -1127,6 +1253,84 @@
       if (rightToggle) rightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
       if (toolbarLeftToggle) toolbarLeftToggle.setAttribute("aria-expanded", String(workspaceState.leftPanelOpen));
       if (toolbarRightToggle) toolbarRightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
+    }
+
+    function resetViewportToFit() {
+      const viewports = { ...workspaceState.viewports };
+      delete viewports[workspaceState.currentView];
+      workspaceState = { ...workspaceState, viewports };
+      ensureViewportForCurrentView();
+    }
+
+    function bindToolbarActions() {
+      document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => {
+        const action = button.dataset.action;
+        if (action === "fit-view") resetViewportToFit();
+        if (action === "zoom-in") zoomBy(1.15);
+        if (action === "zoom-out") zoomBy(1 / 1.15);
+      }));
+    }
+
+    function bindViewportInteractions() {
+      const viewport = document.getElementById("diagram-viewport");
+      if (!viewport) return;
+      let drag = null;
+      let spaceHeld = false;
+
+      viewport.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        if (event.ctrlKey || event.metaKey) {
+          const point = localPoint(event, viewport);
+          setViewport(zoomViewportAt(currentViewport(), point, currentViewport().scale * Math.exp(-event.deltaY * 0.002)));
+          return;
+        }
+        setViewport(panViewport(
+          currentViewport(),
+          event.shiftKey ? -event.deltaY : -event.deltaX,
+          event.shiftKey ? 0 : -event.deltaY
+        ));
+      }, { passive: false });
+
+      viewport.addEventListener("pointerdown", (event) => {
+        const canPan = workspaceState.tool === "hand" || spaceHeld || event.button === 1;
+        if (!canPan) return;
+        event.preventDefault();
+        viewport.setPointerCapture(event.pointerId);
+        viewport.dataset.panning = "true";
+        drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      viewport.addEventListener("pointermove", (event) => {
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        setViewport(panViewport(currentViewport(), event.clientX - drag.x, event.clientY - drag.y));
+        drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      const endDrag = (event) => {
+        if (drag?.pointerId !== event.pointerId) return;
+        if (viewport.hasPointerCapture?.(event.pointerId)) viewport.releasePointerCapture(event.pointerId);
+        viewport.dataset.panning = "false";
+        drag = null;
+      };
+      viewport.addEventListener("pointerup", endDrag);
+      viewport.addEventListener("pointercancel", endDrag);
+
+      window.addEventListener("keydown", (event) => {
+        const editable = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? "");
+        if (event.code === "Space" && !editable) {
+          event.preventDefault();
+          spaceHeld = true;
+          viewport.dataset.tool = "hand";
+        }
+        if ((event.metaKey || event.ctrlKey) && event.code === "Equal") { event.preventDefault(); zoomBy(1.15); }
+        if ((event.metaKey || event.ctrlKey) && event.code === "Minus") { event.preventDefault(); zoomBy(1 / 1.15); }
+        if ((event.metaKey || event.ctrlKey) && event.code === "Digit0") { event.preventDefault(); resetViewportToFit(); }
+        if (!editable && event.key.toLowerCase() === "v") updateWorkspace({ type: "set-tool", tool: "select" });
+        if (!editable && event.key.toLowerCase() === "h") updateWorkspace({ type: "set-tool", tool: "hand" });
+      });
+      window.addEventListener("keyup", (event) => {
+        if (event.code !== "Space") return;
+        spaceHeld = false;
+        viewport.dataset.tool = workspaceState.tool;
+      });
     }
 
     function renderEvidence(nodeId) {
@@ -1236,7 +1440,11 @@
 
     function updateLayoutMode() {
       document.body.dataset.layout = getLayoutMode(window.innerWidth);
-      if (architectureModel) drawRelationships(architectureModel.views[workspaceState.currentView]);
+      if (architectureModel) {
+        syncSvgCoordinateSystem();
+        drawRelationships(architectureModel.views[workspaceState.currentView]);
+        setViewport(currentViewport());
+      }
     }
 
     function renderDiagram(viewId) {
@@ -1244,8 +1452,7 @@
       if (!view) return;
       workspaceState = { ...workspaceState, currentView: viewId };
       navigationState = { currentView: viewId, selectedNode: workspaceState.selectedNode };
-      const svg = document.getElementById("diagram-svg");
-      if (svg) svg.setAttribute("viewBox", `0 0 ${view.worldSize.width} ${view.worldSize.height}`);
+      syncSvgCoordinateSystem();
       const kicker = document.getElementById("view-kicker");
       const title = document.getElementById("view-title");
       const description = document.getElementById("view-description");
@@ -1271,6 +1478,7 @@
         });
       });
       drawRelationships(view);
+      ensureViewportForCurrentView();
       renderEvidence(workspaceState.selectedNode);
     }
 
@@ -1289,10 +1497,12 @@
       document.getElementById("toolbar-right-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-right-panel" }));
       document.querySelectorAll("[data-left-tab]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-left-tab", tab: button.dataset.leftTab })));
       document.querySelectorAll("[data-inspector-tab]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-inspector-tab", tab: button.dataset.inspectorTab })));
-      document.querySelectorAll("[data-tool]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-tool", tool: button.dataset.tool })));
+      document.querySelectorAll("[data-tool]").forEach((button) => button.addEventListener("click", () => updateWorkspace({ type: "set-tool", tool: button.dataset.tool })));
       document.querySelector('.level-step[data-level="1"]').addEventListener("click", () => navigateTo("context"));
       document.querySelector('.level-step[data-level="2"]').addEventListener("click", () => navigateTo("containers"));
       document.querySelector('.level-step[data-level="3"]').addEventListener("click", () => navigateTo(navigationState.currentView));
+      bindToolbarActions();
+      bindViewportInteractions();
       renderDiagram(navigationState.currentView);
       updateLayoutMode();
       window.addEventListener("resize", updateLayoutMode);
@@ -1322,6 +1532,20 @@
       relationshipLabelPoint,
       getRelationshipLabelLayout,
       buildRelationshipMarkup,
+      clampScale,
+      panViewport,
+      zoomViewportAt,
+      fitViewport,
+      constrainViewport,
+      localPoint,
+      currentViewport,
+      setViewport,
+      applyViewportTransform,
+      ensureViewportForCurrentView,
+      renderCanvasTools,
+      updateWorkspace,
+      bindToolbarActions,
+      bindViewportInteractions,
       navigateTo,
       navigateUp,
       selectNode,

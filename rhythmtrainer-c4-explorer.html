@@ -502,7 +502,7 @@
       .back-button::before { content: "←"; font-size: 1.1rem; }
       .toolbar-context { display: none; }
       .breadcrumb { min-width: 0; overflow: hidden; flex-wrap: nowrap; white-space: nowrap; }
-      .toolbar-action, .canvas-tool { min-width: 2.75rem; min-height: 2.75rem; }
+      .panel-toggle, .toolbar-action, .canvas-tool { min-width: 2.75rem; min-height: 2.75rem; }
       .canvas-tools { right: .75rem; bottom: .75rem; min-height: 2.75rem; }
       .canvas-legend { left: .75rem; bottom: .75rem; max-width: calc(100vw - 15.5rem); overflow: hidden; white-space: nowrap; }
     }
@@ -603,7 +603,7 @@
         "title": "System Context",
         "scopeName": "엇박 리듬 훈련 시스템",
         "description": "사용자와 엇박 시스템, 시스템이 읽는 외부 음원 경계를 보여줍니다.",
-        "worldSize": {"width": 1800, "height": 1000},
+        "worldSize": {"width": 1100, "height": 600},
         "boundaries": [],
         "nodes": [
           {
@@ -670,7 +670,7 @@
         "title": "Container Diagram",
         "scopeName": "엇박 리듬 훈련 시스템",
         "description": "배포·실행되는 iPhone 앱과 Watch 앱의 책임과 통신 경계를 보여줍니다.",
-        "worldSize": {"width": 1800, "height": 1000},
+        "worldSize": {"width": 1400, "height": 600},
         "boundaries": [{"id":"rhythm-boundary","name":"엇박 리듬 훈련 시스템","type":"Software System","members":["iphone-app","watch-app"],"x":320,"y":90,"w":700,"h":330}],
         "nodes": [
           {
@@ -1387,6 +1387,13 @@
       svg.setAttribute("viewBox", `0 0 ${frame.width} ${frame.height}`);
     }
 
+    function scheduleCanvasCoordinateSync() {
+      if (typeof document === "undefined" || typeof window === "undefined") return;
+      const sync = () => syncSvgCoordinateSystem();
+      window.requestAnimationFrame?.(sync);
+      window.setTimeout?.(sync, 220);
+    }
+
     function applyViewportTransform(viewportState) {
       document.getElementById("diagram-world")
         ?.setAttribute("transform", `translate(${viewportState.x} ${viewportState.y}) scale(${viewportState.scale})`);
@@ -1645,6 +1652,7 @@
         toolbarRightToggle.setAttribute("aria-label", workspaceState.rightPanelOpen ? "인스펙터 닫기" : "인스펙터 열기");
       }
       bindRenderedControls();
+      scheduleCanvasCoordinateSync();
     }
 
     function resetViewportToFit() {
@@ -1950,6 +1958,9 @@
       constrainViewport,
       localPoint,
       currentViewport,
+      currentViewportFrame,
+      syncSvgCoordinateSystem,
+      scheduleCanvasCoordinateSync,
       setViewport,
       applyViewportTransform,
       ensureViewportForCurrentView,

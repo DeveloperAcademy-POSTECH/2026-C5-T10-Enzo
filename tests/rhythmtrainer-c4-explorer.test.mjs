@@ -18,10 +18,13 @@ function architectureModel() {
   return JSON.parse(body);
 }
 
-function explorerRuntime() {
-  const source = scriptBody("explorer-logic", "text/javascript");
-  assert.ok(source, "explorer logic script must exist");
-  const context = { window: {}, console };
+function explorerRuntime(extraContext = {}) {
+  const rawSource = scriptBody("explorer-logic", "text/javascript");
+  assert.ok(rawSource, "explorer logic script must exist");
+  const source = extraContext.document
+    ? rawSource.replace('if (typeof document !== "undefined") boot();', "")
+    : rawSource;
+  const context = { window: {}, console, ...extraContext };
   vm.runInNewContext(source, context);
   return { api: context.window.RhythmC4Explorer, model: architectureModel() };
 }
@@ -29,6 +32,22 @@ function explorerRuntime() {
 test("creates the standalone RhythmTrainer C4 artifact", () => {
   assert.ok(html.length > 0, "rhythmtrainer-c4-explorer.html must exist");
   assert.match(html, /<title>엇박 · C4 Architecture Explorer<\/title>/);
+});
+
+test("ships the complete offline diagram-first C4 contract", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(api.validateModel(model).valid, true);
+  assert.equal(model.meta.level4, "omitted");
+  assert.deepEqual(Object.keys(model.views).sort(), [
+    "containers", "context", "iphone-components", "watch-components"
+  ]);
+  assert.doesNotMatch(html, /relationship-summary|relationship-index|>R\d+</);
+  assert.doesNotMatch(html, /\bfetch\s*\(/);
+
+  const externalResources = [
+    ...html.matchAll(/<(?:script|link|img)[^>]+(?:src|href)=["']([^"']+)["']/gi)
+  ].map((match) => match[1]).filter((url) => /^https?:\/\//.test(url));
+  assert.deepEqual(externalResources, []);
 });
 
 test("defines the four navigation views at C4 levels 1 through 3", () => {
@@ -436,6 +455,39 @@ test("reserves enough horizontal space for context relationship labels", () => {
   assert.ok(gaps.every((gap) => gap >= 150), `context gaps must fit 150px labels: ${gaps.join(", ")}`);
 });
 
+test("fits the initial System Context at a readable desktop scale", () => {
+  const { api, model } = explorerRuntime();
+  const viewport = api.fitViewport(model.views.context.worldSize, { width: 1160, height: 900 }, 72);
+
+  assert.ok(viewport.scale >= 0.9, `System Context must not start tiny in the diagram-first canvas (got ${viewport.scale})`);
+});
+
+test("fits the Container Diagram at a readable left-panel desktop scale", () => {
+  const { api, model } = explorerRuntime();
+  const viewport = api.fitViewport(model.views.containers.worldSize, { width: 1160, height: 900 }, 72);
+
+  assert.ok(viewport.scale >= 0.7, `Container Diagram must use the available diagram canvas (got ${viewport.scale})`);
+});
+
+test("synchronizes SVG coordinates to the expanded canvas after panel motion", () => {
+  const attributes = new Map();
+  const svg = { setAttribute(name, value) { attributes.set(name, value); } };
+  const viewport = { getBoundingClientRect: () => ({ width: 1440, height: 900 }) };
+  const { api } = explorerRuntime({
+    document: {
+      getElementById(id) {
+        if (id === "diagram-svg") return svg;
+        if (id === "diagram-viewport") return viewport;
+        return null;
+      }
+    }
+  });
+
+  assert.equal(typeof api.syncSvgCoordinateSystem, "function");
+  api.syncSvgCoordinateSystem();
+  assert.equal(attributes.get("viewBox"), "0 0 1440 900");
+});
+
 test("renders Views and Layers as synchronized read-only navigation", () => {
   const { api, model } = explorerRuntime();
   const state = api.createWorkspaceState();
@@ -590,6 +642,11 @@ test("animates desktop C4 panels through their own edges while reclaiming canvas
   assert.match(html, /\.workspace-shell\[data-right-open="false"\]\s+\.right-inspector\s*\{[^}]*transform:\s*translateX\(100%\)[^}]*opacity:\s*0/s);
   assert.match(html, /\.workspace-shell\[data-left-open="true"\]\s+\.left-panel\s*\{[^}]*transform:\s*translateX\(0\);\s*opacity:\s*1/s);
   assert.match(html, /\.workspace-shell\[data-right-open="true"\]\s+\.right-inspector\s*\{[^}]*transform:\s*translateX\(0\);\s*opacity:\s*1/s);
+});
+
+test("keeps mobile side-sheet panel controls at a 44px touch target", () => {
+  const mobileRules = html.match(/@media \(max-width: 799px\) \{([\s\S]*?)\n    \}/)?.[1] ?? "";
+  assert.match(mobileRules, /\.panel-toggle(?:,\s*\.toolbar-action,\s*\.canvas-tool)?\s*\{[^}]*min-width:\s*2\.75rem;[^}]*min-height:\s*2\.75rem/s);
 });
 
 export { architectureModel, explorerRuntime, html, scriptBody };

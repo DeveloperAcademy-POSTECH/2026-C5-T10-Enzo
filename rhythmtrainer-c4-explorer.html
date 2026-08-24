@@ -366,7 +366,11 @@
     button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
     button:not(:disabled):active, .canvas-tool:active, .toolbar-action:active, .panel-toggle:active { transform: scale(.97); transition-duration: 80ms; }
 
-    .workspace-shell { grid-template-columns: var(--left-column, var(--sidebar-left)) minmax(0, 1fr) var(--right-column, 0rem); background: var(--canvas-background); }
+    .workspace-shell {
+      grid-template-columns: var(--left-column, var(--sidebar-left)) minmax(0, 1fr) var(--right-column, 0rem);
+      background: var(--canvas-background);
+      transition: grid-template-columns 220ms cubic-bezier(.2, .8, .2, 1);
+    }
     .workspace-shell[data-left-open="false"] { --left-column: 0rem; }
     .workspace-shell[data-right-open="true"] { --right-column: var(--sidebar-right); }
     .canvas-region {
@@ -386,10 +390,36 @@
       min-height: 0;
       background: color-mix(in srgb, var(--surface-solid) 94%, #edf2f7);
       box-shadow: none;
-      transition: transform 220ms cubic-bezier(.2, .8, .2, 1), opacity 180ms ease;
+      transition: transform 220ms cubic-bezier(.2, .8, .2, 1), opacity 180ms ease, visibility 0s linear 220ms;
     }
-    .left-panel { border-right: 1px solid color-mix(in srgb, var(--line) 84%, transparent); }
-    .right-inspector { border-left: 1px solid color-mix(in srgb, var(--line) 84%, transparent); }
+    .left-panel { width: var(--sidebar-left); border-right: 1px solid color-mix(in srgb, var(--line) 84%, transparent); }
+    .right-inspector { width: var(--sidebar-right); border-left: 1px solid color-mix(in srgb, var(--line) 84%, transparent); }
+    .workspace-shell[data-left-open="false"] .left-panel {
+      transform: translateX(-100%);
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+    .workspace-shell[data-right-open="false"] .right-inspector {
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+    .workspace-shell[data-left-open="true"] .left-panel {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+      visibility: visible;
+      transition-delay: 0s;
+    }
+    .workspace-shell[data-right-open="true"] .right-inspector {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+      visibility: visible;
+      transition-delay: 0s;
+    }
     .panel-heading, .inspector-toolbar { padding: var(--space-6); }
     .panel-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-3); align-items: center; }
     .panel-heading .eyebrow { grid-column: 1; margin: 0; color: var(--blue); font-size: .67rem; letter-spacing: .11em; }
@@ -462,8 +492,6 @@
       }
       .left-panel { left: 0; transform: translateX(-100%); }
       .right-inspector { right: 0; transform: translateX(100%); }
-      .workspace-shell[data-left-open="true"] .left-panel,
-      .workspace-shell[data-right-open="true"] .right-inspector { transform: translateX(0); opacity: 1; pointer-events: auto; visibility: visible; }
       .top-toolbar { inset-inline: var(--space-4); }
     }
 
@@ -539,7 +567,7 @@
       </div>
     </section>
 
-    <aside id="right-inspector" class="side-panel right-inspector" aria-live="polite" aria-label="선택한 요소 정보">
+    <aside id="right-inspector" class="side-panel right-inspector" aria-live="polite" aria-label="선택한 요소 정보" inert aria-hidden="true">
       <div class="inspector-toolbar">
         <button id="right-panel-toggle" class="panel-toggle" type="button" aria-controls="right-inspector" aria-expanded="false" aria-label="인스펙터 닫기">닫기</button>
       </div>
@@ -1557,12 +1585,26 @@
       }));
     }
 
+    function setPanelAccessibility(panel, isOpen) {
+      if (!panel) return;
+      panel.inert = !isOpen;
+      if (isOpen) {
+        panel.removeAttribute("inert");
+        panel.removeAttribute("aria-hidden");
+        return;
+      }
+      panel.setAttribute("inert", "");
+      panel.setAttribute("aria-hidden", "true");
+    }
+
     function renderWorkspaceChrome() {
       if (typeof document === "undefined") return;
       const shell = document.getElementById("workspace");
       if (!shell) return;
       shell.dataset.leftOpen = String(workspaceState.leftPanelOpen);
       shell.dataset.rightOpen = String(workspaceState.rightPanelOpen);
+      setPanelAccessibility(document.getElementById("left-panel"), workspaceState.leftPanelOpen);
+      setPanelAccessibility(document.getElementById("right-inspector"), workspaceState.rightPanelOpen);
       const view = architectureModel?.views?.[workspaceState.currentView];
       if (view) {
         renderNavigationPanel(view, workspaceState);
@@ -1893,6 +1935,7 @@
       getNextTabIndex,
       bindRovingTablist,
       bindRenderedControls,
+      setPanelAccessibility,
       getLayoutMode,
       anchorFor,
       relationshipPolyline,

@@ -563,4 +563,33 @@ test("compacts short Person card copy inside its semantic silhouette", () => {
   }
 });
 
+test("removes closed C4 panels from keyboard navigation and restores them before reopening", () => {
+  const { api } = explorerRuntime();
+  const attributes = new Map();
+  const panel = {
+    inert: false,
+    setAttribute(name, value) { attributes.set(name, value); },
+    removeAttribute(name) { attributes.delete(name); },
+    getAttribute(name) { return attributes.get(name) ?? null; }
+  };
+
+  api.setPanelAccessibility(panel, false);
+  assert.equal(panel.inert, true);
+  assert.equal(panel.getAttribute("inert"), "");
+  assert.equal(panel.getAttribute("aria-hidden"), "true");
+
+  api.setPanelAccessibility(panel, true);
+  assert.equal(panel.inert, false);
+  assert.equal(panel.getAttribute("inert"), null);
+  assert.equal(panel.getAttribute("aria-hidden"), null);
+});
+
+test("animates desktop C4 panels through their own edges while reclaiming canvas width", () => {
+  assert.match(html, /\.workspace-shell\s*\{[^}]*transition:\s*grid-template-columns/s);
+  assert.match(html, /\.workspace-shell\[data-left-open="false"\]\s+\.left-panel\s*\{[^}]*transform:\s*translateX\(-100%\)[^}]*opacity:\s*0/s);
+  assert.match(html, /\.workspace-shell\[data-right-open="false"\]\s+\.right-inspector\s*\{[^}]*transform:\s*translateX\(100%\)[^}]*opacity:\s*0/s);
+  assert.match(html, /\.workspace-shell\[data-left-open="true"\]\s+\.left-panel\s*\{[^}]*transform:\s*translateX\(0\);\s*opacity:\s*1/s);
+  assert.match(html, /\.workspace-shell\[data-right-open="true"\]\s+\.right-inspector\s*\{[^}]*transform:\s*translateX\(0\);\s*opacity:\s*1/s);
+});
+
 export { architectureModel, explorerRuntime, html, scriptBody };

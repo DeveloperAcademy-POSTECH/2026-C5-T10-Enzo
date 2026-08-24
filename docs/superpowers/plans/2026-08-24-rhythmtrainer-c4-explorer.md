@@ -58,6 +58,14 @@ function architectureModel() {
   return JSON.parse(body);
 }
 
+function explorerRuntime() {
+  const source = scriptBody("explorer-logic", "text/javascript");
+  assert.ok(source, "explorer logic script must exist");
+  const context = { window: {}, console };
+  vm.runInNewContext(source, context);
+  return { api: context.window.RhythmC4Explorer, model: architectureModel() };
+}
+
 test("creates the standalone RhythmTrainer C4 artifact", () => {
   assert.ok(html.length > 0, "rhythmtrainer-c4-explorer.html must exist");
   assert.match(html, /<title>엇박 · C4 Architecture Explorer<\/title>/);
@@ -202,26 +210,38 @@ git commit -m "feat: add RhythmTrainer C4 architecture model"
 
 **Interfaces:**
 - Consumes: Task 1 model and navigation helpers.
-- Produces: `navigateTo(viewId)`, `navigateUp()`, `selectNode(nodeId)`, `renderDiagram(viewId)`, `renderEvidence(nodeId)`, and `drawRelationships(view)`.
+- Produces: pure `createNavigationState()`, `reduceNavigation(model, state, action)`, `buildNodeMarkup(node, selected)`, and `buildEvidenceMarkup(node)` plus DOM adapters `navigateTo(viewId)`, `navigateUp()`, `selectNode(nodeId)`, `renderDiagram(viewId)`, `renderEvidence(nodeId)`, and `drawRelationships(view)`.
 
-- [ ] **Step 1: Write failing semantic interaction tests**
+- [ ] **Step 1: Write failing interaction-output tests**
 
-Append tests that assert the exact DOM hooks and accessibility contract:
+Append tests that exercise the pure functions consumed by the browser renderer:
 
 ```js
-test("provides semantic navigation and evidence regions", () => {
-  assert.match(html, /<nav[^>]+aria-label="C4 수준 탐색"/);
-  assert.match(html, /id="back-button"/);
-  assert.match(html, /id="diagram-nodes"/);
-  assert.match(html, /id="relationship-layer"/);
-  assert.match(html, /id="evidence-panel"[^>]+aria-live="polite"/);
+test("drills from context to both component views and stops at level three", () => {
+  const { api, model } = explorerRuntime();
+  let state = api.createNavigationState();
+  state = api.reduceNavigation(model, state, { type: "activate-node", nodeId: "rhythm-system" });
+  assert.equal(state.currentView, "containers");
+  state = api.reduceNavigation(model, state, { type: "activate-node", nodeId: "iphone-app" });
+  assert.equal(state.currentView, "iphone-components");
+  state = api.reduceNavigation(model, state, { type: "activate-node", nodeId: "beatthis-engine" });
+  assert.equal(state.currentView, "iphone-components");
+  assert.equal(state.selectedNode, "beatthis-engine");
+  state = api.reduceNavigation(model, state, { type: "up" });
+  state = api.reduceNavigation(model, state, { type: "activate-node", nodeId: "watch-app" });
+  assert.equal(state.currentView, "watch-components");
 });
 
-test("implements the approved interaction functions", () => {
-  const source = scriptBody("explorer-logic", "text/javascript");
-  for (const name of ["navigateTo", "navigateUp", "selectNode", "renderDiagram", "renderEvidence", "drawRelationships"]) {
-    assert.match(source, new RegExp(`function\\s+${name}\\s*\\(`));
-  }
+test("renders semantic node controls and source-backed evidence", () => {
+  const { api, model } = explorerRuntime();
+  const beatThis = api.getNodeById(model, "iphone-components", "beatthis-engine");
+  const nodeMarkup = api.buildNodeMarkup(beatThis, true);
+  assert.match(nodeMarkup, /^<button/);
+  assert.match(nodeMarkup, /aria-pressed="true"/);
+  assert.match(nodeMarkup, /BeatThis Native Engine/);
+  const evidenceMarkup = api.buildEvidenceMarkup(beatThis);
+  assert.match(evidenceMarkup, /BeatThisBridge\.mm/);
+  assert.match(evidenceMarkup, /beat_this_api\.cpp/);
 });
 ```
 
@@ -233,11 +253,11 @@ Run:
 node --test --test-name-pattern="semantic|interaction" tests/rhythmtrainer-c4-explorer.test.mjs
 ```
 
-Expected: FAIL because the semantic regions and render functions do not exist.
+Expected: FAIL because the navigation reducer and markup builders do not exist.
 
 - [ ] **Step 3: Implement semantic rendering and interaction**
 
-Add a header, breadcrumb buttons, level rail, back button, title/description, diagram stage, SVG relationship layer, node layer, legend, and evidence panel. `renderDiagram(viewId)` must:
+Add a header, breadcrumb buttons, level rail, back button, title/description, diagram stage, SVG relationship layer, node layer, legend, and evidence panel. Implement `createNavigationState()`, `reduceNavigation(model, state, action)`, `buildNodeMarkup(node, selected)`, and `buildEvidenceMarkup(node)` first; the DOM functions must call those tested pure functions. `renderDiagram(viewId)` must:
 
 1. Update `navigationState.currentView`.
 2. Render one real `<button class="diagram-node">` per node.
@@ -287,26 +307,28 @@ git commit -m "feat: add C4 drill-down navigation"
 - Consumes: Task 2 semantic diagram and interaction functions.
 - Produces: complete C4 styling, responsive layouts, status legend, reduced-motion handling, and verified final artifact.
 
-- [ ] **Step 1: Write failing self-contained and responsive contract tests**
+- [ ] **Step 1: Write failing artifact-boundary and provenance tests**
 
 Append:
 
 ```js
-test("is self-contained and encodes the visual states accessibly", () => {
-  assert.doesNotMatch(html, /<script[^>]+src=/i);
-  assert.doesNotMatch(html, /<link[^>]+href=/i);
+test("has no external runtime resource dependencies", () => {
+  const externalResources = [
+    ...html.matchAll(/<(?:script|link|img)[^>]+(?:src|href)=["']([^"']+)["']/gi)
+  ].map((match) => match[1]).filter((url) => /^https?:\/\//.test(url));
+  assert.deepEqual(externalResources, []);
   assert.doesNotMatch(html, /\bfetch\s*\(/);
-  assert.match(html, /@media\s*\(max-width:\s*760px\)/);
-  assert.match(html, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
-  assert.match(html, /\.diagram-node\.status-gap/);
-  assert.match(html, /\.relationship-path\.status-gap/);
 });
 
-test("documents source provenance and the deliberate Level 4 boundary", () => {
-  assert.match(html, /bff9f2a6b38fe50e5f4f65c91ef95da402bd928f/);
-  assert.match(html, /Level 4 코드 다이어그램은 의도적으로 제외/);
-  assert.match(html, /PracticeSessionStore\.swift/);
-  assert.match(html, /구현됨 · 미배선/);
+test("exposes source provenance and the unwired persistence gap in model behavior", () => {
+  const model = architectureModel();
+  assert.equal(model.meta.analyzedCommit, "bff9f2a6b38fe50e5f4f65c91ef95da402bd928f");
+  assert.equal(model.meta.level4, "omitted");
+  const persistence = model.views["iphone-components"].nodes.find((node) => node.id === "persistence");
+  assert.equal(persistence.status, "gap");
+  assert.ok(persistence.evidence.some((path) => path.endsWith("PracticeSessionStore.swift")));
+  const gap = model.views["iphone-components"].relationships.find((relationship) => relationship.status === "gap");
+  assert.deepEqual({ from: gap.from, to: gap.to }, { from: "app-flow", to: "persistence" });
 });
 ```
 
@@ -318,7 +340,7 @@ Run:
 node --test --test-name-pattern="self-contained|provenance" tests/rhythmtrainer-c4-explorer.test.mjs
 ```
 
-Expected: FAIL until final styling and provenance content are present.
+Expected: FAIL until provenance metadata, the persistence gap, and the self-contained artifact boundary are complete.
 
 - [ ] **Step 3: Implement final C4 styling and responsive behavior**
 

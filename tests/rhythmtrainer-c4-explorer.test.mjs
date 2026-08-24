@@ -98,7 +98,7 @@ test("keeps iPhone/watch communication directional and file input wired", () => 
   for (const [id, description, technology, from, to] of [
     ["iphone-package-outbound", "Song + BeatGrid 패키지를 전송합니다", "WCSession · transferUserInfo", "phone-connectivity", "watch-app-external"],
     ["iphone-clock-request", "시계 오프셋 측정을 요청합니다", "WCSession · sendMessage", "phone-connectivity", "watch-app-external"],
-    ["iphone-realtime-outbound", "시작·이탈 상태를 전송합니다", "WCSession · sendMessage", "phone-connectivity", "watch-app-external"],
+    ["iphone-realtime-inbound", "시작·이탈 상태를 전송합니다", "WCSession · sendMessage", "watch-app-external", "phone-connectivity"],
     ["iphone-session-result", "SessionResult를 전송합니다", "WCSession · transferUserInfo", "watch-app-external", "phone-connectivity"]
   ]) {
     const relationship = byId.get(id);
@@ -115,6 +115,35 @@ test("keeps iPhone/watch communication directional and file input wired", () => 
   assert.ok(fileToAudio.technology.length > 0);
 });
 
+test("connects every supporting Person to the elements they directly use", () => {
+  const model = architectureModel();
+  const expected = {
+    containers: [["learner", "iphone-app"], ["learner", "watch-app"]],
+    "iphone-components": [["learner", "iphone-ui"]],
+    "watch-components": [["learner", "watch-ui"], ["learner", "motion-capture"]]
+  };
+  for (const [viewId, pairs] of Object.entries(expected)) {
+    const view = model.views[viewId];
+    for (const [from, to] of pairs) {
+      const relationship = view.relationships.find((candidate) => candidate.from === from && candidate.to === to);
+      assert.ok(relationship, `${viewId} connects ${from} to ${to}`);
+      assert.ok(relationship.description.length > 4, `${viewId}:${from}->${to} explains the interaction`);
+      assert.ok(relationship.technology.length > 0, `${viewId}:${from}->${to} names the interaction technology`);
+    }
+  }
+});
+
+test("keeps System Context free of implementation technologies and low-level APIs", () => {
+  const context = architectureModel().views.context;
+  for (const node of context.nodes) {
+    assert.equal(node.technology ?? "", "", `${node.id} stays technology-free at L1`);
+  }
+  for (const relationship of context.relationships) {
+    assert.equal(relationship.technology ?? "", "", `${relationship.id} stays goal-level at L1`);
+    assert.doesNotMatch(`${relationship.description} ${relationship.technology ?? ""}`, /AVFoundation|Security-scoped|URL|SwiftUI|watchOS|iOS/i);
+  }
+});
+
 test("keeps external iPhone node outside the Watch level-three boundary", () => {
   const view = architectureModel().views["watch-components"];
   const boundary = view.boundaries.find(({ id }) => id === "watch-boundary");
@@ -123,7 +152,7 @@ test("keeps external iPhone node outside the Watch level-three boundary", () => 
   assert.equal(boundary.members.includes(external.id), false);
 });
 
-test("exports navigation helpers and rejects dangling relationships", () => {
+test("exports navigation helpers and reports dangling relationships as recoverable", () => {
   const { api, model } = explorerRuntime();
   assert.equal(api.validateModel(model).valid, true);
   assert.deepEqual(Array.from(api.getBreadcrumbs("watch-components")), [
@@ -131,13 +160,47 @@ test("exports navigation helpers and rejects dangling relationships", () => {
   ]);
   const broken = structuredClone(model);
   broken.views.context.relationships[0].to = "missing-node";
-  assert.equal(api.validateModel(broken).valid, false);
+  const dangling = api.validateModel(broken);
+  assert.equal(dangling.valid, true);
+  assert.match(dangling.errors.join("\n"), /missing-target/);
+  assert.match(api.buildInspectorMarkup(broken, api.createWorkspaceState()), /missing-target/);
   const badDescription = structuredClone(model);
   delete badDescription.views.context.nodes[0].description;
   assert.equal(api.validateModel(badDescription).valid, false);
   const badRole = structuredClone(model);
   badRole.views.context.nodes[0].visualRole = "unknown";
   assert.equal(api.validateModel(badRole).valid, false);
+});
+
+test("builds every Inspector tab for every node even when optional lists are absent", () => {
+  const { api, model } = explorerRuntime();
+  for (const [viewId, view] of Object.entries(model.views)) {
+    for (const node of view.nodes) {
+      for (const inspectorTab of ["overview", "flow", "evidence", "model"]) {
+        assert.doesNotThrow(() => api.buildInspectorMarkup(model, {
+          ...api.createWorkspaceState(), currentView: viewId, selectedNode: node.id, inspectorTab
+        }), `${viewId}:${node.id}:${inspectorTab}`);
+      }
+    }
+  }
+});
+
+test("keeps the readable fallback visible until successful initialization", () => {
+  const fallback = html.match(/<section id="fallback-summary"[^>]*>/)?.[0] ?? "";
+  assert.ok(fallback);
+  assert.doesNotMatch(fallback, /\shidden(?:\s|>)/);
+  assert.match(html, /try\s*\{[\s\S]*JSON\.parse/);
+  assert.match(html, /fallback\.hidden\s*=\s*true/);
+  assert.match(html, /catch\s*\(/);
+  assert.match(html, /\.fallback-summary\s*\{[^}]*position:\s*fixed[^}]*inset:\s*0[^}]*overflow:\s*auto/s);
+});
+
+test("announces view and selection changes and defines persistent focus targets", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(api.workspaceAnnouncement(model, { currentView: "context" }, { type: "view", viewId: "containers" }), "Container Diagram 보기로 이동했습니다.");
+  assert.equal(api.workspaceAnnouncement(model, { currentView: "context" }, { type: "select-node", nodeId: "learner" }), "리듬을 연습하는 사용자 요소를 선택했습니다.");
+  assert.match(html, /workspace-announcer/);
+  assert.match(html, /restoreWorkspaceFocus/);
 });
 
 test("starts as a diagram-first workspace and reduces panel state independently", () => {
@@ -415,7 +478,7 @@ test("keeps every emitted node text line inside its role-specific text bounds", 
 test("sizes inline relationship labels from wrapped technology as well as description", () => {
   const { api, model } = explorerRuntime();
   const allRelationships = Object.values(model.views).flatMap((view) => view.relationships);
-  const securityScoped = allRelationships.find((relationship) => relationship.technology === "Security-scoped URL / AVFoundation");
+  const securityScoped = allRelationships.find((relationship) => relationship.technology === "Security-scoped URL");
   assert.ok(securityScoped, "the long Security-scoped technology label is modeled");
 
   for (const relationship of allRelationships) {
@@ -427,8 +490,9 @@ test("sizes inline relationship labels from wrapped technology as well as descri
     }
     assert.ok(layout.height >= layout.descriptionLines.length * 16 + layout.technologyLines.length * 13 + 14, `${relationship.id} reserves label height for both text sections`);
   }
-  const contextNodes = new Map(model.views.context.nodes.map((node) => [node.id, node]));
-  assert.match(api.buildRelationshipMarkup(contextNodes, securityScoped), /relationship-technology/);
+  const owningView = Object.values(model.views).find((view) => view.relationships.includes(securityScoped));
+  const owningNodes = new Map(owningView.nodes.map((node) => [node.id, node]));
+  assert.match(api.buildRelationshipMarkup(owningNodes, securityScoped), /relationship-technology/);
 });
 
 test("reserves every C4 boundary title band above its member nodes", () => {
@@ -529,10 +593,10 @@ test("keeps label hints out of the mandatory relationship route", () => {
       assert.deepEqual(JSON.parse(JSON.stringify(movedLabel)), JSON.parse(JSON.stringify(route)), `${view.id}:${relationship.id} routes independently of its label hint`);
     }
   }
-  assert.equal(relationshipCount, 34);
+  assert.equal(relationshipCount, Object.values(model.views).reduce((sum, view) => sum + view.relationships.length, 0));
 });
 
-test("keeps all 34 final relationships free of positive collinear self-overlap", () => {
+test("keeps all final relationships free of positive collinear self-overlap", () => {
   const { api, model } = explorerRuntime();
   assert.equal(typeof api.positiveCollinearOverlapLength, "function");
   let relationshipCount = 0;
@@ -551,10 +615,10 @@ test("keeps all 34 final relationships free of positive collinear self-overlap",
       }
     }
   }
-  assert.equal(relationshipCount, 34);
+  assert.equal(relationshipCount, Object.values(model.views).reduce((sum, view) => sum + view.relationships.length, 0));
 });
 
-test("keeps all 34 final relationships free of proper orthogonal self-intersections", () => {
+test("keeps all final relationships free of proper orthogonal self-intersections", () => {
   const { api, model } = explorerRuntime();
   assert.equal(typeof api.orthogonalProperIntersection, "function");
 
@@ -602,7 +666,7 @@ test("keeps all 34 final relationships free of proper orthogonal self-intersecti
       }
     }
   }
-  assert.equal(relationshipCount, 34);
+  assert.equal(relationshipCount, Object.values(model.views).reduce((sum, view) => sum + view.relationships.length, 0));
   assert.deepEqual(failures, []);
 });
 
@@ -625,7 +689,9 @@ test("separates all 14 opposing relationship pairs without a shared positive-len
       }
     }
   }
-  assert.equal(opposingPairCount, 14);
+  const expectedOpposingPairs = Object.values(model.views).reduce((sum, view) => sum + view.relationships.reduce((count, relationship, index) =>
+    count + view.relationships.slice(index + 1).filter((candidate) => candidate.from === relationship.to && candidate.to === relationship.from).length, 0), 0);
+  assert.equal(opposingPairCount, expectedOpposingPairs);
 });
 
 test("analytically keeps all relationship segments out of endpoint interiors", () => {
@@ -645,7 +711,7 @@ test("analytically keeps all relationship segments out of endpoint interiors", (
       }
     }
   }
-  assert.equal(relationshipCount, 34);
+  assert.equal(relationshipCount, Object.values(model.views).reduce((sum, view) => sum + view.relationships.length, 0));
 });
 
 test("keeps each final relationship free of retraced canonical segments and collapsed endpoints", () => {
@@ -919,6 +985,28 @@ test("animates desktop C4 panels through their own edges while reclaiming canvas
 test("keeps mobile side-sheet panel controls at a 44px touch target", () => {
   const mobileRules = html.match(/@media \(max-width: 799px\) \{([\s\S]*?)\n    \}/)?.[1] ?? "";
   assert.match(mobileRules, /\.panel-toggle(?:,\s*\.toolbar-action,\s*\.canvas-tool)?\s*\{[^}]*min-width:\s*2\.75rem;[^}]*min-height:\s*2\.75rem/s);
+});
+
+test("stacks compact canvas chrome so the toolbar and legend cannot overlap", () => {
+  const compactRules = html.match(/@media \(max-width: 799px\) \{([\s\S]*?)\n    \}/)?.[1] ?? "";
+  assert.match(compactRules, /\.canvas-tools\s*\{[^}]*max-width:\s*calc\(100vw - 1\.5rem\)[^}]*flex-wrap:\s*wrap/s);
+  assert.match(compactRules, /\.canvas-legend\s*\{[^}]*bottom:\s*4\.5rem[^}]*max-width:\s*calc\(100vw - 1\.5rem\)/s);
+});
+
+test("uses a balanced 3 by 2 toolbar and hides the legend at 320px", () => {
+  const narrowRules = html.match(/@media \(max-width: 360px\) \{([\s\S]*?)\n    \}/)?.[1] ?? "";
+  assert.match(narrowRules, /\.top-toolbar\s*\{[^}]*grid-template-columns:\s*auto minmax\(0,\s*1fr\) auto/s);
+  assert.match(narrowRules, /\.breadcrumb\s*\{[^}]*display:\s*none/s);
+  assert.match(narrowRules, /\.toolbar-context\s*\{[^}]*display:\s*block/s);
+  assert.match(narrowRules, /\.canvas-tools\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*repeat\(3,\s*2\.75rem\)/s);
+  assert.match(narrowRules, /\.canvas-legend\s*\{[^}]*display:\s*none/s);
+});
+
+test("strengthens C4 geometry and labels in increased contrast mode", () => {
+  const contrastRules = html.match(/@media \(prefers-contrast: more\) \{([\s\S]*?)\n    \}/)?.[1] ?? "";
+  for (const selector of [".relationship-path", ".arrow-marker", ".relationship-label-surface", ".c4-boundary rect", ".diagram-node .node-surface"]) {
+    assert.match(contrastRules, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
 });
 
 export { architectureModel, explorerRuntime, html, scriptBody };

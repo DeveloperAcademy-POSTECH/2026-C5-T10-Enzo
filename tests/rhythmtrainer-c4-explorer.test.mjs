@@ -475,4 +475,43 @@ test("opens the Inspector on selection and drills only on an explicit open actio
   assert.equal(terminal.currentView, "iphone-components");
 });
 
+test("keeps Model provenance and validation available before any node is selected", () => {
+  const { api, model } = explorerRuntime();
+  const state = { ...api.createWorkspaceState(), rightPanelOpen: true, inspectorTab: "model" };
+  const markup = api.buildInspectorMarkup(model, state);
+
+  assert.match(markup, /System Context/);
+  assert.match(markup, /엇박 리듬 훈련 시스템/);
+  assert.match(markup, new RegExp(model.meta.analyzedCommit));
+  assert.match(markup, new RegExp(model.meta.sourceRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(markup, /검증 경고 없음/);
+});
+
+test("links Views Layers and Inspector tabs to unique accessible tab panels", () => {
+  const { api, model } = explorerRuntime();
+  const state = api.createWorkspaceState();
+  const left = api.buildLeftPanelMarkup(model, state);
+  const inspector = api.buildInspectorMarkup(model, state);
+  const ids = [...`${left}${inspector}`.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+  assert.equal(new Set(ids).size, ids.length, "each rendered tab and tabpanel id is unique");
+
+  for (const tab of ["views", "layers"]) {
+    assert.match(left, new RegExp(`id="left-tab-${tab}"[^>]*role="tab"[^>]*aria-controls="left-tabpanel-${tab}"[^>]*aria-selected="${tab === "views"}"[^>]*tabindex="${tab === "views" ? "0" : "-1"}"`));
+    assert.match(left, new RegExp(`id="left-tabpanel-${tab}"[^>]*role="tabpanel"[^>]*aria-labelledby="left-tab-${tab}"`));
+  }
+  const leftViewsPanel = left.match(/<div id="left-tabpanel-views"[^>]*>/)?.[0] ?? "";
+  const leftLayersPanel = left.match(/<div id="left-tabpanel-layers"[^>]*>/)?.[0] ?? "";
+  assert.doesNotMatch(leftViewsPanel, /hidden/);
+  assert.match(leftLayersPanel, /hidden/);
+
+  for (const tab of ["overview", "flow", "evidence", "model"]) {
+    assert.match(inspector, new RegExp(`id="inspector-tab-${tab}"[^>]*role="tab"[^>]*aria-controls="inspector-tabpanel-${tab}"[^>]*aria-selected="${tab === "overview"}"[^>]*tabindex="${tab === "overview" ? "0" : "-1"}"`));
+    assert.match(inspector, new RegExp(`id="inspector-tabpanel-${tab}"[^>]*role="tabpanel"[^>]*aria-labelledby="inspector-tab-${tab}"`));
+  }
+  const inspectorOverviewPanel = inspector.match(/<div id="inspector-tabpanel-overview"[^>]*>/)?.[0] ?? "";
+  const inspectorModelPanel = inspector.match(/<div id="inspector-tabpanel-model"[^>]*>/)?.[0] ?? "";
+  assert.doesNotMatch(inspectorOverviewPanel, /hidden/);
+  assert.match(inspectorModelPanel, /hidden/);
+});
+
 export { architectureModel, explorerRuntime, html, scriptBody };

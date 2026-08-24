@@ -353,10 +353,6 @@
         <h1 class="panel-title">아키텍처 탐색</h1>
         <button id="left-panel-toggle" class="panel-toggle" type="button" aria-controls="left-panel" aria-expanded="true">패널 닫기</button>
       </div>
-      <div class="panel-tabs" role="tablist" aria-label="탐색 패널">
-        <button class="panel-tab" type="button" role="tab" data-left-tab="views" aria-selected="true">뷰</button>
-        <button class="panel-tab" type="button" role="tab" data-left-tab="layers" aria-selected="false">레이어</button>
-      </div>
       <div id="left-panel-content" class="panel-content"></div>
       <p class="panel-note">노드를 선택해 책임과 연결 근거를 확인하고, 드릴다운으로 다음 C4 수준을 탐색하세요.</p>
     </aside>
@@ -1063,6 +1059,17 @@
       </div>`;
     }
 
+    function buildLeftPanelMarkup(model, state) {
+      const tabs = [
+        ["views", "뷰"],
+        ["layers", "레이어"]
+      ].map(([tab, label]) => `<button class="panel-tab" type="button" id="left-tab-${tab}" role="tab" data-left-tab="${tab}" aria-controls="left-tabpanel-${tab}" aria-selected="${state.leftTab === tab}" tabindex="${state.leftTab === tab ? "0" : "-1"}">${label}</button>`).join("");
+      const view = model.views[state.currentView];
+      return `<div class="panel-tabs" role="tablist" aria-label="탐색 패널">${tabs}</div>
+        <div id="left-tabpanel-views" role="tabpanel" aria-labelledby="left-tab-views"${state.leftTab === "views" ? "" : " hidden"}>${buildViewsMarkup(model, state)}</div>
+        <div id="left-tabpanel-layers" role="tabpanel" aria-labelledby="left-tab-layers"${state.leftTab === "layers" ? "" : " hidden"}>${buildLayersMarkup(view, state)}</div>`;
+    }
+
     function formatRelationshipFlow(model, view, relationship) {
       const source = getNodeById(model, view.id, relationship.from);
       const target = getNodeById(model, view.id, relationship.to);
@@ -1072,19 +1079,29 @@
     function buildInspectorMarkup(model, state) {
       const view = model.views[state.currentView];
       const node = state.selectedNode ? getNodeById(model, state.currentView, state.selectedNode) : null;
-      const tabs = INSPECTOR_TABS.map((tab) => `<button type="button" role="tab" data-inspector-tab="${tab}" aria-selected="${state.inspectorTab === tab}">${escapeHTML(tab)}</button>`).join("");
-      if (!node) return `<div class="inspector-tabs" role="tablist">${tabs}</div><p class="evidence-empty">요소를 선택해 책임과 근거를 확인하세요.</p>`;
-      const incoming = view.relationships.filter((relationship) => relationship.to === node.id);
-      const outgoing = view.relationships.filter((relationship) => relationship.from === node.id);
-      const meta = node.technology ? `${node.type}: ${node.technology}` : node.type;
-      const status = node.status === "gap" ? "구현됨 · 미배선" : "구현·연결됨";
-      const contents = {
-        overview: `<h2>${escapeHTML(node.name)}</h2><p>[${escapeHTML(meta)}]</p><p>${escapeHTML(node.description)}</p><p>${status}</p><div class="overview-evidence">${node.evidence.map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div>${node.drilldown && model.views[node.drilldown] ? `<button type="button" data-open-node-id="${escapeHTML(node.id)}">Open L${model.views[node.drilldown].level}</button>` : ""}`,
-        flow: `<h2>Flow</h2>${[...incoming, ...outgoing].map((relationship) => formatRelationshipFlow(model, view, relationship)).join("") || "<p>연결된 관계가 없습니다.</p>"}`,
-        evidence: `<h2>Evidence</h2><section><h3>입력</h3>${listMarkup(node.inputs)}</section><section><h3>출력</h3>${listMarkup(node.outputs)}</section><section><h3>코드 근거</h3><div class="evidence-files">${node.evidence.map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div></section>`,
-        model: `<h2>${escapeHTML(view.title)}</h2><p>${escapeHTML(view.scopeName)}</p><code>${escapeHTML(model.meta.analyzedCommit)}</code><code>${escapeHTML(model.meta.sourceRoot)}</code><ul>${validateModel(model).errors.map((error) => `<li>${escapeHTML(error)}</li>`).join("")}</ul>`
+      const tabs = INSPECTOR_TABS.map((tab) => `<button type="button" id="inspector-tab-${tab}" role="tab" data-inspector-tab="${tab}" aria-controls="inspector-tabpanel-${tab}" aria-selected="${state.inspectorTab === tab}" tabindex="${state.inspectorTab === tab ? "0" : "-1"}">${escapeHTML(tab)}</button>`).join("");
+      const validation = validateModel(model);
+      const modelContent = `<h2>${escapeHTML(view.title)}</h2><p>${escapeHTML(view.scopeName)}</p><code>${escapeHTML(model.meta.analyzedCommit)}</code><code>${escapeHTML(model.meta.sourceRoot)}</code><section><h3>모델 검증</h3>${validation.errors.length ? listMarkup(validation.errors) : "<p>검증 경고 없음</p>"}</section>`;
+      const emptyContent = {
+        overview: "<p class=\"evidence-empty\">요소를 선택해 책임과 구현 상태를 확인하세요.</p>",
+        flow: "<p class=\"evidence-empty\">요소를 선택해 들어오고 나가는 관계를 확인하세요.</p>",
+        evidence: "<p class=\"evidence-empty\">요소를 선택해 입력, 출력, 코드 근거를 확인하세요.</p>",
+        model: modelContent
       };
-      return `<div class="inspector-tabs" role="tablist">${tabs}</div><div class="inspector-tabpanel" role="tabpanel">${contents[state.inspectorTab] ?? contents.overview}</div>`;
+      const contents = node ? (() => {
+        const incoming = view.relationships.filter((relationship) => relationship.to === node.id);
+        const outgoing = view.relationships.filter((relationship) => relationship.from === node.id);
+        const meta = node.technology ? `${node.type}: ${node.technology}` : node.type;
+        const status = node.status === "gap" ? "구현됨 · 미배선" : "구현·연결됨";
+        return {
+          overview: `<h2>${escapeHTML(node.name)}</h2><p>[${escapeHTML(meta)}]</p><p>${escapeHTML(node.description)}</p><p>${status}</p><div class="overview-evidence">${node.evidence.map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div>${node.drilldown && model.views[node.drilldown] ? `<button type="button" data-open-node-id="${escapeHTML(node.id)}">Open L${model.views[node.drilldown].level}</button>` : ""}`,
+          flow: `<h2>Flow</h2>${[...incoming, ...outgoing].map((relationship) => formatRelationshipFlow(model, view, relationship)).join("") || "<p>연결된 관계가 없습니다.</p>"}`,
+          evidence: `<h2>Evidence</h2><section><h3>입력</h3>${listMarkup(node.inputs)}</section><section><h3>출력</h3>${listMarkup(node.outputs)}</section><section><h3>코드 근거</h3><div class="evidence-files">${node.evidence.map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div></section>`,
+          model: modelContent
+        };
+      })() : emptyContent;
+      const panels = INSPECTOR_TABS.map((tab) => `<div id="inspector-tabpanel-${tab}" class="inspector-tabpanel" role="tabpanel" aria-labelledby="inspector-tab-${tab}"${state.inspectorTab === tab ? "" : " hidden"}>${contents[tab]}</div>`).join("");
+      return `<div class="inspector-tabs" role="tablist">${tabs}</div>${panels}`;
     }
 
     function switchView(state, viewId) {
@@ -1307,9 +1324,7 @@
     function renderNavigationPanel(view, state) {
       const content = document.getElementById("left-panel-content");
       if (!content) return;
-      content.innerHTML = state.leftTab === "views"
-        ? buildViewsMarkup(architectureModel, state)
-        : buildLayersMarkup(view, state);
+      content.innerHTML = buildLeftPanelMarkup(architectureModel, state);
     }
 
     function renderInspectorPanel() {
@@ -1319,6 +1334,7 @@
     }
 
     function bindRenderedControls() {
+      document.querySelectorAll("#left-panel-content [data-left-tab]").forEach((button) => button.addEventListener("click", () => updateWorkspace({ type: "set-left-tab", tab: button.dataset.leftTab })));
       document.querySelectorAll("#left-panel-content [data-view-id]").forEach((button) => button.addEventListener("click", () => navigateTo(button.dataset.viewId)));
       document.querySelectorAll("#left-panel-content [data-node-id]").forEach((element) => {
         element.addEventListener("click", () => dispatchWorkspace({ type: "select-node", nodeId: element.dataset.nodeId }));
@@ -1651,6 +1667,7 @@
       buildEvidenceMarkup,
       buildViewsMarkup,
       buildLayersMarkup,
+      buildLeftPanelMarkup,
       buildInspectorMarkup,
       switchView,
       openDrilldown,

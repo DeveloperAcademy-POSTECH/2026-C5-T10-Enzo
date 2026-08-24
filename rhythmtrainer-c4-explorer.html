@@ -23,7 +23,13 @@
       --gap: #a45a08;
       --gap-soft: #fff4df;
       --focus: #ff8a1e;
-      --shadow: 0 18px 50px rgba(32, 56, 78, 0.12);
+      --space-1: .5rem;
+      --space-2: .75rem;
+      --space-3: 1rem;
+      --space-4: 1.5rem;
+      --space-5: 2rem;
+      --space-6: 3rem;
+      --shadow: 0 20px 60px rgba(32, 56, 78, 0.1);
     }
 
     * { box-sizing: border-box; }
@@ -34,9 +40,13 @@
       background: var(--page);
       color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-optical-sizing: auto;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
     button { font: inherit; }
+    button:not(:disabled) { -webkit-tap-highlight-color: transparent; }
     button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 
     .app-shell { min-height: 100vh; }
@@ -44,15 +54,15 @@
     .topbar {
       display: grid;
       grid-template-columns: minmax(250px, 1fr) auto;
-      gap: 24px;
+      gap: var(--space-5);
       align-items: end;
-      padding: 28px clamp(20px, 4vw, 60px) 22px;
+      padding: 40px clamp(32px, 5vw, 72px) 32px;
       color: #fff;
       background: linear-gradient(115deg, #0e3658, #12628f 66%, #1a739f);
     }
 
     .eyebrow {
-      margin: 0 0 7px;
+      margin: 0 0 var(--space-1);
       color: #b9dff3;
       font-size: 12px;
       font-weight: 700;
@@ -60,44 +70,66 @@
       text-transform: uppercase;
     }
 
-    .brand-title { margin: 0; font-size: clamp(24px, 3vw, 38px); letter-spacing: -0.035em; }
-    .brand-copy { margin: 8px 0 0; max-width: 720px; color: #d8ecf7; font-size: 14px; line-height: 1.6; }
+    .brand-title { margin: 0; font-size: clamp(28px, 3vw, 40px); line-height: 1.08; letter-spacing: -0.035em; }
+    .brand-copy { margin: var(--space-2) 0 0; max-width: 760px; color: #d8ecf7; font-size: 15px; line-height: 1.7; }
 
-    .level-nav { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .level-nav { display: flex; gap: var(--space-1); align-items: center; flex-wrap: wrap; justify-content: flex-end; }
     .level-step {
-      min-width: 82px;
-      padding: 9px 12px;
+      min-width: 88px;
+      min-height: 50px;
+      padding: 11px 14px;
       border: 1px solid rgba(255,255,255,.28);
-      border-radius: 10px;
+      border-radius: 12px;
       background: rgba(255,255,255,.08);
       color: #dceef7;
       text-align: left;
+      transition: transform 100ms ease-out, background-color 160ms ease, border-color 160ms ease;
     }
     .level-step strong, .level-step span { display: block; }
     .level-step strong { font-size: 12px; }
     .level-step span { margin-top: 2px; font-size: 11px; opacity: .78; }
-    .level-step[aria-current="step"] { border-color: #fff; background: #fff; color: var(--blue-deep); }
+    .level-step[aria-current="step"] { border-color: #fff; background: #fff; color: var(--blue-deep); box-shadow: 0 8px 24px rgba(4, 31, 52, .16); }
     .level-step:disabled { opacity: .46; cursor: not-allowed; }
+    .level-step:not(:disabled):active { transform: scale(.97); transition-duration: 80ms; }
 
-    .workspace { padding: 18px clamp(16px, 3vw, 44px) 34px; }
-    .toolbar { display: flex; align-items: center; gap: 14px; min-height: 44px; }
+    .workspace { width: min(100%, 1680px); margin: 0 auto; padding: 32px clamp(24px, 3vw, 48px) 56px; }
+    .toolbar {
+      position: sticky;
+      top: 8px;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      min-height: 52px;
+      padding: 8px 12px;
+      border: 1px solid rgba(207, 216, 226, .78);
+      border-radius: 14px;
+      background: rgba(243, 246, 249, .82);
+      box-shadow: 0 10px 32px rgba(32, 56, 78, .08);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+    }
     .back-button {
       border: 1px solid var(--line);
-      border-radius: 9px;
-      padding: 8px 12px;
+      border-radius: 10px;
+      min-height: 38px;
+      padding: 9px 14px;
       background: var(--surface);
       color: var(--ink);
       cursor: pointer;
+      transition: transform 100ms ease-out, background-color 160ms ease;
     }
     .back-button:disabled { opacity: .45; cursor: default; }
+    .back-button:not(:disabled):active, .crumb:not([aria-current="page"]):active { transform: scale(.97); transition-duration: 80ms; }
 
     .breadcrumb { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .crumb {
       border: 0;
-      padding: 5px 7px;
+      padding: 7px 8px;
       background: transparent;
       color: var(--blue-deep);
       cursor: pointer;
+      transition: transform 100ms ease-out, color 160ms ease;
     }
     .crumb[aria-current="page"] { color: var(--ink); font-weight: 700; cursor: default; }
     .crumb-separator { color: var(--line-strong); }
@@ -105,27 +137,27 @@
     .view-intro {
       display: flex;
       justify-content: space-between;
-      gap: 28px;
+      gap: var(--space-5);
       align-items: end;
-      margin: 18px 0 16px;
+      margin: 28px 0;
     }
-    .view-kicker { margin: 0 0 5px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-    .view-title { margin: 0; font-size: clamp(24px, 2.5vw, 36px); letter-spacing: -.035em; }
-    .view-description { margin: 8px 0 0; max-width: 800px; color: var(--muted); line-height: 1.6; }
-    .scope-chip { flex: 0 0 auto; border-left: 3px solid var(--blue); padding: 5px 0 5px 12px; color: var(--muted); font-size: 13px; }
+    .view-kicker { margin: 0 0 var(--space-1); color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .view-title { margin: 0; font-size: clamp(28px, 2.7vw, 40px); line-height: 1.12; letter-spacing: -.035em; }
+    .view-description { margin: var(--space-2) 0 0; max-width: 840px; color: var(--muted); font-size: 16px; line-height: 1.7; }
+    .scope-chip { flex: 0 0 auto; border-left: 3px solid var(--blue); padding: 7px 0 7px 14px; color: var(--muted); font-size: 13px; line-height: 1.5; }
     .scope-chip strong { display: block; margin-top: 2px; color: var(--ink); }
 
-    .explorer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: 18px; align-items: start; }
-    .diagram-panel, .evidence-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
-    .diagram-panel { padding: 16px; min-width: 0; }
+    .explorer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 320px); gap: 28px; align-items: start; }
+    .diagram-panel, .evidence-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
+    .diagram-panel { padding: 24px; min-width: 0; }
 
     .diagram-stage {
       position: relative;
       width: 100%;
       aspect-ratio: 1020 / 640;
-      min-height: 500px;
+      min-height: 540px;
       overflow: hidden;
-      border-radius: 12px;
+      border-radius: 16px;
       background-color: var(--surface-soft);
       background-image: radial-gradient(circle, #d8e0e8 1px, transparent 1px);
       background-size: 20px 20px;
@@ -144,20 +176,21 @@
       overflow: hidden;
       padding: 12px 13px;
       border: 1px solid rgba(0,0,0,.08);
-      border-radius: 10px;
+      border-radius: 12px;
       background: var(--blue);
       color: #fff;
       text-align: left;
       box-shadow: 0 8px 22px rgba(30, 62, 88, .16);
       cursor: pointer;
-      transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+      transition: transform 140ms ease-out, box-shadow 180ms ease, filter 180ms ease;
     }
     .diagram-node:hover { transform: translateY(-2px); filter: brightness(1.04); box-shadow: 0 12px 28px rgba(30, 62, 88, .23); }
+    .diagram-node:active { transform: translateY(0) scale(.985); transition-duration: 80ms; }
     .diagram-node[aria-pressed="true"] { box-shadow: 0 0 0 4px rgba(255,138,30,.42), 0 12px 28px rgba(30,62,88,.2); }
     .diagram-node.status-person { background: var(--person); }
     .diagram-node.status-external { background: var(--external); }
     .diagram-node.status-gap { border: 2px dashed var(--gap); background: var(--gap-soft); color: #6e3a04; }
-    .node-name { font-size: clamp(12px, 1.15vw, 16px); font-weight: 750; line-height: 1.22; }
+    .node-name { font-size: clamp(12px, 1.15vw, 16px); font-weight: 750; line-height: 1.22; letter-spacing: -.01em; }
     .node-meta { margin-top: 4px; font-size: 10px; line-height: 1.25; opacity: .86; }
     .node-description { margin-top: 8px; font-size: clamp(10px, .85vw, 12px); line-height: 1.35; opacity: .94; }
     .node-drill { margin-top: 8px; font-size: 10px; font-weight: 750; letter-spacing: .02em; }
@@ -195,45 +228,45 @@
     }
     .relationship-index.status-gap { border-style: dashed; border-color: var(--gap); color: var(--gap); }
 
-    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; color: var(--muted); font-size: 12px; }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .legend-item { display: inline-flex; gap: 6px; align-items: center; }
     .legend-swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--blue); }
     .legend-swatch.person { background: var(--person); }
     .legend-swatch.external { background: var(--external); }
     .legend-swatch.gap { border: 2px dashed var(--gap); background: var(--gap-soft); }
 
-    .relationship-summary { display: none; margin-top: 18px; }
+    .relationship-summary { display: none; margin-top: 24px; }
     .relationship-summary.is-visible { display: block; }
-    .relationship-summary h3 { margin: 0 0 10px; font-size: 14px; }
-    .relationship-summary-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 0; padding: 0; list-style: none; }
-    .relationship-summary-item { padding: 11px 12px; border-left: 3px solid var(--line-strong); background: #f0f4f7; }
+    .relationship-summary h3 { margin: 0 0 12px; font-size: 15px; line-height: 1.35; }
+    .relationship-summary-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+    .relationship-summary-item { padding: 14px 16px; border-left: 3px solid var(--line-strong); border-radius: 0 10px 10px 0; background: #f0f4f7; }
     .relationship-summary-item.status-gap { border-left-color: var(--gap); background: var(--gap-soft); }
     .relationship-summary-item strong, .relationship-summary-item span, .relationship-summary-item small { display: block; }
-    .relationship-summary-item strong { font-size: 12px; }
-    .relationship-summary-item span { margin-top: 4px; font-size: 12px; line-height: 1.4; }
-    .relationship-summary-item small { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .relationship-summary-item strong { font-size: 12px; line-height: 1.45; }
+    .relationship-summary-item span { margin-top: 5px; font-size: 12px; line-height: 1.5; }
+    .relationship-summary-item small { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
 
-    .evidence-panel { position: sticky; top: 16px; overflow: hidden; }
-    .evidence-head { padding: 18px 20px; color: #fff; background: var(--blue-deep); }
+    .evidence-panel { position: sticky; top: 24px; overflow: hidden; }
+    .evidence-head { padding: 24px 26px; color: #fff; background: var(--blue-deep); }
     .evidence-kicker { margin: 0; color: #bfe1f2; font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
-    .evidence-title { margin: 7px 0 0; font-size: 21px; line-height: 1.2; }
-    .evidence-meta { margin: 6px 0 0; color: #d6ebf6; font-size: 12px; line-height: 1.4; }
-    .evidence-body { padding: 18px 20px 22px; }
-    .evidence-description { margin: 0; color: var(--ink); line-height: 1.65; }
-    .evidence-section { margin-top: 20px; }
-    .evidence-section h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; }
-    .evidence-section ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.55; }
-    .evidence-files { display: grid; gap: 6px; }
-    .evidence-files code { display: block; padding: 7px 8px; border-radius: 6px; background: #edf2f6; color: #24435a; font-size: 11px; overflow-wrap: anywhere; }
-    .status-note { margin: 14px 0 0; padding: 10px 11px; border-left: 3px solid var(--gap); background: var(--gap-soft); color: #6e3a04; font-size: 12px; line-height: 1.5; }
-    .evidence-empty { padding: 24px 20px 30px; color: var(--muted); line-height: 1.65; }
+    .evidence-title { margin: 8px 0 0; font-size: 22px; line-height: 1.18; letter-spacing: -.02em; }
+    .evidence-meta { margin: 7px 0 0; color: #d6ebf6; font-size: 12px; line-height: 1.5; }
+    .evidence-body { padding: 24px 26px 30px; }
+    .evidence-description { margin: 0; color: var(--ink); font-size: 15px; line-height: 1.72; }
+    .evidence-section { margin-top: 28px; }
+    .evidence-section h4 { margin: 0 0 10px; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; }
+    .evidence-section ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .evidence-files { display: grid; gap: 8px; }
+    .evidence-files code { display: block; padding: 9px 10px; border-radius: 8px; background: #edf2f6; color: #24435a; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+    .status-note { margin: 18px 0 0; padding: 12px 14px; border-left: 3px solid var(--gap); background: var(--gap-soft); color: #6e3a04; font-size: 12px; line-height: 1.6; }
+    .evidence-empty { padding: 30px 26px 36px; color: var(--muted); font-size: 15px; line-height: 1.75; }
 
     .provenance {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 24px;
+      gap: 32px;
       align-items: start;
-      padding: 22px clamp(20px, 4vw, 60px) 28px;
+      padding: 30px clamp(32px, 5vw, 72px) 36px;
       border-top: 1px solid #294861;
       background: #102d43;
       color: #c5d8e4;
@@ -252,34 +285,55 @@
     }
 
     @media (max-width: 760px) {
-      .topbar { padding: 22px 18px 18px; gap: 18px; }
-      .level-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: 5px; }
-      .level-step { min-width: 0; padding: 8px; }
-      .workspace { padding: 12px 12px 24px; }
-      .toolbar { align-items: flex-start; }
-      .breadcrumb { gap: 2px; font-size: 12px; }
-      .view-intro { display: block; margin-top: 14px; }
-      .scope-chip { margin-top: 14px; }
-      .explorer-grid { grid-template-columns: 1fr; }
-      .diagram-panel { padding: 10px; border-radius: 12px; }
+      .topbar { padding: 28px 20px 24px; gap: 22px; }
+      .brand-title { font-size: clamp(27px, 8vw, 34px); }
+      .brand-copy { margin-top: 10px; font-size: 14px; line-height: 1.72; }
+      .level-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: 8px; }
+      .level-step { min-width: 0; min-height: 54px; padding: 10px 8px; }
+      .workspace { padding: 20px 16px 40px; }
+      .toolbar { top: 6px; align-items: flex-start; gap: 10px; padding: 8px 10px; }
+      .back-button { min-height: 40px; padding-inline: 12px; }
+      .breadcrumb { gap: 4px; font-size: 12px; line-height: 1.5; }
+      .view-intro { display: block; margin: 24px 0; }
+      .view-title { font-size: clamp(27px, 8vw, 34px); }
+      .view-description { margin-top: 10px; font-size: 15px; line-height: 1.75; }
+      .scope-chip { margin-top: 20px; padding-block: 8px; }
+      .explorer-grid { grid-template-columns: 1fr; gap: 24px; }
+      .diagram-panel { padding: 16px; border-radius: 16px; }
       .diagram-stage { min-height: 0; aspect-ratio: auto; overflow: visible; background-size: 16px 16px; }
       .relationship-layer { display: none; }
-      .diagram-nodes { position: relative; display: grid; gap: 10px; padding: 8px; }
+      .diagram-nodes { position: relative; display: grid; gap: 14px; padding: 12px; }
       .diagram-node {
         position: relative !important;
         inset: auto !important;
         width: 100% !important;
         height: auto !important;
-        min-height: 112px;
+        min-height: 128px;
+        padding: 16px 15px;
         transform: none !important;
       }
-      .node-name { font-size: 15px; }
-      .node-meta, .node-description, .node-drill, .node-status { font-size: 11px; }
+      .node-name { font-size: 16px; line-height: 1.3; }
+      .node-meta { font-size: 11px; line-height: 1.4; }
+      .node-description { font-size: 12px; line-height: 1.55; }
+      .node-drill, .node-status { font-size: 11px; }
       .relationship-summary { display: block; }
-      .relationship-summary-list { grid-template-columns: 1fr; }
-      .legend { gap: 9px; font-size: 11px; }
+      .relationship-summary-list { grid-template-columns: 1fr; gap: 12px; }
+      .relationship-summary-item { padding: 15px 16px; }
+      .legend { gap: 12px; font-size: 11px; }
       .evidence-panel { position: static; }
-      .provenance { grid-template-columns: 1fr; padding: 20px 18px 26px; gap: 12px; }
+      .evidence-head { padding: 24px 22px; }
+      .evidence-body { padding: 24px 22px 30px; }
+      .evidence-empty { padding: 28px 22px 34px; }
+      .provenance { grid-template-columns: 1fr; padding: 28px 20px 32px; gap: 20px; }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .toolbar { background: var(--page); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    }
+
+    @media (prefers-contrast: more) {
+      .toolbar, .diagram-panel, .evidence-panel { border-color: var(--ink); box-shadow: none; }
+      .relationship-summary-item { border: 1px solid var(--line-strong); border-left-width: 4px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -509,7 +563,7 @@
             "description": "온보딩, 탭 셸, 곡 선택, 분석·연습·결과 화면을 구성합니다.", "status": "active",
             "evidence": ["RhythmTrainer/RhythmTrainerApp.swift", "RhythmTrainer/AppRootView.swift", "RhythmTrainer/AppShellView.swift", "RhythmTrainer/Views/PracticeJourneyView.swift"],
             "inputs": ["사용자 행동", "AppFlow 화면 상태", "SessionResult"], "outputs": ["곡 선택", "시작·종료 명령", "결과 표현"],
-            "x": 35, "y": 30, "w": 210, "h": 145
+            "x": 35, "y": 30, "w": 210, "h": 150
           },
           {
             "id": "app-flow", "name": "Practice Flow Coordinator", "type": "Component", "technology": "Combine · @MainActor",
@@ -523,14 +577,14 @@
             "description": "오디오를 44.1kHz mono Float32 PCM으로 변환하고 예약 시각에 재생합니다.", "status": "active",
             "evidence": ["RhythmTrainer/Services/SongUploadService.swift", "RhythmTrainer/ViewModels/PhonePlaybackClock.swift"],
             "inputs": ["Security-scoped audio URL", "songStartUptime"], "outputs": ["PCM samples", "재생 위치"],
-            "x": 545, "y": 30, "w": 210, "h": 145
+            "x": 545, "y": 30, "w": 210, "h": 150
           },
           {
             "id": "beat-adapter", "name": "Beat Analysis Adapter", "type": "Component", "technology": "Swift / Objective-C bridge",
             "description": "PCM을 네이티브 분석기로 전달하고 결과를 BeatGrid로 변환합니다.", "status": "active",
             "evidence": ["RhythmTrainer/Services/BeatAnalysisService.swift"],
             "inputs": ["PCM samples + sample rate"], "outputs": ["BeatGrid"],
-            "x": 790, "y": 30, "w": 190, "h": 145
+            "x": 790, "y": 30, "w": 190, "h": 165
           },
           {
             "id": "result-scoring", "name": "Result Scoring", "type": "Component", "technology": "Swift domain logic",
@@ -551,14 +605,14 @@
             "description": "멜 스펙트로그램, ONNX 추론, 후처리로 beat time과 beat count를 추출합니다.", "status": "active",
             "evidence": ["RhythmTrainer/Services/Library/BeatThis_Bridging-Header/BeatThisBridge.mm", "RhythmTrainer/Services/Library/BeatThis_Source/beat_this_api.cpp", "RhythmTrainer/Services/beat_this.onnx"],
             "inputs": ["Float PCM buffer", "sample rate", "ONNX model"], "outputs": ["beat times", "beat counts"],
-            "x": 545, "y": 265, "w": 210, "h": 155
+            "x": 545, "y": 265, "w": 210, "h": 165
           },
           {
             "id": "persistence", "name": "Persistence Repository", "type": "Component", "technology": "SwiftData",
             "description": "연습 세션과 BeatGrid 캐시 타입은 구현되어 있지만 현재 앱 진입점과 흐름에 주입되지 않았습니다.", "status": "gap",
             "evidence": ["RhythmTrainer/Models/PracticeSessionStore.swift", "RhythmTrainer/RhythmTrainerApp.swift"],
             "inputs": ["PracticeSession", "BeatGrid"], "outputs": ["저장된 세션", "캐시된 BeatGrid"],
-            "x": 790, "y": 265, "w": 190, "h": 155
+            "x": 790, "y": 265, "w": 190, "h": 195
           },
           {
             "id": "watch-app-external", "name": "RhythmTrainer Watch App", "type": "Container", "technology": "watchOS",
@@ -592,7 +646,7 @@
             "description": "곡과 BeatGrid를 보내고 Watch가 만든 세션 상태와 결과를 받는 상대 컨테이너입니다.", "status": "external",
             "evidence": ["RhythmTrainer/WatchConnectivity/PhoneConnectivityManager.swift"],
             "inputs": ["start", "alert state", "SessionResult"], "outputs": ["Song + BeatGrid", "session stop", "clock ping"],
-            "x": 35, "y": 30, "w": 210, "h": 135
+            "x": 35, "y": 30, "w": 210, "h": 150
           },
           {
             "id": "watch-connectivity", "name": "Watch Connectivity Gateway", "type": "Component", "technology": "WatchConnectivity",
@@ -606,14 +660,14 @@
             "description": "waiting→ready→practicing→done 화면과 서비스 수명주기를 연결합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/ContentView.swift"],
             "inputs": ["song callback", "judge state", "사용자 시작·종료"], "outputs": ["service start·stop", "햅틱·화면 경고"],
-            "x": 545, "y": 30, "w": 210, "h": 135
+            "x": 545, "y": 30, "w": 210, "h": 150
           },
           {
             "id": "background-runtime", "name": "Background Runtime", "type": "Component", "technology": "HealthKit",
             "description": "HKWorkoutSession으로 화면이 꺼진 동안에도 센서와 판정 실행을 유지합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/Services/WorkoutSessionManager.swift", "RhythmTrainerWatch-Watch-App-Info.plist"],
             "inputs": ["start / stop", "HealthKit authorization"], "outputs": ["background workout session state"],
-            "x": 790, "y": 30, "w": 190, "h": 135
+            "x": 790, "y": 30, "w": 190, "h": 150
           },
           {
             "id": "motion-capture", "name": "Motion Capture", "type": "Component", "technology": "CoreMotion · 50Hz",
@@ -648,7 +702,7 @@
             "description": "3연속 이탈 시 경고하고 2연속 정확 시 정상으로 복귀합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/Services/RhythmCoach.swift"],
             "inputs": ["BeatMatcher.Verdict"], "outputs": ["normal / offBeat state"],
-            "x": 545, "y": 485, "w": 210, "h": 120
+            "x": 545, "y": 485, "w": 210, "h": 130
           }
         ],
         "relationships": [

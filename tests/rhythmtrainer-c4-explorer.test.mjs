@@ -70,4 +70,38 @@ test("exports navigation helpers and rejects dangling relationships", () => {
   assert.equal(api.validateModel(broken).valid, false);
 });
 
+test("drills from context to both component views and stops at level three", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.createNavigationState, "function", "navigation state factory must exist");
+  assert.equal(typeof api.reduceNavigation, "function", "navigation reducer must exist");
+
+  let state = api.createNavigationState();
+  state = api.reduceNavigation(model, state, { type: "activate-node", nodeId: "rhythm-system" });
+  assert.equal(state.currentView, "containers");
+  state = api.reduceNavigation(model, state, { type: "activate-node", nodeId: "iphone-app" });
+  assert.equal(state.currentView, "iphone-components");
+  state = api.reduceNavigation(model, state, { type: "activate-node", nodeId: "beatthis-engine" });
+  assert.equal(state.currentView, "iphone-components");
+  assert.equal(state.selectedNode, "beatthis-engine");
+  state = api.reduceNavigation(model, state, { type: "up" });
+  assert.equal(state.currentView, "containers");
+  state = api.reduceNavigation(model, state, { type: "activate-node", nodeId: "watch-app" });
+  assert.equal(state.currentView, "watch-components");
+});
+
+test("renders semantic node controls and source-backed evidence", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.buildNodeMarkup, "function", "node markup builder must exist");
+  assert.equal(typeof api.buildEvidenceMarkup, "function", "evidence markup builder must exist");
+
+  const beatThis = api.getNodeById(model, "iphone-components", "beatthis-engine");
+  const nodeMarkup = api.buildNodeMarkup(beatThis, true);
+  assert.match(nodeMarkup, /^<button/);
+  assert.match(nodeMarkup, /aria-pressed="true"/);
+  assert.match(nodeMarkup, /BeatThis Native Engine/);
+  const evidenceMarkup = api.buildEvidenceMarkup(beatThis);
+  assert.match(evidenceMarkup, /BeatThisBridge\.mm/);
+  assert.match(evidenceMarkup, /beat_this_api\.cpp/);
+});
+
 export { architectureModel, explorerRuntime, html, scriptBody };

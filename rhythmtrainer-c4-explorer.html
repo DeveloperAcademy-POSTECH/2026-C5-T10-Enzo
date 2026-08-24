@@ -4,11 +4,255 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>엇박 · C4 Architecture Explorer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23144773'/%3E%3Cpath d='M20 42V20h8v22zm16 0V14h8v28z' fill='white'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f3f6f9;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --ink: #152535;
+      --muted: #5d6b78;
+      --line: #cfd8e2;
+      --line-strong: #7f91a3;
+      --blue: #16669a;
+      --blue-deep: #0f4f7b;
+      --blue-soft: #e8f3fb;
+      --person: #123f67;
+      --external: #6f7c87;
+      --gap: #a45a08;
+      --gap-soft: #fff4df;
+      --focus: #ff8a1e;
+      --shadow: 0 18px 50px rgba(32, 56, 78, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--page);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button { font: inherit; }
+    button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+    .app-shell { min-height: 100vh; }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(250px, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      padding: 28px clamp(20px, 4vw, 60px) 22px;
+      color: #fff;
+      background: linear-gradient(115deg, #0e3658, #12628f 66%, #1a739f);
+    }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: #b9dff3;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .brand-title { margin: 0; font-size: clamp(24px, 3vw, 38px); letter-spacing: -0.035em; }
+    .brand-copy { margin: 8px 0 0; max-width: 720px; color: #d8ecf7; font-size: 14px; line-height: 1.6; }
+
+    .level-nav { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .level-step {
+      min-width: 82px;
+      padding: 9px 12px;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 10px;
+      background: rgba(255,255,255,.08);
+      color: #dceef7;
+      text-align: left;
+    }
+    .level-step strong, .level-step span { display: block; }
+    .level-step strong { font-size: 12px; }
+    .level-step span { margin-top: 2px; font-size: 11px; opacity: .78; }
+    .level-step[aria-current="step"] { border-color: #fff; background: #fff; color: var(--blue-deep); }
+    .level-step:disabled { opacity: .46; cursor: not-allowed; }
+
+    .workspace { padding: 18px clamp(16px, 3vw, 44px) 34px; }
+    .toolbar { display: flex; align-items: center; gap: 14px; min-height: 44px; }
+    .back-button {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 8px 12px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .back-button:disabled { opacity: .45; cursor: default; }
+
+    .breadcrumb { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .crumb {
+      border: 0;
+      padding: 5px 7px;
+      background: transparent;
+      color: var(--blue-deep);
+      cursor: pointer;
+    }
+    .crumb[aria-current="page"] { color: var(--ink); font-weight: 700; cursor: default; }
+    .crumb-separator { color: var(--line-strong); }
+
+    .view-intro {
+      display: flex;
+      justify-content: space-between;
+      gap: 28px;
+      align-items: end;
+      margin: 18px 0 16px;
+    }
+    .view-kicker { margin: 0 0 5px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .view-title { margin: 0; font-size: clamp(24px, 2.5vw, 36px); letter-spacing: -.035em; }
+    .view-description { margin: 8px 0 0; max-width: 800px; color: var(--muted); line-height: 1.6; }
+    .scope-chip { flex: 0 0 auto; border-left: 3px solid var(--blue); padding: 5px 0 5px 12px; color: var(--muted); font-size: 13px; }
+    .scope-chip strong { display: block; margin-top: 2px; color: var(--ink); }
+
+    .explorer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: 18px; align-items: start; }
+    .diagram-panel, .evidence-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+    .diagram-panel { padding: 16px; min-width: 0; }
+
+    .diagram-stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1020 / 640;
+      min-height: 500px;
+      overflow: hidden;
+      border-radius: 12px;
+      background-color: var(--surface-soft);
+      background-image: radial-gradient(circle, #d8e0e8 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    .relationship-layer, .diagram-nodes { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .relationship-layer { z-index: 1; pointer-events: none; }
+    .diagram-nodes { z-index: 2; }
+
+    .diagram-node {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: stretch;
+      overflow: hidden;
+      padding: 12px 13px;
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 10px;
+      background: var(--blue);
+      color: #fff;
+      text-align: left;
+      box-shadow: 0 8px 22px rgba(30, 62, 88, .16);
+      cursor: pointer;
+      transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+    }
+    .diagram-node:hover { transform: translateY(-2px); filter: brightness(1.04); box-shadow: 0 12px 28px rgba(30, 62, 88, .23); }
+    .diagram-node[aria-pressed="true"] { box-shadow: 0 0 0 4px rgba(255,138,30,.42), 0 12px 28px rgba(30,62,88,.2); }
+    .diagram-node.status-person { background: var(--person); }
+    .diagram-node.status-external { background: var(--external); }
+    .diagram-node.status-gap { border: 2px dashed var(--gap); background: var(--gap-soft); color: #6e3a04; }
+    .node-name { font-size: clamp(12px, 1.15vw, 16px); font-weight: 750; line-height: 1.22; }
+    .node-meta { margin-top: 4px; font-size: 10px; line-height: 1.25; opacity: .86; }
+    .node-description { margin-top: 8px; font-size: clamp(10px, .85vw, 12px); line-height: 1.35; opacity: .94; }
+    .node-drill { margin-top: 8px; font-size: 10px; font-weight: 750; letter-spacing: .02em; }
+    .node-status { margin-top: 7px; font-size: 10px; font-weight: 800; }
+
+    .relationship-path { fill: none; stroke: var(--line-strong); stroke-width: 1.8; }
+    .relationship-path.status-gap { stroke: var(--gap); stroke-dasharray: 7 6; }
+    .relationship-label-box { fill: rgba(255,255,255,.94); stroke: var(--line); stroke-width: 1; rx: 6; }
+    .relationship-label-text { fill: var(--ink); font-size: 11px; font-weight: 650; }
+    .relationship-tech-text { fill: var(--muted); font-size: 9px; }
+    .relationship-label {
+      padding: 4px 6px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(255,255,255,.94);
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.22;
+      text-align: center;
+    }
+    .relationship-label small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px; font-weight: 550; }
+    .relationship-label.status-gap { border-style: dashed; border-color: var(--gap); color: #6e3a04; }
+
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; color: var(--muted); font-size: 12px; }
+    .legend-item { display: inline-flex; gap: 6px; align-items: center; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--blue); }
+    .legend-swatch.person { background: var(--person); }
+    .legend-swatch.external { background: var(--external); }
+    .legend-swatch.gap { border: 2px dashed var(--gap); background: var(--gap-soft); }
+
+    .evidence-panel { position: sticky; top: 16px; overflow: hidden; }
+    .evidence-head { padding: 18px 20px; color: #fff; background: var(--blue-deep); }
+    .evidence-kicker { margin: 0; color: #bfe1f2; font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    .evidence-title { margin: 7px 0 0; font-size: 21px; line-height: 1.2; }
+    .evidence-meta { margin: 6px 0 0; color: #d6ebf6; font-size: 12px; line-height: 1.4; }
+    .evidence-body { padding: 18px 20px 22px; }
+    .evidence-description { margin: 0; color: var(--ink); line-height: 1.65; }
+    .evidence-section { margin-top: 20px; }
+    .evidence-section h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; }
+    .evidence-section ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .evidence-files { display: grid; gap: 6px; }
+    .evidence-files code { display: block; padding: 7px 8px; border-radius: 6px; background: #edf2f6; color: #24435a; font-size: 11px; overflow-wrap: anywhere; }
+    .status-note { margin: 14px 0 0; padding: 10px 11px; border-left: 3px solid var(--gap); background: var(--gap-soft); color: #6e3a04; font-size: 12px; line-height: 1.5; }
+    .evidence-empty { padding: 24px 20px 30px; color: var(--muted); line-height: 1.65; }
+  </style>
 </head>
 <body>
-  <main>
-    <h1>엇박 C4 Architecture Explorer</h1>
-    <p>실제 RhythmTrainer 코드를 근거로 Level 1부터 Level 3까지 탐색합니다.</p>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Source-backed software architecture</p>
+        <h1 class="brand-title">엇박 · C4 Architecture Explorer</h1>
+        <p class="brand-copy">큰 맥락에서 실행 단위와 내부 컴포넌트까지 내려갑니다. 파란 노드를 클릭해 다음 수준으로 이동하세요.</p>
+      </div>
+      <nav id="level-nav" class="level-nav" aria-label="C4 수준 탐색">
+        <button class="level-step" type="button" data-level="1"><strong>L1</strong><span>Context</span></button>
+        <button class="level-step" type="button" data-level="2"><strong>L2</strong><span>Container</span></button>
+        <button class="level-step" type="button" data-level="3"><strong>L3</strong><span>Component</span></button>
+        <button class="level-step" type="button" disabled><strong>L4</strong><span>Code · 제외</span></button>
+      </nav>
+    </header>
+
+    <section class="workspace">
+      <div class="toolbar">
+        <button id="back-button" class="back-button" type="button">← 상위 수준</button>
+        <nav id="breadcrumb" class="breadcrumb" aria-label="현재 아키텍처 위치"></nav>
+      </div>
+
+      <div class="view-intro">
+        <div>
+          <p id="view-kicker" class="view-kicker"></p>
+          <h2 id="view-title" class="view-title"></h2>
+          <p id="view-description" class="view-description"></p>
+        </div>
+        <div class="scope-chip">다이어그램 범위<strong id="scope-name"></strong></div>
+      </div>
+
+      <div class="explorer-grid">
+        <section class="diagram-panel" aria-label="C4 다이어그램">
+          <div id="diagram-stage" class="diagram-stage">
+            <svg id="relationship-layer" class="relationship-layer" viewBox="0 0 1020 640" role="img" aria-label="컴포넌트 관계선"></svg>
+            <div id="diagram-nodes" class="diagram-nodes"></div>
+          </div>
+          <div class="legend" aria-label="다이어그램 범례">
+            <span class="legend-item"><span class="legend-swatch"></span>내부 시스템·요소</span>
+            <span class="legend-item"><span class="legend-swatch person"></span>사용자</span>
+            <span class="legend-item"><span class="legend-swatch external"></span>외부 시스템·컨테이너</span>
+            <span class="legend-item"><span class="legend-swatch gap"></span>구현됨 · 미배선</span>
+          </div>
+        </section>
+
+        <aside id="evidence-panel" class="evidence-panel" aria-live="polite" aria-label="선택한 요소의 코드 근거"></aside>
+      </div>
+    </section>
   </main>
 
   <script id="architecture-model" type="application/json">
@@ -339,6 +583,22 @@
   (() => {
     "use strict";
 
+    const VIEW_LABELS = {
+      context: "System Context",
+      containers: "Container Diagram",
+      "iphone-components": "iPhone Components",
+      "watch-components": "Watch Components"
+    };
+
+    function escapeHTML(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
     function getParentViewId(viewId) {
       return ({
         containers: "context",
@@ -376,12 +636,239 @@
       return { valid: errors.length === 0, errors };
     }
 
+    function defaultSelection(model, viewId) {
+      const view = model.views[viewId];
+      if (!view || view.level !== 3) return null;
+      return view.nodes.find((node) => node.type === "Component" && node.status === "active")?.id ?? null;
+    }
+
+    function createNavigationState() {
+      return { currentView: "context", selectedNode: null };
+    }
+
+    function reduceNavigation(model, state, action) {
+      const next = { ...state };
+      if (action.type === "view") {
+        if (!model.views[action.viewId]) return next;
+        next.currentView = action.viewId;
+        next.selectedNode = defaultSelection(model, action.viewId);
+        return next;
+      }
+      if (action.type === "up") {
+        const parent = getParentViewId(state.currentView);
+        if (!parent) return next;
+        next.currentView = parent;
+        next.selectedNode = defaultSelection(model, parent);
+        return next;
+      }
+      if (action.type === "activate-node" || action.type === "select-node") {
+        const node = getNodeById(model, state.currentView, action.nodeId);
+        if (!node) return next;
+        if (action.type === "activate-node" && node.drilldown && model.views[node.drilldown]) {
+          next.currentView = node.drilldown;
+          next.selectedNode = defaultSelection(model, node.drilldown);
+        } else {
+          next.selectedNode = node.id;
+        }
+      }
+      return next;
+    }
+
+    function buildNodeMarkup(node, selected) {
+      const left = (node.x / 10.2).toFixed(3);
+      const top = (node.y / 6.4).toFixed(3);
+      const width = (node.w / 10.2).toFixed(3);
+      const height = (node.h / 6.4).toFixed(3);
+      const statusLabel = node.status === "gap" ? '<span class="node-status">구현됨 · 미배선</span>' : "";
+      const drillLabel = node.drilldown ? '<span class="node-drill">자세히 보기 →</span>' : "";
+      return `<button type="button" class="diagram-node status-${escapeHTML(node.status)}" data-node-id="${escapeHTML(node.id)}" aria-pressed="${selected ? "true" : "false"}" style="left:${left}%;top:${top}%;width:${width}%;height:${height}%"><span class="node-name">${escapeHTML(node.name)}</span><span class="node-meta">[${escapeHTML(node.type)} · ${escapeHTML(node.technology)}]</span><span class="node-description">${escapeHTML(node.description)}</span>${statusLabel}${drillLabel}</button>`;
+    }
+
+    function listMarkup(items) {
+      return `<ul>${items.map((item) => `<li>${escapeHTML(item)}</li>`).join("")}</ul>`;
+    }
+
+    function buildEvidenceMarkup(node) {
+      const statusNote = node.status === "gap"
+        ? '<p class="status-note"><strong>구현됨 · 미배선</strong><br>타입과 저장 로직은 존재하지만 현재 앱 진입점과 연습 흐름에서 생성·주입되지 않습니다.</p>'
+        : "";
+      return `<div class="evidence-head"><p class="evidence-kicker">Selected element</p><h3 class="evidence-title">${escapeHTML(node.name)}</h3><p class="evidence-meta">[${escapeHTML(node.type)} · ${escapeHTML(node.technology)}]</p></div><div class="evidence-body"><p class="evidence-description">${escapeHTML(node.description)}</p>${statusNote}<section class="evidence-section"><h4>입력</h4>${listMarkup(node.inputs)}</section><section class="evidence-section"><h4>출력</h4>${listMarkup(node.outputs)}</section><section class="evidence-section"><h4>코드 근거</h4><div class="evidence-files">${node.evidence.map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div></section></div>`;
+    }
+
+    let architectureModel = null;
+    let navigationState = createNavigationState();
+
+    function viewAction(action) {
+      if (!architectureModel || typeof document === "undefined") return;
+      navigationState = reduceNavigation(architectureModel, navigationState, action);
+      renderDiagram(navigationState.currentView);
+    }
+
+    function navigateTo(viewId) {
+      viewAction({ type: "view", viewId });
+    }
+
+    function navigateUp() {
+      viewAction({ type: "up" });
+    }
+
+    function selectNode(nodeId) {
+      viewAction({ type: "select-node", nodeId });
+    }
+
+    function renderBreadcrumb(viewId) {
+      const element = document.getElementById("breadcrumb");
+      const trail = getBreadcrumbs(viewId);
+      element.innerHTML = trail.map((id, index) => {
+        const isCurrent = index === trail.length - 1;
+        const button = `<button type="button" class="crumb" data-view-id="${id}"${isCurrent ? ' aria-current="page"' : ""}>${escapeHTML(VIEW_LABELS[id])}</button>`;
+        return index === 0 ? button : `<span class="crumb-separator" aria-hidden="true">/</span>${button}`;
+      }).join("");
+      element.querySelectorAll("button[data-view-id]").forEach((button) => {
+        button.addEventListener("click", () => navigateTo(button.dataset.viewId));
+      });
+    }
+
+    function renderLevelNav(level) {
+      document.querySelectorAll(".level-step[data-level]").forEach((button) => {
+        const buttonLevel = Number(button.dataset.level);
+        button.toggleAttribute("disabled", buttonLevel > level || buttonLevel === 3 && level < 3);
+        if (buttonLevel === level) button.setAttribute("aria-current", "step");
+        else button.removeAttribute("aria-current");
+      });
+    }
+
+    function renderEvidence(nodeId) {
+      const panel = document.getElementById("evidence-panel");
+      const node = nodeId ? getNodeById(architectureModel, navigationState.currentView, nodeId) : null;
+      if (node) {
+        panel.innerHTML = buildEvidenceMarkup(node);
+        return;
+      }
+      const view = architectureModel.views[navigationState.currentView];
+      const guidance = view.level < 3
+        ? "화살표가 있는 파란 노드를 선택하면 다음 C4 수준으로 내려갑니다. 회색 노드는 시스템 경계 밖의 의존성입니다."
+        : "컴포넌트를 선택하면 책임, 입력·출력, 그리고 실제 소스 파일 근거를 확인할 수 있습니다.";
+      panel.innerHTML = `<div class="evidence-head"><p class="evidence-kicker">How to explore</p><h3 class="evidence-title">${escapeHTML(view.scopeName)}</h3><p class="evidence-meta">C4 Level ${view.level}</p></div><p class="evidence-empty">${escapeHTML(guidance)}</p>`;
+    }
+
+    function anchorPoints(from, to) {
+      const fromCenter = { x: from.x + from.w / 2, y: from.y + from.h / 2 };
+      const toCenter = { x: to.x + to.w / 2, y: to.y + to.h / 2 };
+      const dx = toCenter.x - fromCenter.x;
+      const dy = toCenter.y - fromCenter.y;
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        return {
+          start: { x: dx >= 0 ? from.x + from.w : from.x, y: fromCenter.y },
+          end: { x: dx >= 0 ? to.x : to.x + to.w, y: toCenter.y }
+        };
+      }
+      return {
+        start: { x: fromCenter.x, y: dy >= 0 ? from.y + from.h : from.y },
+        end: { x: toCenter.x, y: dy >= 0 ? to.y : to.y + to.h }
+      };
+    }
+
+    function relationshipCurve(from, to, offset) {
+      const { start, end } = anchorPoints(from, to);
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.max(Math.hypot(dx, dy), 1);
+      const control = {
+        x: (start.x + end.x) / 2 - (dy / length) * offset,
+        y: (start.y + end.y) / 2 + (dx / length) * offset
+      };
+      return { start, end, control };
+    }
+
+    function drawRelationships(view) {
+      const svg = document.getElementById("relationship-layer");
+      const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+      const totals = new Map();
+      const seen = new Map();
+      for (const relationship of view.relationships) {
+        const key = [relationship.from, relationship.to].sort().join("|");
+        totals.set(key, (totals.get(key) ?? 0) + 1);
+      }
+      const paths = [];
+      for (const relationship of view.relationships) {
+        const from = nodes.get(relationship.from);
+        const to = nodes.get(relationship.to);
+        if (!from || !to) continue;
+        const key = [relationship.from, relationship.to].sort().join("|");
+        const index = seen.get(key) ?? 0;
+        seen.set(key, index + 1);
+        const offset = (index - (totals.get(key) - 1) / 2) * 34;
+        const curve = relationshipCurve(from, to, offset);
+        const labelX = Math.max(2, Math.min(838, curve.control.x - 90));
+        const labelY = Math.max(2, Math.min(588, curve.control.y - 24));
+        const statusClass = relationship.status === "gap" ? " status-gap" : "";
+        const gapText = relationship.status === "gap" ? " · 구현됨 · 미배선" : "";
+        paths.push(`<path class="relationship-path${statusClass}" d="M ${curve.start.x} ${curve.start.y} Q ${curve.control.x} ${curve.control.y} ${curve.end.x} ${curve.end.y}" marker-end="url(#arrow${relationship.status === "gap" ? "-gap" : ""})"></path><foreignObject x="${labelX}" y="${labelY}" width="180" height="52"><div xmlns="http://www.w3.org/1999/xhtml" class="relationship-label${statusClass}">${escapeHTML(relationship.label + gapText)}<small>[${escapeHTML(relationship.technology)}]</small></div></foreignObject>`);
+      }
+      svg.innerHTML = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f91a3"></path></marker><marker id="arrow-gap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a45a08"></path></marker></defs>${paths.join("")}`;
+    }
+
+    function renderDiagram(viewId) {
+      const view = architectureModel.views[viewId];
+      if (!view) return;
+      navigationState.currentView = viewId;
+      document.getElementById("view-kicker").textContent = `C4 Level ${view.level} · ${view.title}`;
+      document.getElementById("view-title").textContent = view.scopeName;
+      document.getElementById("view-description").textContent = view.description;
+      document.getElementById("scope-name").textContent = view.scopeName;
+      document.getElementById("back-button").disabled = !getParentViewId(viewId);
+      renderBreadcrumb(viewId);
+      renderLevelNav(view.level);
+
+      const nodeLayer = document.getElementById("diagram-nodes");
+      nodeLayer.innerHTML = view.nodes.map((node) => buildNodeMarkup(node, node.id === navigationState.selectedNode)).join("");
+      nodeLayer.querySelectorAll("button[data-node-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          navigationState = reduceNavigation(architectureModel, navigationState, {
+            type: "activate-node",
+            nodeId: button.dataset.nodeId
+          });
+          renderDiagram(navigationState.currentView);
+        });
+      });
+      drawRelationships(view);
+      renderEvidence(navigationState.selectedNode);
+    }
+
+    function boot() {
+      architectureModel = JSON.parse(document.getElementById("architecture-model").textContent);
+      const validation = validateModel(architectureModel);
+      if (!validation.valid) {
+        console.error("Invalid C4 architecture model", validation.errors);
+        document.getElementById("evidence-panel").innerHTML = '<p class="evidence-empty" role="alert">아키텍처 모델을 불러오지 못했습니다.</p>';
+        return;
+      }
+      document.getElementById("back-button").addEventListener("click", navigateUp);
+      document.querySelector('.level-step[data-level="1"]').addEventListener("click", () => navigateTo("context"));
+      document.querySelector('.level-step[data-level="2"]').addEventListener("click", () => navigateTo("containers"));
+      renderDiagram(navigationState.currentView);
+      window.addEventListener("resize", () => drawRelationships(architectureModel.views[navigationState.currentView]));
+    }
+
     window.RhythmC4Explorer = {
       validateModel,
       getParentViewId,
       getBreadcrumbs,
-      getNodeById
+      getNodeById,
+      createNavigationState,
+      reduceNavigation,
+      buildNodeMarkup,
+      buildEvidenceMarkup,
+      navigateTo,
+      navigateUp,
+      selectNode,
+      renderDiagram,
+      renderEvidence,
+      drawRelationships
     };
+
+    if (typeof document !== "undefined") boot();
   })();
   </script>
 </body>

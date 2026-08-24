@@ -514,6 +514,37 @@ test("handles collinear segment overlap without treating disjoint collinear segm
   assert.equal(api.segmentsIntersect({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 8, y: 0 }, { x: 20, y: 0 }), true);
 });
 
+test("never re-enters endpoint interiors after leaving a relationship anchor", () => {
+  const { api, model } = explorerRuntime();
+  const strictlyInside = (point, node) => point.x > node.x && point.x < node.x + node.w && point.y > node.y && point.y < node.y + node.h;
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      const points = api.relationshipPolyline(nodes, relationship);
+      const endpoints = [nodes.get(relationship.from), nodes.get(relationship.to)];
+      for (let index = 1; index < points.length; index += 1) for (const ratio of [.1, .25, .5, .75, .9]) {
+        const start = points[index - 1]; const end = points[index];
+        const sample = { x: start.x + (end.x - start.x) * ratio, y: start.y + (end.y - start.y) * ratio };
+        assert.equal(endpoints.some((node) => strictlyInside(sample, node)), false, `${view.id}:${relationship.id} segment ${index} stays out of endpoint interiors`);
+      }
+    }
+  }
+});
+
+test("keeps each final relationship free of retraced canonical segments and collapsed endpoints", () => {
+  const { api, model } = explorerRuntime();
+  const key = (a, b) => [a, b].map((point) => `${point.x},${point.y}`).sort().join("|");
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      const points = api.relationshipPolyline(nodes, relationship);
+      assert.notDeepEqual(JSON.parse(JSON.stringify(points[0])), JSON.parse(JSON.stringify(points.at(-1))), `${view.id}:${relationship.id} has distinct endpoint coordinates`);
+      const segments = points.slice(1).map((point, index) => key(points[index], point));
+      assert.equal(new Set(segments).size, segments.length, `${view.id}:${relationship.id} has no retraced segment`);
+    }
+  }
+});
+
 test("filters non-finite relationship route points before making SVG paths", () => {
   const { api } = explorerRuntime();
   assert.equal(api.relationshipPath([{ x: 0, y: 0 }, { x: Infinity, y: 2 }]), "");

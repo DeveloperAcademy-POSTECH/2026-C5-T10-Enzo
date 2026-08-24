@@ -436,4 +436,43 @@ test("reserves enough horizontal space for context relationship labels", () => {
   assert.ok(gaps.every((gap) => gap >= 150), `context gaps must fit 150px labels: ${gaps.join(", ")}`);
 });
 
+test("renders Views and Layers as synchronized read-only navigation", () => {
+  const { api, model } = explorerRuntime();
+  const state = api.createWorkspaceState();
+  const views = api.buildViewsMarkup(model, state);
+  assert.match(views, /System Context/);
+  assert.match(views, /Container Diagram/);
+  assert.match(views, /iPhone Components/);
+  assert.match(views, /Watch Components/);
+  assert.doesNotMatch(views, /L4/);
+
+  const layers = api.buildLayersMarkup(model.views.context, state);
+  assert.match(layers, /리듬을 연습하는 사용자/);
+  assert.match(layers, /엇박 리듬 훈련 시스템/);
+  assert.match(layers, /Relationships/);
+});
+
+test("opens the Inspector on selection and drills only on an explicit open action", () => {
+  const { api, model } = explorerRuntime();
+  let state = api.createWorkspaceState();
+  state = api.reduceWorkspace(model, state, { type: "select-node", nodeId: "rhythm-system" });
+  assert.equal(state.currentView, "context");
+  assert.equal(state.rightPanelOpen, true);
+  const overview = api.buildInspectorMarkup(model, state);
+  assert.match(overview, /Open L2/);
+  assert.match(overview, /README\.md/);
+
+  const flow = api.buildInspectorMarkup(model, { ...state, inspectorTab: "flow" });
+  assert.match(flow, /리듬을 연습하는 사용자/);
+  assert.match(flow, /엇박 리듬 훈련 시스템/);
+
+  state = api.openDrilldown(model, state, "rhythm-system");
+  assert.equal(state.currentView, "containers");
+  assert.equal(state.selectedNode, null);
+  assert.equal(state.rightPanelOpen, false);
+
+  const terminal = api.openDrilldown(model, { ...state, currentView: "iphone-components" }, "beatthis-engine");
+  assert.equal(terminal.currentView, "iphone-components");
+});
+
 export { architectureModel, explorerRuntime, html, scriptBody };

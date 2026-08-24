@@ -343,6 +343,153 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
     }
+
+    /* Diagram-first workspace polish: calm structural chrome, with the canvas in charge. */
+    :root {
+      --sidebar-left: 17.5rem;
+      --sidebar-right: 21rem;
+      --chrome-radius: .875rem;
+      --space-1: .25rem;
+      --space-2: .5rem;
+      --space-3: .75rem;
+      --space-4: 1rem;
+      --space-6: 1.5rem;
+      --surface-solid: #ffffff;
+      --canvas-background: #f5f7fa;
+      --accent: var(--blue);
+      --shadow: 0 12px 28px rgba(31, 47, 61, .10);
+    }
+
+    body { min-width: 320px; font: 100%/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--canvas-background); }
+    button, [role="button"] { font: inherit; }
+    button:not(:disabled), [role="button"] { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    button:not(:disabled):active, .canvas-tool:active, .toolbar-action:active, .panel-toggle:active { transform: scale(.97); transition-duration: 80ms; }
+
+    .workspace-shell { grid-template-columns: var(--left-column, var(--sidebar-left)) minmax(0, 1fr) var(--right-column, 0rem); background: var(--canvas-background); }
+    .workspace-shell[data-left-open="false"] { --left-column: 0rem; }
+    .workspace-shell[data-right-open="true"] { --right-column: var(--sidebar-right); }
+    .canvas-region {
+      background-color: var(--canvas-background);
+      background-image: radial-gradient(circle, #d4dce5 1px, transparent 1.15px);
+      background-size: 20px 20px;
+    }
+    .diagram-viewport { user-select: none; }
+    .diagram-viewport[data-panning="true"] { cursor: grabbing; }
+    .diagram-svg { text-rendering: geometricPrecision; }
+
+    .side-panel {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: color-mix(in srgb, var(--surface-solid) 94%, #edf2f7);
+      box-shadow: none;
+      transition: transform 220ms cubic-bezier(.2, .8, .2, 1), opacity 180ms ease;
+    }
+    .left-panel { border-right: 1px solid color-mix(in srgb, var(--line) 84%, transparent); }
+    .right-inspector { border-left: 1px solid color-mix(in srgb, var(--line) 84%, transparent); }
+    .panel-heading, .inspector-toolbar { padding: var(--space-6); }
+    .panel-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-3); align-items: center; }
+    .panel-heading .eyebrow { grid-column: 1; margin: 0; color: var(--blue); font-size: .67rem; letter-spacing: .11em; }
+    .panel-title { grid-column: 1; margin: var(--space-1) 0 0; font-size: 1rem; letter-spacing: -.01em; }
+    .panel-heading .panel-toggle { grid-column: 2; grid-row: 1 / span 2; }
+    .panel-toggle, .toolbar-action, .canvas-tool { min-width: 2.25rem; min-height: 2.25rem; border-radius: .625rem; transition: transform 100ms ease-out, background-color 140ms ease, border-color 140ms ease, opacity 160ms ease; }
+    .panel-toggle { padding: .45rem .65rem; background: color-mix(in srgb, var(--surface-solid) 92%, #e8eef5); }
+    .panel-tabs { padding: var(--space-3) var(--space-4) 0; }
+    .panel-tab { padding: .55rem .6rem; }
+    .panel-content { min-height: 0; overflow: auto; padding: var(--space-4); }
+    .view-list button, .layer-groups button { padding: .7rem .75rem; border-radius: .625rem; background: color-mix(in srgb, var(--surface-solid) 78%, transparent); }
+    .panel-note { margin: auto var(--space-4) var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+    #inspector-content { height: auto; min-height: 0; flex: 1; overflow: auto; }
+
+    .top-toolbar {
+      position: absolute;
+      inset: var(--space-4) var(--space-4) auto;
+      min-height: 3.75rem;
+      padding: .55rem .65rem;
+      border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+      border-radius: var(--chrome-radius);
+      background: color-mix(in srgb, var(--surface-solid) 86%, transparent);
+      box-shadow: 0 8px 22px rgba(32, 49, 63, .08);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+    }
+    .back-button { min-height: 2.5rem; border-radius: .625rem; padding: .45rem .7rem; }
+    .toolbar-context .view-kicker { color: var(--blue); font-size: .67rem; font-weight: 750; letter-spacing: .08em; }
+    .toolbar-context .view-title { font-size: .95rem; line-height: 1.2; }
+    .toolbar-context .view-description { display: none; }
+    .breadcrumb { gap: .2rem; font-size: .78rem; }
+    .crumb { padding: .3rem .4rem; }
+    .toolbar-actions { gap: var(--space-2); }
+    .toolbar-action { width: 2.5rem; height: 2.5rem; background: color-mix(in srgb, var(--surface-solid) 94%, transparent); }
+    .canvas-tools {
+      right: var(--space-4);
+      bottom: var(--space-4);
+      gap: var(--space-1);
+      padding: var(--space-2);
+      border-radius: var(--chrome-radius);
+      background: color-mix(in srgb, var(--surface-solid) 84%, transparent);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+    }
+    .canvas-tool { width: 2.5rem; height: 2.5rem; }
+    .canvas-zoom-value { min-width: 3.4rem; }
+    .canvas-legend {
+      left: var(--space-4);
+      bottom: var(--space-4);
+      padding: .5rem .65rem;
+      border-radius: var(--chrome-radius);
+      background: color-mix(in srgb, var(--surface-solid) 84%, transparent);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+    }
+
+    @media (max-width: 1199px) {
+      .workspace-shell { grid-template-columns: minmax(0, 1fr); }
+      .side-panel {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        z-index: 20;
+        width: min(22rem, 88vw);
+        box-shadow: 0 16px 40px rgba(26, 42, 55, .18);
+        opacity: 0;
+        pointer-events: none;
+        visibility: hidden;
+      }
+      .left-panel { left: 0; transform: translateX(-100%); }
+      .right-inspector { right: 0; transform: translateX(100%); }
+      .workspace-shell[data-left-open="true"] .left-panel,
+      .workspace-shell[data-right-open="true"] .right-inspector { transform: translateX(0); opacity: 1; pointer-events: auto; visibility: visible; }
+      .top-toolbar { inset-inline: var(--space-4); }
+    }
+
+    @media (max-width: 799px) {
+      .side-panel { width: min(20rem, calc(100vw - 2rem)); }
+      .top-toolbar { inset-inline: .75rem; top: .75rem; gap: .4rem; min-height: 2.75rem; }
+      .back-button { width: 2.75rem; min-width: 2.75rem; height: 2.75rem; overflow: hidden; padding: 0; font-size: 0; }
+      .back-button::before { content: "←"; font-size: 1.1rem; }
+      .toolbar-context { display: none; }
+      .breadcrumb { min-width: 0; overflow: hidden; flex-wrap: nowrap; white-space: nowrap; }
+      .toolbar-action, .canvas-tool { min-width: 2.75rem; min-height: 2.75rem; }
+      .canvas-tools { right: .75rem; bottom: .75rem; min-height: 2.75rem; }
+      .canvas-legend { left: .75rem; bottom: .75rem; max-width: calc(100vw - 15.5rem); overflow: hidden; white-space: nowrap; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .side-panel, .panel-toggle, .toolbar-action, .canvas-tool { transition: opacity 120ms linear !important; transform: none !important; }
+    }
+    @media (prefers-reduced-transparency: reduce) {
+      .side-panel, .top-toolbar, .canvas-tools, .canvas-legend { background: var(--surface-solid); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    }
+    @media (prefers-contrast: more) {
+      .side-panel, .top-toolbar, .canvas-tools, .canvas-legend { background: Canvas; border: 2px solid CanvasText; box-shadow: none; }
+      button:focus-visible, [role="button"]:focus-visible, .diagram-node:focus-visible { outline: 4px solid Highlight; outline-offset: 4px; }
+      .diagram-node:focus-visible .node-surface, .diagram-node:focus-visible .semantic-person-head { stroke: Highlight; stroke-width: 5; }
+    }
   </style>
 </head>
 <body>
@@ -351,7 +498,7 @@
       <div class="panel-heading">
         <p class="eyebrow">RhythmTrainer</p>
         <h1 class="panel-title">아키텍처 탐색</h1>
-        <button id="left-panel-toggle" class="panel-toggle" type="button" aria-controls="left-panel" aria-expanded="true">패널 닫기</button>
+        <button id="left-panel-toggle" class="panel-toggle" type="button" aria-controls="left-panel" aria-expanded="true" aria-label="왼쪽 패널 닫기">패널 닫기</button>
       </div>
       <div id="left-panel-content" class="panel-content"></div>
       <p class="panel-note">노드를 선택해 책임과 연결 근거를 확인하고, 드릴다운으로 다음 C4 수준을 탐색하세요.</p>
@@ -367,8 +514,8 @@
         </div>
         <nav id="breadcrumb" class="breadcrumb" aria-label="현재 아키텍처 위치"></nav>
         <div class="toolbar-actions" aria-label="패널 열기 및 닫기">
-          <button id="toolbar-left-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="left" aria-controls="left-panel" aria-expanded="true" aria-label="왼쪽 탐색 패널">☰</button>
-          <button id="toolbar-right-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="right" aria-controls="right-inspector" aria-expanded="false" aria-label="선택한 요소 패널">▣</button>
+          <button id="toolbar-left-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="left" aria-controls="left-panel" aria-expanded="true" aria-label="왼쪽 패널 닫기">☰</button>
+          <button id="toolbar-right-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="right" aria-controls="right-inspector" aria-expanded="false" aria-label="인스펙터 열기">▣</button>
         </div>
       </header>
       <div id="diagram-viewport" class="diagram-viewport" tabindex="0">
@@ -394,7 +541,7 @@
 
     <aside id="right-inspector" class="side-panel right-inspector" aria-live="polite" aria-label="선택한 요소 정보">
       <div class="inspector-toolbar">
-        <button id="right-panel-toggle" class="panel-toggle" type="button" aria-controls="right-inspector" aria-expanded="false">닫기</button>
+        <button id="right-panel-toggle" class="panel-toggle" type="button" aria-controls="right-inspector" aria-expanded="false" aria-label="인스펙터 닫기">닫기</button>
       </div>
       <div id="inspector-content"></div>
     </aside>
@@ -840,6 +987,13 @@
       return next;
     }
 
+    function normalizePanelsForWidth(state, width, openedPanel) {
+      if (width > 1199 || !(state.leftPanelOpen && state.rightPanelOpen)) return state;
+      return openedPanel === "left"
+        ? { ...state, leftPanelOpen: true, rightPanelOpen: false }
+        : { ...state, leftPanelOpen: false, rightPanelOpen: true };
+    }
+
     function validateModel(model) {
       const ALLOWED_VISUAL_ROLES = new Set(["person", "softwareSystem", "application", "mobileApplication", "dataStore", "component"]);
       const errors = [];
@@ -967,6 +1121,25 @@
 
     function getSvgTextLayout(node) {
       const person = node.visualRole === "person" ? getPersonGeometry(node) : null;
+      if (person && node.h <= 150) {
+        const nameLines = wrapSvgText(node.name, 20).slice(0, 2);
+        const meta = `[${node.type}]`;
+        const metaLines = wrapSvgText(meta, 24);
+        const nameBaseline = Math.max(39, person.body.top + 10);
+        const nameLineHeight = 13;
+        const metaLineHeight = 12;
+        const metaBaseline = nameBaseline + (nameLines.length - 1) * nameLineHeight + 14;
+        const descriptionBaseline = metaBaseline + (metaLines.length - 1) * metaLineHeight + 13;
+        const descriptionCapacity = Math.max(0, Math.floor((node.h - 12 - descriptionBaseline) / 12) + 1);
+        const descriptionLines = wrapSvgText(node.description, 27).slice(0, descriptionCapacity);
+        const lastBaseline = (baseline, lines, lineHeight) => lines.length ? baseline + Math.max(lines.length - 1, 0) * lineHeight : 0;
+        return {
+          name: { lines: nameLines, baseline: nameBaseline, lastBaseline: lastBaseline(nameBaseline, nameLines, nameLineHeight), lineHeight: nameLineHeight },
+          meta: { lines: metaLines, baseline: metaBaseline, lastBaseline: lastBaseline(metaBaseline, metaLines, metaLineHeight), lineHeight: metaLineHeight },
+          description: { lines: descriptionLines, baseline: descriptionBaseline, lastBaseline: lastBaseline(descriptionBaseline, descriptionLines, 12), lineHeight: 12 },
+          affordanceBaseline: node.h - 12
+        };
+      }
       const nameLines = wrapSvgText(node.name, 22);
       const meta = node.technology ? `[${node.type}: ${node.technology}]` : `[${node.type}]`;
       const metaLines = wrapSvgText(meta, 30);
@@ -1238,16 +1411,24 @@
       setViewport(zoomViewportAt(viewportState, center, viewportState.scale * factor));
     }
 
-    function applyWorkspaceState(next) {
-      workspaceState = next;
-      navigationState = { currentView: next.currentView, selectedNode: next.selectedNode };
+    function applyWorkspaceState(next, openedPanel) {
+      const width = typeof window === "undefined" ? 1200 : window.innerWidth;
+      workspaceState = normalizePanelsForWidth(next, width, openedPanel);
+      navigationState = { currentView: workspaceState.currentView, selectedNode: workspaceState.selectedNode };
       renderWorkspaceChrome();
       renderCanvasTools();
     }
 
     function updateWorkspace(action) {
       if (!architectureModel) return;
-      applyWorkspaceState(reduceWorkspace(architectureModel, workspaceState, action));
+      const openedPanel = action.type === "select-node"
+        ? "right"
+        : action.type === "toggle-left-panel" && !workspaceState.leftPanelOpen
+          ? "left"
+          : action.type === "toggle-right-panel" && !workspaceState.rightPanelOpen
+            ? "right"
+            : undefined;
+      applyWorkspaceState(reduceWorkspace(architectureModel, workspaceState, action), openedPanel);
     }
 
     function dispatchWorkspace(action) {
@@ -1406,11 +1587,21 @@
       const toolbarRightToggle = document.getElementById("toolbar-right-panel-toggle");
       if (leftToggle) {
         leftToggle.setAttribute("aria-expanded", String(workspaceState.leftPanelOpen));
+        leftToggle.setAttribute("aria-label", workspaceState.leftPanelOpen ? "왼쪽 패널 닫기" : "왼쪽 패널 열기");
         leftToggle.textContent = workspaceState.leftPanelOpen ? "패널 닫기" : "패널 열기";
       }
-      if (rightToggle) rightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
-      if (toolbarLeftToggle) toolbarLeftToggle.setAttribute("aria-expanded", String(workspaceState.leftPanelOpen));
-      if (toolbarRightToggle) toolbarRightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
+      if (rightToggle) {
+        rightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
+        rightToggle.setAttribute("aria-label", workspaceState.rightPanelOpen ? "인스펙터 닫기" : "인스펙터 열기");
+      }
+      if (toolbarLeftToggle) {
+        toolbarLeftToggle.setAttribute("aria-expanded", String(workspaceState.leftPanelOpen));
+        toolbarLeftToggle.setAttribute("aria-label", workspaceState.leftPanelOpen ? "왼쪽 패널 닫기" : "왼쪽 패널 열기");
+      }
+      if (toolbarRightToggle) {
+        toolbarRightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
+        toolbarRightToggle.setAttribute("aria-label", workspaceState.rightPanelOpen ? "인스펙터 닫기" : "인스펙터 열기");
+      }
       bindRenderedControls();
     }
 
@@ -1607,6 +1798,8 @@
     function updateLayoutMode() {
       document.body.dataset.layout = getLayoutMode(window.innerWidth);
       if (architectureModel) {
+        workspaceState = normalizePanelsForWidth(workspaceState, window.innerWidth, workspaceState.rightPanelOpen ? "right" : "left");
+        renderWorkspaceChrome();
         syncSvgCoordinateSystem();
         drawRelationships(architectureModel.views[workspaceState.currentView]);
         setViewport(currentViewport());
@@ -1679,6 +1872,7 @@
       getNodeById,
       createWorkspaceState,
       reduceWorkspace,
+      normalizePanelsForWidth,
       createNavigationState,
       reduceNavigation,
       getPersonGeometry,

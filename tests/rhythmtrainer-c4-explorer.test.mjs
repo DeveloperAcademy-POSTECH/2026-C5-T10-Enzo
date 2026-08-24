@@ -160,8 +160,8 @@ test("keeps persistent panel controls in the top toolbar", () => {
   const toolbar = html.match(/<header id="top-toolbar"[\s\S]*?<\/header>/)?.[0] ?? "";
   assert.match(toolbar, /id="toolbar-left-panel-toggle"/);
   assert.match(toolbar, /id="toolbar-right-panel-toggle"/);
-  assert.match(toolbar, /aria-label="왼쪽 탐색 패널"/);
-  assert.match(toolbar, /aria-label="선택한 요소 패널"/);
+  assert.match(toolbar, /aria-label="왼쪽 패널 닫기"/);
+  assert.match(toolbar, /aria-label="인스펙터 열기"/);
   assert.doesNotMatch(toolbar, /id="left-panel"/);
   assert.doesNotMatch(toolbar, /id="right-inspector"/);
 });
@@ -526,6 +526,41 @@ test("calculates wrapped keyboard navigation for left and Inspector tablists", (
   assert.equal(api.getNextTabIndex(4, 1, "Home"), 0);
   assert.equal(api.getNextTabIndex(4, 1, "End"), 3);
   assert.equal(api.getNextTabIndex(4, 1, "Enter"), null, "unhandled keys retain native behavior");
+});
+
+test("declares desktop workspace accessibility and user preference fallbacks", () => {
+  assert.match(html, /aria-label="왼쪽 패널 열기|aria-label="왼쪽 패널 닫기/);
+  assert.match(html, /aria-label="인스펙터 열기|aria-label="인스펙터 닫기/);
+  assert.match(html, /aria-label="캔버스 도구"/);
+  assert.match(html, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(html, /@media \(prefers-reduced-transparency: reduce\)/);
+  assert.match(html, /@media \(prefers-contrast: more\)/);
+  assert.match(html, /:focus-visible/);
+  assert.match(html, /@media \(max-width: 1199px\)/);
+  assert.match(html, /@media \(max-width: 799px\)/);
+});
+
+test("keeps one overlay panel open at compact desktop widths", () => {
+  const { api } = explorerRuntime();
+  const state = { ...api.createWorkspaceState(), leftPanelOpen: true, rightPanelOpen: true };
+  const compact = api.normalizePanelsForWidth(state, 1024, "right");
+  assert.equal(compact.leftPanelOpen, false);
+  assert.equal(compact.rightPanelOpen, true);
+  const desktop = api.normalizePanelsForWidth(state, 1440, "right");
+  assert.equal(desktop.leftPanelOpen, true);
+  assert.equal(desktop.rightPanelOpen, true);
+});
+
+test("compacts short Person card copy inside its semantic silhouette", () => {
+  const { api, model } = explorerRuntime();
+  const people = Object.values(model.views).flatMap((view) => view.nodes.filter((node) => node.visualRole === "person"));
+  for (const person of people) {
+    const layout = api.getSvgTextLayout(person);
+    const occupiedBaselines = [layout.name.lastBaseline, layout.meta.lastBaseline, layout.description.lastBaseline]
+      .filter(Number.isFinite);
+    assert.ok(Math.max(...occupiedBaselines) <= person.h - 12, `${person.id} metadata stays inside the Person card`);
+    assert.ok(layout.name.baseline >= 12, `${person.id} keeps readable name inset`);
+  }
 });
 
 export { architectureModel, explorerRuntime, html, scriptBody };

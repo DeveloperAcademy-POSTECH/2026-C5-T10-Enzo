@@ -645,10 +645,13 @@
           {"id": "iphone-flow-audio", "from": "app-flow", "to": "audio-io", "description": "PCM 변환과 예약 재생을 요청합니다", "technology": "Swift calls", "status": "active"},
           {"id": "iphone-flow-adapter", "from": "app-flow", "to": "beat-adapter", "description": "PCM 분석을 요청합니다", "technology": "Task.detached / Swift call", "status": "active"},
           {"id": "iphone-adapter-native", "from": "beat-adapter", "to": "beatthis-engine", "description": "정박 검출을 위임합니다", "technology": "BeatThisBridge.detectBeats", "status": "active"},
-          {"id": "iphone-flow-connectivity", "from": "app-flow", "to": "phone-connectivity", "description": "곡 패키지를 보내고 세션 콜백을 받습니다", "technology": "Closure callbacks", "status": "active"},
+          {"id": "iphone-flow-connectivity", "from": "app-flow", "to": "phone-connectivity", "description": "곡 패키지 전송을 요청합니다", "technology": "Swift closure command", "status": "active"},
+          {"id": "iphone-connectivity-callback", "from": "phone-connectivity", "to": "app-flow", "description": "Watch 세션 콜백을 제공합니다", "technology": "Closure callback", "status": "active"},
           {"id": "iphone-ui-scoring", "from": "iphone-ui", "to": "result-scoring", "description": "결과를 표시 점수로 변환합니다", "technology": "LyricScoring.perLyric", "status": "active"},
           {"id": "iphone-flow-persistence-gap", "from": "app-flow", "to": "persistence", "description": "저장·캐시 연결이 구현 흐름에 없습니다", "technology": "SwiftData injection absent", "status": "gap"},
-          {"id": "iphone-connectivity-watch", "from": "phone-connectivity", "to": "watch-app-external", "description": "곡·시계·세션 메시지를 교환합니다", "technology": "WCSession", "status": "active"}
+          {"id": "iphone-connectivity-outbound", "from": "phone-connectivity", "to": "watch-app-external", "description": "곡 패키지와 시계 명령을 전송합니다", "technology": "WCSession · transferUserInfo", "status": "active"},
+          {"id": "iphone-connectivity-inbound", "from": "watch-app-external", "to": "phone-connectivity", "description": "세션 상태와 결과를 전달합니다", "technology": "WCSession · sendMessage", "status": "active"},
+          {"id": "iphone-file-to-audio", "from": "file-store", "to": "audio-io", "description": "선택한 음원의 보안 범위 URL을 제공합니다", "technology": "Security-scoped URL", "status": "active"}
         ]
       },
       "watch-components": {
@@ -667,7 +670,7 @@
             "description": "곡과 BeatGrid를 보내고 Watch가 만든 세션 상태와 결과를 받는 상대 컨테이너입니다.", "status": "external",
             "evidence": ["RhythmTrainer/WatchConnectivity/PhoneConnectivityManager.swift"],
             "inputs": ["start", "alert state", "SessionResult"], "outputs": ["Song + BeatGrid", "session stop", "clock ping"],
-            "x": 35, "y": 30, "w": 210, "h": 150
+            "x": 1120, "y": 30, "w": 210, "h": 150
           },
           {
             "id": "watch-connectivity", "name": "Watch Connectivity Gateway", "type": "Component", "visualRole": "component", "technology": "WatchConnectivity",

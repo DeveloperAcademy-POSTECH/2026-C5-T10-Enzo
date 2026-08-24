@@ -70,6 +70,29 @@ test("models semantic roles, boundaries, and descriptive one-way relationships",
   for (const view of Object.values(model.views)) if (view.level === 3) assert.ok(view.nodes.every((node) => !node.drilldown));
 });
 
+test("keeps iPhone/watch communication directional and file input wired", () => {
+  const model = architectureModel();
+  const phone = model.views["iphone-components"];
+  const byId = new Map(phone.relationships.map((relationship) => [relationship.id, relationship]));
+  assert.doesNotMatch(byId.get("iphone-flow-connectivity").description, /받고|콜백/);
+  assert.equal(byId.get("iphone-connectivity-watch"), undefined);
+  assert.equal(byId.get("iphone-connectivity-outbound")?.from, "phone-connectivity");
+  assert.equal(byId.get("iphone-connectivity-callback")?.from, "phone-connectivity");
+  assert.equal(byId.get("iphone-connectivity-callback")?.to, "app-flow");
+  const fileToAudio = phone.relationships.find(({ from, to }) => from === "file-store" && to === "audio-io");
+  assert.ok(fileToAudio, "file-store supplies audio I/O");
+  assert.match(fileToAudio.description, /음원|URL/);
+  assert.ok(fileToAudio.technology.length > 0);
+});
+
+test("keeps external iPhone node outside the Watch level-three boundary", () => {
+  const view = architectureModel().views["watch-components"];
+  const boundary = view.boundaries.find(({ id }) => id === "watch-boundary");
+  const external = view.nodes.find(({ id }) => id === "iphone-app-external");
+  assert.ok(external.x >= boundary.x + boundary.w || external.x + external.w <= boundary.x || external.y >= boundary.y + boundary.h || external.y + external.h <= boundary.y);
+  assert.equal(boundary.members.includes(external.id), false);
+});
+
 test("exports navigation helpers and rejects dangling relationships", () => {
   const { api, model } = explorerRuntime();
   assert.equal(api.validateModel(model).valid, true);

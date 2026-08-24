@@ -350,6 +350,27 @@ test("gives every dense component relationship an explicit clear label route", (
   }
 });
 
+test("keeps dense component relationship label surfaces at least 12 units apart", () => {
+  const { api, model } = explorerRuntime();
+  const minimumGap = 12;
+  for (const viewId of ["iphone-components", "watch-components"]) {
+    const view = model.views[viewId];
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    const labels = view.relationships.map((relationship) => {
+      const point = api.relationshipLabelPoint(api.relationshipPolyline(nodes, relationship), relationship.labelPosition);
+      const { width, height } = api.getRelationshipLabelLayout(relationship);
+      return { id: relationship.id, left: point.x - width / 2, right: point.x + width / 2, top: point.y - height / 2, bottom: point.y + height / 2 };
+    });
+    for (let index = 0; index < labels.length; index += 1) {
+      for (const other of labels.slice(index + 1)) {
+        const label = labels[index];
+        const separated = label.right + minimumGap <= other.left || other.right + minimumGap <= label.left || label.bottom + minimumGap <= other.top || other.bottom + minimumGap <= label.top;
+        assert.ok(separated, `${viewId}:${label.id}/${other.id} preserves ${minimumGap}px label clearance`);
+      }
+    }
+  }
+});
+
 test("filters non-finite relationship route points before making SVG paths", () => {
   const { api } = explorerRuntime();
   assert.equal(api.relationshipPath([{ x: 0, y: 0 }, { x: Infinity, y: 2 }]), "");

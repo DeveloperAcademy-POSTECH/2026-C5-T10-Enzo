@@ -43,20 +43,31 @@ test("defines the four navigation views at C4 levels 1 through 3", () => {
   assert.equal(model.meta.level4, "omitted");
 });
 
-test("keeps every relationship inside its view and every level-three node terminal", () => {
+test("models semantic roles, boundaries, and descriptive one-way relationships", () => {
   const model = architectureModel();
+  const allowedRoles = new Set(["person", "softwareSystem", "application", "mobileApplication", "dataStore", "component"]);
   for (const view of Object.values(model.views)) {
+    assert.ok(view.worldSize.width > 0 && view.worldSize.height > 0, `${view.id} has a world size`);
+    assert.ok(Array.isArray(view.boundaries), `${view.id} has boundaries`);
     const ids = new Set(view.nodes.map((node) => node.id));
+    for (const node of view.nodes) {
+      assert.ok(allowedRoles.has(node.visualRole), `${view.id}:${node.id} has a semantic role`);
+      assert.ok(node.description.length > 0, `${view.id}:${node.id} has a responsibility`);
+      if (["Container", "Component"].includes(node.type)) assert.ok(node.technology.length > 0, `${view.id}:${node.id} has technology`);
+    }
     for (const relationship of view.relationships) {
       assert.ok(ids.has(relationship.from), `${relationship.id} source exists`);
       assert.ok(ids.has(relationship.to), `${relationship.id} target exists`);
-      assert.ok(relationship.label.length > 0, `${relationship.id} has a verb label`);
-      assert.ok(relationship.technology.length > 0, `${relationship.id} has technology`);
-    }
-    if (view.level === 3) {
-      assert.ok(view.nodes.every((node) => !node.drilldown), `${view.id} has no L4 drill-down`);
+      assert.ok(relationship.description.length > 4, `${relationship.id} has a specific description`);
+      assert.doesNotMatch(relationship.description, /^교환(?:합니다)?$/);
+      assert.equal("label" in relationship, false, `${relationship.id} no longer uses the legacy label field`);
     }
   }
+  assert.ok(model.views.containers.nodes.some((node) => node.id === "learner" && node.type === "Person"));
+  assert.equal(model.views.context.nodes.find((node) => node.id === "file-store").visualRole, "dataStore");
+  assert.equal(model.views["iphone-components"].nodes.find((node) => node.id === "persistence").visualRole, "component");
+  assert.equal(model.views.context.nodes.find((node) => node.id === "learner").technology ?? "", "");
+  for (const view of Object.values(model.views)) if (view.level === 3) assert.ok(view.nodes.every((node) => !node.drilldown));
 });
 
 test("exports navigation helpers and rejects dangling relationships", () => {
@@ -68,6 +79,12 @@ test("exports navigation helpers and rejects dangling relationships", () => {
   const broken = structuredClone(model);
   broken.views.context.relationships[0].to = "missing-node";
   assert.equal(api.validateModel(broken).valid, false);
+  const badDescription = structuredClone(model);
+  delete badDescription.views.context.nodes[0].description;
+  assert.equal(api.validateModel(badDescription).valid, false);
+  const badRole = structuredClone(model);
+  badRole.views.context.nodes[0].visualRole = "unknown";
+  assert.equal(api.validateModel(badRole).valid, false);
 });
 
 test("drills from context to both component views and stops at level three", () => {

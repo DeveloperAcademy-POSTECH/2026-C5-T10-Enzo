@@ -398,6 +398,34 @@ test("clamps, pans, zooms around the pointer, and fits the SVG world", () => {
     160
   );
   assert.deepEqual(JSON.parse(JSON.stringify(constrained)), { x: -960, y: 160, scale: 1 });
+
+  const overScaled = api.constrainViewport(
+    { x: -9999, y: 9999, scale: 3 },
+    { width: 1800, height: 1000 },
+    { width: 1000, height: 700 },
+    160
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(overScaled)), { x: -2760, y: 160, scale: 2 });
+});
+
+test("reserves Space for a focused C4 node but enables temporary Hand on the canvas", () => {
+  const { api } = explorerRuntime();
+  const focusedNode = {
+    tagName: "g",
+    closest: (selector) => selector.includes("[data-node-id]") ? {} : null
+  };
+  const canvas = { tagName: "DIV", closest: () => null };
+
+  assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, focusedNode), false);
+  assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, canvas), true);
+  assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, { tagName: "INPUT", closest: () => null }), false);
+});
+
+test("names every C4 canvas toolbar control for assistive technology", () => {
+  const toolbar = html.match(/<div id="canvas-tools"[\s\S]*?<\/div>/)?.[0] ?? "";
+  for (const label of ["선택 도구", "이동 도구", "축소", "화면에 맞추기", "확대", "현재 확대 비율"]) {
+    assert.match(toolbar, new RegExp(`aria-label="${label}"`));
+  }
 });
 
 test("reserves enough horizontal space for context relationship labels", () => {

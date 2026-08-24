@@ -369,12 +369,12 @@
           <g id="diagram-world"></g>
         </svg>
         <div id="canvas-tools" class="canvas-tools" role="toolbar" aria-label="캔버스 도구">
-          <button type="button" class="canvas-tool" data-tool="select" aria-pressed="true" title="선택 도구">↖</button>
-          <button type="button" class="canvas-tool" data-tool="hand" aria-pressed="false" title="이동 도구">✋</button>
+          <button type="button" class="canvas-tool" data-tool="select" aria-label="선택 도구" aria-pressed="true" title="선택 도구">↖</button>
+          <button type="button" class="canvas-tool" data-tool="hand" aria-label="이동 도구" aria-pressed="false" title="이동 도구">✋</button>
           <span id="zoom-value" class="canvas-zoom-value" aria-label="현재 확대 비율">100%</span>
-          <button type="button" class="canvas-tool" data-action="zoom-out" title="축소">−</button>
-          <button type="button" class="canvas-tool" data-action="fit-view" title="화면에 맞추기">Fit</button>
-          <button type="button" class="canvas-tool" data-action="zoom-in" title="확대">+</button>
+          <button type="button" class="canvas-tool" data-action="zoom-out" aria-label="축소" title="축소">−</button>
+          <button type="button" class="canvas-tool" data-action="fit-view" aria-label="화면에 맞추기" title="화면에 맞추기">Fit</button>
+          <button type="button" class="canvas-tool" data-action="zoom-in" aria-label="확대" title="확대">+</button>
         </div>
         <div class="canvas-legend" aria-label="다이어그램 범례">
           <span><i class="legend-swatch"></i>내부</span>
@@ -1069,12 +1069,13 @@
     }
 
     function constrainViewport(viewport, worldSize, frameSize, margin = 160) {
-      const minX = Math.min(margin, frameSize.width - worldSize.width * viewport.scale - margin);
-      const minY = Math.min(margin, frameSize.height - worldSize.height * viewport.scale - margin);
+      const scale = clampScale(viewport.scale);
+      const minX = Math.min(margin, frameSize.width - worldSize.width * scale - margin);
+      const minY = Math.min(margin, frameSize.height - worldSize.height * scale - margin);
       return {
         x: Math.min(margin, Math.max(minX, viewport.x)),
         y: Math.min(margin, Math.max(minY, viewport.y)),
-        scale: clampScale(viewport.scale)
+        scale
       };
     }
 
@@ -1262,6 +1263,13 @@
       ensureViewportForCurrentView();
     }
 
+    function shouldUseTemporaryHand(event, activeElement) {
+      if (event.code !== "Space") return false;
+      const tagName = activeElement?.tagName?.toUpperCase() ?? "";
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(tagName)) return false;
+      return !activeElement?.closest?.("[data-node-id], button, [role=button], a[href]");
+    }
+
     function bindToolbarActions() {
       document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => {
         const action = button.dataset.action;
@@ -1315,7 +1323,7 @@
 
       window.addEventListener("keydown", (event) => {
         const editable = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? "");
-        if (event.code === "Space" && !editable) {
+        if (shouldUseTemporaryHand(event, document.activeElement)) {
           event.preventDefault();
           spaceHeld = true;
           viewport.dataset.tool = "hand";
@@ -1327,7 +1335,7 @@
         if (!editable && event.key.toLowerCase() === "h") updateWorkspace({ type: "set-tool", tool: "hand" });
       });
       window.addEventListener("keyup", (event) => {
-        if (event.code !== "Space") return;
+        if (event.code !== "Space" || !spaceHeld) return;
         spaceHeld = false;
         viewport.dataset.tool = workspaceState.tool;
       });
@@ -1544,6 +1552,7 @@
       ensureViewportForCurrentView,
       renderCanvasTools,
       updateWorkspace,
+      shouldUseTemporaryHand,
       bindToolbarActions,
       bindViewportInteractions,
       navigateTo,

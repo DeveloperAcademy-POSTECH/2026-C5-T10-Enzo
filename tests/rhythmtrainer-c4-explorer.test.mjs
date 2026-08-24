@@ -76,7 +76,10 @@ test("keeps iPhone/watch communication directional and file input wired", () => 
   const byId = new Map(phone.relationships.map((relationship) => [relationship.id, relationship]));
   assert.doesNotMatch(byId.get("iphone-flow-connectivity").description, /받고|콜백/);
   assert.equal(byId.get("iphone-connectivity-watch"), undefined);
-  assert.equal(byId.get("iphone-connectivity-outbound")?.from, "phone-connectivity");
+  assert.deepEqual(byId.get("iphone-package-outbound"), { id: "iphone-package-outbound", from: "phone-connectivity", to: "watch-app-external", description: "Song + BeatGrid 패키지를 전송합니다", technology: "WCSession · transferUserInfo", status: "active" });
+  assert.deepEqual(byId.get("iphone-clock-request"), { id: "iphone-clock-request", from: "phone-connectivity", to: "watch-app-external", description: "시계 오프셋 측정을 요청합니다", technology: "WCSession · sendMessage", status: "active" });
+  assert.deepEqual(byId.get("iphone-realtime-outbound"), { id: "iphone-realtime-outbound", from: "phone-connectivity", to: "watch-app-external", description: "시작·이탈 상태를 전송합니다", technology: "WCSession · sendMessage", status: "active" });
+  assert.deepEqual(byId.get("iphone-session-result"), { id: "iphone-session-result", from: "watch-app-external", to: "phone-connectivity", description: "SessionResult를 전송합니다", technology: "WCSession · transferUserInfo", status: "active" });
   assert.equal(byId.get("iphone-connectivity-callback")?.from, "phone-connectivity");
   assert.equal(byId.get("iphone-connectivity-callback")?.to, "app-flow");
   const fileToAudio = phone.relationships.find(({ from, to }) => from === "file-store" && to === "audio-io");

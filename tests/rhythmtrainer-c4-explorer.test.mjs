@@ -104,4 +104,46 @@ test("renders semantic node controls and source-backed evidence", () => {
   assert.match(evidenceMarkup, /beat_this_api\.cpp/);
 });
 
+test("adapts relationship output for compact layouts without external dependencies", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.getLayoutMode, "function", "layout mode resolver must exist");
+  assert.equal(typeof api.buildRelationshipSummary, "function", "relationship summary builder must exist");
+  assert.equal(api.getLayoutMode(761), "diagram");
+  assert.equal(api.getLayoutMode(760), "compact");
+  assert.equal(api.getLayoutMode(320), "compact");
+
+  const gap = model.views["iphone-components"].relationships.find((relationship) => relationship.status === "gap");
+  const summary = api.buildRelationshipSummary(gap, "Practice Flow Coordinator", "Persistence Repository");
+  assert.match(summary, /Practice Flow Coordinator → Persistence Repository/);
+  assert.match(summary, /저장·캐시 연결이 구현 흐름에 없습니다/);
+  assert.match(summary, /SwiftData injection absent/);
+  assert.match(summary, /구현됨 · 미배선/);
+
+  const externalResources = [
+    ...html.matchAll(/<(?:script|link|img)[^>]+(?:src|href)=["']([^"']+)["']/gi)
+  ].map((match) => match[1]).filter((url) => /^https?:\/\//.test(url));
+  assert.deepEqual(externalResources, []);
+  assert.doesNotMatch(html, /\bfetch\s*\(/);
+});
+
+test("uses full labels only for sparse views and numbered labels for dense views", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.getRelationshipLabelMode, "function", "relationship label mode resolver must exist");
+  assert.equal(api.getRelationshipLabelMode(model.views.context), "full");
+  assert.equal(api.getRelationshipLabelMode(model.views.containers), "indexed");
+  assert.equal(api.getRelationshipLabelMode(model.views["iphone-components"]), "indexed");
+
+  const gap = model.views["iphone-components"].relationships.find((relationship) => relationship.status === "gap");
+  const summary = api.buildRelationshipSummary(gap, "Practice Flow Coordinator", "Persistence Repository", 7);
+  assert.match(summary, /R7 · Practice Flow Coordinator → Persistence Repository/);
+});
+
+test("reserves enough horizontal space for context relationship labels", () => {
+  const { model } = explorerRuntime();
+  const nodes = [...model.views.context.nodes].sort((a, b) => a.x - b.x);
+  const gaps = nodes.slice(1).map((node, index) => node.x - (nodes[index].x + nodes[index].w));
+
+  assert.ok(gaps.every((gap) => gap >= 150), `context gaps must fit 150px labels: ${gaps.join(", ")}`);
+});
+
 export { architectureModel, explorerRuntime, html, scriptBody };

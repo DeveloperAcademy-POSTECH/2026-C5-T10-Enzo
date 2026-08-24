@@ -1333,8 +1333,32 @@
       content.innerHTML = buildInspectorMarkup(architectureModel, workspaceState);
     }
 
+    function getNextTabIndex(tabCount, currentIndex, key) {
+      if (!Number.isInteger(tabCount) || tabCount < 1 || !Number.isInteger(currentIndex) || currentIndex < 0 || currentIndex >= tabCount) return null;
+      if (key === "ArrowLeft") return (currentIndex - 1 + tabCount) % tabCount;
+      if (key === "ArrowRight") return (currentIndex + 1) % tabCount;
+      if (key === "Home") return 0;
+      if (key === "End") return tabCount - 1;
+      return null;
+    }
+
+    function bindRovingTablist(tablist, activateTab) {
+      const tabs = [...tablist.querySelectorAll('[role="tab"]')];
+      tabs.forEach((tab, index) => {
+        tab.addEventListener("click", () => activateTab(tab));
+        tab.addEventListener("keydown", (event) => {
+          const nextIndex = getNextTabIndex(tabs.length, index, event.key);
+          if (nextIndex === null) return;
+          event.preventDefault();
+          const nextTab = tabs[nextIndex];
+          activateTab(nextTab);
+          document.getElementById(nextTab.id)?.focus();
+        });
+      });
+    }
+
     function bindRenderedControls() {
-      document.querySelectorAll("#left-panel-content [data-left-tab]").forEach((button) => button.addEventListener("click", () => updateWorkspace({ type: "set-left-tab", tab: button.dataset.leftTab })));
+      document.querySelectorAll("#left-panel-content [role=tablist]").forEach((tablist) => bindRovingTablist(tablist, (tab) => updateWorkspace({ type: "set-left-tab", tab: tab.dataset.leftTab })));
       document.querySelectorAll("#left-panel-content [data-view-id]").forEach((button) => button.addEventListener("click", () => navigateTo(button.dataset.viewId)));
       document.querySelectorAll("#left-panel-content [data-node-id]").forEach((element) => {
         element.addEventListener("click", () => dispatchWorkspace({ type: "select-node", nodeId: element.dataset.nodeId }));
@@ -1345,7 +1369,7 @@
           openNodeDrilldown(element.dataset.nodeId);
         });
       });
-      document.querySelectorAll("#inspector-content [data-inspector-tab]").forEach((button) => button.addEventListener("click", () => updateWorkspace({ type: "set-inspector-tab", tab: button.dataset.inspectorTab })));
+      document.querySelectorAll("#inspector-content [role=tablist]").forEach((tablist) => bindRovingTablist(tablist, (tab) => updateWorkspace({ type: "set-inspector-tab", tab: tab.dataset.inspectorTab })));
       document.querySelectorAll("#inspector-content [data-open-node-id]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();
         openNodeDrilldown(button.dataset.openNodeId);
@@ -1672,6 +1696,8 @@
       switchView,
       openDrilldown,
       renderTopToolbar,
+      getNextTabIndex,
+      bindRovingTablist,
       bindRenderedControls,
       getLayoutMode,
       anchorFor,

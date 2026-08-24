@@ -514,4 +514,18 @@ test("links Views Layers and Inspector tabs to unique accessible tab panels", ()
   assert.match(inspectorModelPanel, /hidden/);
 });
 
+test("calculates wrapped keyboard navigation for left and Inspector tablists", () => {
+  const { api } = explorerRuntime();
+
+  assert.equal(api.getNextTabIndex(2, 0, "ArrowLeft"), 1, "left tabs wrap from first to last");
+  assert.equal(api.getNextTabIndex(2, 1, "ArrowRight"), 0, "left tabs wrap from last to first");
+  assert.equal(api.getNextTabIndex(2, 1, "Home"), 0);
+  assert.equal(api.getNextTabIndex(2, 0, "End"), 1);
+  assert.equal(api.getNextTabIndex(4, 2, "ArrowRight"), 3, "Inspector advances to the next tab");
+  assert.equal(api.getNextTabIndex(4, 0, "ArrowLeft"), 3, "Inspector wraps backwards");
+  assert.equal(api.getNextTabIndex(4, 1, "Home"), 0);
+  assert.equal(api.getNextTabIndex(4, 1, "End"), 3);
+  assert.equal(api.getNextTabIndex(4, 1, "Enter"), null, "unhandled keys retain native behavior");
+});
+
 export { architectureModel, explorerRuntime, html, scriptBody };

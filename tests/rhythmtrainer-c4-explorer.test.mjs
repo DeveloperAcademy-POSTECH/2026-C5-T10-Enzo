@@ -514,21 +514,86 @@ test("handles collinear segment overlap without treating disjoint collinear segm
   assert.equal(api.segmentsIntersect({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 8, y: 0 }, { x: 20, y: 0 }), true);
 });
 
-test("never re-enters endpoint interiors after leaving a relationship anchor", () => {
+test("keeps label hints out of the mandatory relationship route", () => {
   const { api, model } = explorerRuntime();
-  const strictlyInside = (point, node) => point.x > node.x && point.x < node.x + node.w && point.y > node.y && point.y < node.y + node.h;
+  let relationshipCount = 0;
   for (const view of Object.values(model.views)) {
     const nodes = new Map(view.nodes.map((node) => [node.id, node]));
     for (const relationship of view.relationships) {
+      relationshipCount += 1;
+      const route = api.relationshipPolyline(nodes, relationship);
+      const movedLabel = api.relationshipPolyline(nodes, {
+        ...relationship,
+        labelPosition: { x: -10000, y: 10000 }
+      });
+      assert.deepEqual(JSON.parse(JSON.stringify(movedLabel)), JSON.parse(JSON.stringify(route)), `${view.id}:${relationship.id} routes independently of its label hint`);
+    }
+  }
+  assert.equal(relationshipCount, 34);
+});
+
+test("keeps all 34 final relationships free of positive collinear self-overlap", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.positiveCollinearOverlapLength, "function");
+  let relationshipCount = 0;
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      relationshipCount += 1;
       const points = api.relationshipPolyline(nodes, relationship);
-      const endpoints = [nodes.get(relationship.from), nodes.get(relationship.to)];
-      for (let index = 1; index < points.length; index += 1) for (const ratio of [.1, .25, .5, .75, .9]) {
-        const start = points[index - 1]; const end = points[index];
-        const sample = { x: start.x + (end.x - start.x) * ratio, y: start.y + (end.y - start.y) * ratio };
-        assert.equal(endpoints.some((node) => strictlyInside(sample, node)), false, `${view.id}:${relationship.id} segment ${index} stays out of endpoint interiors`);
+      const segments = points.slice(1).map((end, index) => ({ start: points[index], end }));
+      for (let index = 0; index < segments.length; index += 1) {
+        const segment = segments[index];
+        assert.ok(segment.start.x === segment.end.x || segment.start.y === segment.end.y, `${view.id}:${relationship.id} segment ${index + 1} stays orthogonal`);
+        for (const other of segments.slice(index + 1)) {
+          assert.equal(api.positiveCollinearOverlapLength(segment.start, segment.end, other.start, other.end), 0, `${view.id}:${relationship.id} has no positive-length retrace`);
+        }
       }
     }
   }
+  assert.equal(relationshipCount, 34);
+});
+
+test("separates all 14 opposing relationship pairs without a shared positive-length lane", () => {
+  const { api, model } = explorerRuntime();
+  let opposingPairCount = 0;
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (let index = 0; index < view.relationships.length; index += 1) {
+      const relationship = view.relationships[index];
+      const first = api.relationshipPolyline(nodes, relationship);
+      const firstSegments = first.slice(1).map((end, segmentIndex) => ({ start: first[segmentIndex], end }));
+      for (const reverse of view.relationships.slice(index + 1).filter((candidate) => candidate.from === relationship.to && candidate.to === relationship.from)) {
+        opposingPairCount += 1;
+        const second = api.relationshipPolyline(nodes, reverse);
+        const secondSegments = second.slice(1).map((end, segmentIndex) => ({ start: second[segmentIndex], end }));
+        for (const forwardSegment of firstSegments) for (const reverseSegment of secondSegments) {
+          assert.equal(api.positiveCollinearOverlapLength(forwardSegment.start, forwardSegment.end, reverseSegment.start, reverseSegment.end), 0, `${view.id}:${relationship.id}/${reverse.id} shares no positive-length lane`);
+        }
+      }
+    }
+  }
+  assert.equal(opposingPairCount, 14);
+});
+
+test("analytically keeps all relationship segments out of endpoint interiors", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.segmentTraversesNodeInterior, "function");
+  let relationshipCount = 0;
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const relationship of view.relationships) {
+      relationshipCount += 1;
+      const points = api.relationshipPolyline(nodes, relationship);
+      const endpoints = [nodes.get(relationship.from), nodes.get(relationship.to)];
+      assert.notDeepEqual(JSON.parse(JSON.stringify(points[0])), JSON.parse(JSON.stringify(points.at(-1))), `${view.id}:${relationship.id} has distinct endpoint coordinates`);
+      for (let index = 1; index < points.length; index += 1) {
+        const start = points[index - 1]; const end = points[index];
+        assert.equal(endpoints.some((node) => api.segmentTraversesNodeInterior(start, end, node)), false, `${view.id}:${relationship.id} segment ${index} stays out of endpoint interiors`);
+      }
+    }
+  }
+  assert.equal(relationshipCount, 34);
 });
 
 test("keeps each final relationship free of retraced canonical segments and collapsed endpoints", () => {

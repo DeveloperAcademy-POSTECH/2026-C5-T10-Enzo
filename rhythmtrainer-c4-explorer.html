@@ -723,36 +723,36 @@
             "id": "container-file-to-phone",
             "from": "file-store", "to": "iphone-app",
             "description": "음원 URL을 제공합니다", "technology": "Security-scoped URL", "status": "active",
-            "sourceAnchor": {"x":260,"y":255}, "targetAnchor": {"x":355,"y":300}, "waypoints": [{"x":300,"y":430}], "labelPosition": {"x":300,"y":430}
+            "sourceAnchor": {"x":260,"y":255}, "targetAnchor": {"x":355,"y":300}, "waypoints": [{"x":222.48,"y":430},{"x":377.52,"y":430}], "labelPosition": {"x":300,"y":430}
           },
           {
             "id": "container-phone-to-watch-package",
             "from": "iphone-app", "to": "watch-app",
             "description": "Song + BeatGrid를 전송합니다", "technology": "WCSession transferUserInfo", "status": "active",
-            "sourceAnchor": {"x":625,"y":180}, "targetAnchor": {"x":720,"y":180}, "waypoints": [{"x":675,"y":62}], "labelPosition": {"x":675,"y":48}
+            "sourceAnchor": {"x":625,"y":180}, "targetAnchor": {"x":720,"y":180}, "waypoints": [{"x":573.6,"y":48},{"x":776.4,"y":48}], "labelPosition": {"x":675,"y":48}
           },
           {
             "id": "container-watch-to-phone-live",
             "from": "watch-app", "to": "iphone-app",
             "description": "시작 시각과 이탈 상태를 알립니다", "technology": "WCSession sendMessage", "status": "active",
-            "sourceAnchor": {"x":720,"y":230}, "targetAnchor": {"x":625,"y":230}, "waypoints": [{"x":675,"y":450}], "labelPosition": {"x":675,"y":450}
+            "sourceAnchor": {"x":720,"y":230}, "targetAnchor": {"x":625,"y":230}, "waypoints": [{"x":675,"y":427},{"x":675,"y":473}], "labelPosition": {"x":675,"y":450}
           },
           {
             "id": "container-watch-to-phone-result",
             "from": "watch-app", "to": "iphone-app",
             "description": "SessionResult를 전송합니다", "technology": "WCSession transferUserInfo", "status": "active",
-            "sourceAnchor": {"x":970,"y":270}, "targetAnchor": {"x":625,"y":270}, "waypoints": [{"x":1035,"y":450}], "labelPosition": {"x":1035,"y":450}
+            "sourceAnchor": {"x":970,"y":270}, "targetAnchor": {"x":625,"y":270}, "waypoints": [{"x":936.72,"y":450},{"x":1133.28,"y":450}], "labelPosition": {"x":1035,"y":450}
           },
           {
             "id": "clock-probe",
             "from": "iphone-app", "to": "watch-app",
             "description": "시계 오프셋 측정을 요청합니다", "technology": "WCSession · sendMessage", "status": "active",
-            "sourceAnchor": {"x":625,"y":320}, "targetAnchor": {"x":720,"y":320}, "waypoints": [{"x":675,"y":105}], "labelPosition": {"x":840,"y":66}
+            "sourceAnchor": {"x":625,"y":320}, "targetAnchor": {"x":720,"y":320}, "waypoints": [{"x":740.88,"y":66},{"x":939.12,"y":66}], "labelPosition": {"x":840,"y":66}
           }
           ,{
             "id": "clock-response", "from": "watch-app", "to": "iphone-app",
             "description": "Watch 기준 시각을 응답합니다", "technology": "WCSession · replyHandler", "status": "active",
-            "sourceAnchor": {"x":970,"y":340}, "targetAnchor": {"x":625,"y":340}, "waypoints": [{"x":1045,"y":105}], "labelPosition": {"x":1045,"y":105}
+            "sourceAnchor": {"x":970,"y":340}, "targetAnchor": {"x":625,"y":340}, "waypoints": [{"x":946.48,"y":105},{"x":1143.52,"y":105}], "labelPosition": {"x":1045,"y":105}
           }
         ]
       },
@@ -833,20 +833,20 @@
           }
         ],
         "relationships": [
-          {"id": "iphone-ui-to-flow", "from": "iphone-ui", "to": "app-flow", "description": "사용자 명령을 전달합니다", "technology": "SwiftUI actions", "status": "active", "sourceAnchor":{"x":245,"y":76},"targetAnchor":{"x":285,"y":76},"waypoints":[{"x":380,"y":450}],"labelPosition":{"x":360,"y":450}},
-          {"id": "iphone-flow-to-ui", "from": "app-flow", "to": "iphone-ui", "description": "화면 상태와 결과를 제공합니다", "technology": "Combine observation", "status": "active", "sourceAnchor":{"x":285,"y":136},"targetAnchor":{"x":245,"y":136},"waypoints":[{"x":1080,"y":35}],"labelPosition":{"x":1080,"y":35}},
-          {"id": "iphone-flow-audio", "from": "app-flow", "to": "audio-io", "description": "PCM 변환과 예약 재생을 요청합니다", "technology": "Swift calls", "status": "active", "sourceAnchor":{"x":505,"y":76},"targetAnchor":{"x":545,"y":76},"waypoints":[{"x":520,"y":225}],"labelPosition":{"x":1500,"y":67}},
-          {"id": "iphone-flow-adapter", "from": "app-flow", "to": "beat-adapter", "description": "PCM 분석을 요청합니다", "technology": "Task.detached / Swift call", "status": "active", "sourceAnchor":{"x":505,"y":136},"targetAnchor":{"x":790,"y":136},"waypoints":[{"x":750,"y":225}],"labelPosition":{"x":1180,"y":280}},
-          {"id": "iphone-adapter-native", "from": "beat-adapter", "to": "beatthis-engine", "description": "정박 검출을 위임합니다", "technology": "BeatThisBridge.detectBeats", "status": "active", "sourceAnchor":{"x":885,"y":195},"targetAnchor":{"x":650,"y":265},"waypoints":[{"x":1200,"y":400}],"labelPosition":{"x":1180,"y":400}},
-          {"id": "iphone-flow-connectivity", "from": "app-flow", "to": "phone-connectivity", "description": "곡 패키지 전송을 요청합니다", "technology": "Swift closure command", "status": "active", "sourceAnchor":{"x":430,"y":175},"targetAnchor":{"x":430,"y":265},"waypoints":[{"x":1250,"y":225}],"labelPosition":{"x":1450,"y":160}},
-          {"id": "iphone-connectivity-callback", "from": "phone-connectivity", "to": "app-flow", "description": "Watch 세션 콜백을 제공합니다", "technology": "Closure callback", "status": "active", "sourceAnchor":{"x":350,"y":265},"targetAnchor":{"x":350,"y":175},"waypoints":[{"x":1624,"y":918}],"labelPosition":{"x":1600,"y":900}},
-          {"id": "iphone-ui-scoring", "from": "iphone-ui", "to": "result-scoring", "description": "결과를 표시 점수로 변환합니다", "technology": "LyricScoring.perLyric", "status": "active", "sourceAnchor":{"x":140,"y":180},"targetAnchor":{"x":140,"y":265},"waypoints":[{"x":1400,"y":800}],"labelPosition":{"x":1380,"y":800}},
-          {"id": "iphone-flow-persistence-gap", "from": "app-flow", "to": "persistence", "description": "저장·캐시 연결이 구현 흐름에 없습니다", "technology": "SwiftData injection absent", "status": "gap", "sourceAnchor":{"x":505,"y":120},"targetAnchor":{"x":790,"y":360},"waypoints":[{"x":1090,"y":500}],"labelPosition":{"x":1090,"y":500}},
-          {"id": "iphone-package-outbound", "from": "phone-connectivity", "to": "watch-app-external", "description": "Song + BeatGrid 패키지를 전송합니다", "technology": "WCSession · transferUserInfo", "status": "active", "sourceAnchor":{"x":320,"y":410},"targetAnchor":{"x":400,"y":485},"waypoints":[{"x":290,"y":455}],"labelPosition":{"x":1550,"y":560}},
-          {"id": "iphone-clock-request", "from": "phone-connectivity", "to": "watch-app-external", "description": "시계 오프셋 측정을 요청합니다", "technology": "WCSession · sendMessage", "status": "active", "sourceAnchor":{"x":370,"y":410},"targetAnchor":{"x":455,"y":485},"waypoints":[{"x":1600,"y":455}],"labelPosition":{"x":1600,"y":455}},
-          {"id": "iphone-realtime-outbound", "from": "phone-connectivity", "to": "watch-app-external", "description": "시작·이탈 상태를 전송합니다", "technology": "WCSession · sendMessage", "status": "active", "sourceAnchor":{"x":450,"y":410},"targetAnchor":{"x":545,"y":485},"waypoints":[{"x":1100,"y":430}],"labelPosition":{"x":1550,"y":650}},
-          {"id": "iphone-session-result", "from": "watch-app-external", "to": "phone-connectivity", "description": "SessionResult를 전송합니다", "technology": "WCSession · transferUserInfo", "status": "active", "sourceAnchor":{"x":610,"y":485},"targetAnchor":{"x":485,"y":410},"waypoints":[{"x":1250,"y":570}],"labelPosition":{"x":1250,"y":570}},
-          {"id": "iphone-file-to-audio", "from": "file-store", "to": "audio-io", "description": "선택한 음원의 보안 범위 URL을 제공합니다", "technology": "Security-scoped URL", "status": "active", "sourceAnchor":{"x":210,"y":705},"targetAnchor":{"x":650,"y":180},"waypoints":[{"x":1080,"y":650}],"labelPosition":{"x":1080,"y":650}}
+          {"id": "iphone-ui-to-flow", "from": "iphone-ui", "to": "app-flow", "description": "사용자 명령을 전달합니다", "technology": "SwiftUI actions", "status": "active", "sourceAnchor":{"x":245,"y":76},"targetAnchor":{"x":285,"y":76},"waypoints":[{"x":274.92,"y":450},{"x":445.08,"y":450}],"labelPosition":{"x":360,"y":450}},
+          {"id": "iphone-flow-to-ui", "from": "app-flow", "to": "iphone-ui", "description": "화면 상태와 결과를 제공합니다", "technology": "Combine observation", "status": "active", "sourceAnchor":{"x":285,"y":136},"targetAnchor":{"x":245,"y":136},"waypoints":[{"x":980.88,"y":35},{"x":1179.12,"y":35}],"labelPosition":{"x":1080,"y":35}},
+          {"id": "iphone-flow-audio", "from": "app-flow", "to": "audio-io", "description": "PCM 변환과 예약 재생을 요청합니다", "technology": "Swift calls", "status": "active", "sourceAnchor":{"x":505,"y":76},"targetAnchor":{"x":545,"y":76},"waypoints":[{"x":1388.4,"y":67},{"x":1611.6,"y":67}],"labelPosition":{"x":1500,"y":67}},
+          {"id": "iphone-flow-adapter", "from": "app-flow", "to": "beat-adapter", "description": "PCM 분석을 요청합니다", "technology": "Task.detached / Swift call", "status": "active", "sourceAnchor":{"x":505,"y":136},"targetAnchor":{"x":790,"y":136},"waypoints":[{"x":1090.6,"y":280},{"x":1269.4,"y":280}],"labelPosition":{"x":1180,"y":280}},
+          {"id": "iphone-adapter-native", "from": "beat-adapter", "to": "beatthis-engine", "description": "정박 검출을 위임합니다", "technology": "BeatThisBridge.detectBeats", "status": "active", "sourceAnchor":{"x":790,"y":195},"targetAnchor":{"x":650,"y":265},"waypoints":[{"x":1086.2,"y":400},{"x":1273.8,"y":400}],"labelPosition":{"x":1180,"y":400}},
+          {"id": "iphone-flow-connectivity", "from": "app-flow", "to": "phone-connectivity", "description": "곡 패키지 전송을 요청합니다", "technology": "Swift closure command", "status": "active", "sourceAnchor":{"x":430,"y":175},"targetAnchor":{"x":430,"y":265},"waypoints":[{"x":1356.88,"y":160},{"x":1543.12,"y":160}],"labelPosition":{"x":1450,"y":160}},
+          {"id": "iphone-connectivity-callback", "from": "phone-connectivity", "to": "app-flow", "description": "Watch 세션 콜백을 제공합니다", "technology": "Closure callback", "status": "active", "sourceAnchor":{"x":350,"y":265},"targetAnchor":{"x":350,"y":175},"waypoints":[{"x":1501.48,"y":900},{"x":1698.52,"y":900}],"labelPosition":{"x":1600,"y":900}},
+          {"id": "iphone-ui-scoring", "from": "iphone-ui", "to": "result-scoring", "description": "결과를 표시 점수로 변환합니다", "technology": "LyricScoring.perLyric", "status": "active", "sourceAnchor":{"x":140,"y":180},"targetAnchor":{"x":140,"y":265},"waypoints":[{"x":1280.88,"y":800},{"x":1479.12,"y":800}],"labelPosition":{"x":1380,"y":800}},
+          {"id": "iphone-flow-persistence-gap", "from": "app-flow", "to": "persistence", "description": "저장·캐시 연결이 구현 흐름에 없습니다", "technology": "SwiftData injection absent", "status": "gap", "sourceAnchor":{"x":505,"y":120},"targetAnchor":{"x":790,"y":360},"waypoints":[{"x":968.32,"y":500},{"x":1211.68,"y":500}],"labelPosition":{"x":1090,"y":500}},
+          {"id": "iphone-package-outbound", "from": "phone-connectivity", "to": "watch-app-external", "description": "Song + BeatGrid 패키지를 전송합니다", "technology": "WCSession · transferUserInfo", "status": "active", "sourceAnchor":{"x":320,"y":410},"targetAnchor":{"x":400,"y":485},"waypoints":[{"x":1428.56,"y":560},{"x":1671.44,"y":560}],"labelPosition":{"x":1550,"y":560}},
+          {"id": "iphone-clock-request", "from": "phone-connectivity", "to": "watch-app-external", "description": "시계 오프셋 측정을 요청합니다", "technology": "WCSession · sendMessage", "status": "active", "sourceAnchor":{"x":370,"y":410},"targetAnchor":{"x":455,"y":485},"waypoints":[{"x":1500.88,"y":455},{"x":1699.12,"y":455}],"labelPosition":{"x":1600,"y":455}},
+          {"id": "iphone-realtime-outbound", "from": "phone-connectivity", "to": "watch-app-external", "description": "시작·이탈 상태를 전송합니다", "technology": "WCSession · sendMessage", "status": "active", "sourceAnchor":{"x":430,"y":410},"targetAnchor":{"x":430,"y":485},"waypoints":[{"x":1456.4,"y":650},{"x":1643.6,"y":650}],"labelPosition":{"x":1550,"y":650}},
+          {"id": "iphone-session-result", "from": "watch-app-external", "to": "phone-connectivity", "description": "SessionResult를 전송합니다", "technology": "WCSession · transferUserInfo", "status": "active", "sourceAnchor":{"x":610,"y":485},"targetAnchor":{"x":485,"y":410},"waypoints":[{"x":1151.72,"y":570},{"x":1348.28,"y":570}],"labelPosition":{"x":1250,"y":570}},
+          {"id": "iphone-file-to-audio", "from": "file-store", "to": "audio-io", "description": "선택한 음원의 보안 범위 URL을 제공합니다", "technology": "Security-scoped URL", "status": "active", "sourceAnchor":{"x":210,"y":705},"targetAnchor":{"x":650,"y":180},"waypoints":[{"x":1080,"y":673},{"x":1080,"y":627}],"labelPosition":{"x":1080,"y":650}}
         ]
       },
       "watch-components": {
@@ -925,18 +925,18 @@
           }
         ],
         "relationships": [
-          {"id": "watch-phone-in", "from": "iphone-app-external", "to": "watch-connectivity", "description": "Song + BeatGrid와 제어 신호를 보냅니다", "technology": "WCSession", "status": "active", "sourceAnchor":{"x":1120,"y":80},"targetAnchor":{"x":505,"y":80},"waypoints":[{"x":1250,"y":210}],"labelPosition":{"x":1500,"y":100}},
-          {"id": "watch-connectivity-ui", "from": "watch-connectivity", "to": "watch-ui", "description": "수신한 songID + BeatGrid를 전달합니다", "technology": "onSongReceived closure", "status": "active", "sourceAnchor":{"x":505,"y":75},"targetAnchor":{"x":545,"y":75},"waypoints":[{"x":525,"y":212}],"labelPosition":{"x":1500,"y":237}},
-          {"id": "watch-ui-motion", "from": "watch-ui", "to": "motion-capture", "description": "센서 수집을 시작하고 종료합니다", "technology": "ArmSwingDetector.start / stop", "status": "active", "sourceAnchor":{"x":650,"y":180},"targetAnchor":{"x":140,"y":245},"waypoints":[{"x":160,"y":450}],"labelPosition":{"x":1500,"y":760}},
-          {"id": "watch-motion-swing", "from": "motion-capture", "to": "swing-detector", "description": "가속도 표본을 처리합니다", "technology": "process(timestamp, magnitude)", "status": "active", "sourceAnchor":{"x":245,"y":300},"targetAnchor":{"x":285,"y":300},"waypoints":[{"x":260,"y":212}],"labelPosition":{"x":140,"y":450}},
-          {"id": "watch-motion-judge", "from": "motion-capture", "to": "rhythm-judge", "description": "검출된 swing uptime을 전달합니다", "technology": "onSwing closure", "status": "active", "sourceAnchor":{"x":245,"y":360},"targetAnchor":{"x":545,"y":320},"waypoints":[{"x":400,"y":450}],"labelPosition":{"x":400,"y":450}},
-          {"id": "watch-ui-judge", "from": "watch-ui", "to": "rhythm-judge", "description": "BeatGrid를 로드하고 판정을 시작·종료합니다", "technology": "load / start / stop", "status": "active", "sourceAnchor":{"x":650,"y":180},"targetAnchor":{"x":650,"y":245},"waypoints":[{"x":800,"y":212}],"labelPosition":{"x":1500,"y":450}},
-          {"id": "watch-judge-matcher", "from": "rhythm-judge", "to": "beat-matcher", "description": "스윙·시간을 판정하고 마디 정확도를 계산합니다", "technology": "registerSwing / advance / barAccuracies", "status": "active", "sourceAnchor":{"x":755,"y":320},"targetAnchor":{"x":790,"y":320},"waypoints":[{"x":900,"y":450}],"labelPosition":{"x":900,"y":450}},
-          {"id": "watch-judge-coach", "from": "rhythm-judge", "to": "rhythm-coach", "description": "각 판정으로 코칭 상태를 갱신합니다", "technology": "RhythmCoach.record", "status": "active", "sourceAnchor":{"x":650,"y":390},"targetAnchor":{"x":650,"y":485},"waypoints":[{"x":650,"y":680}],"labelPosition":{"x":650,"y":680}},
-          {"id": "watch-judge-ui", "from": "rhythm-judge", "to": "watch-ui", "description": "이탈·종료 상태를 알립니다", "technology": "onOffBeatChanged / onFinished", "status": "active", "sourceAnchor":{"x":650,"y":245},"targetAnchor":{"x":650,"y":180},"waypoints":[{"x":850,"y":680}],"labelPosition":{"x":900,"y":760}},
-          {"id": "watch-ui-background", "from": "watch-ui", "to": "background-runtime", "description": "백그라운드 세션을 시작·종료합니다", "technology": "HKWorkoutSession", "status": "active", "sourceAnchor":{"x":755,"y":120},"targetAnchor":{"x":790,"y":120},"waypoints":[{"x":1030,"y":212}],"labelPosition":{"x":1500,"y":550}},
-          {"id": "watch-ui-connectivity", "from": "watch-ui", "to": "watch-connectivity", "description": "시작·이탈·결과를 전송합니다", "technology": "sendMessage / transferUserInfo", "status": "active", "sourceAnchor":{"x":545,"y":135},"targetAnchor":{"x":505,"y":135},"waypoints":[{"x":650,"y":450}],"labelPosition":{"x":650,"y":450}},
-          {"id": "watch-phone-out", "from": "watch-connectivity", "to": "iphone-app-external", "description": "세션 상태와 결과를 돌려줍니다", "technology": "WCSession", "status": "active", "sourceAnchor":{"x":505,"y":120},"targetAnchor":{"x":1120,"y":120},"waypoints":[{"x":1500,"y":650}],"labelPosition":{"x":1476,"y":632}}
+          {"id": "watch-phone-in", "from": "iphone-app-external", "to": "watch-connectivity", "description": "Song + BeatGrid와 제어 신호를 보냅니다", "technology": "WCSession", "status": "active", "sourceAnchor":{"x":1120,"y":80},"targetAnchor":{"x":505,"y":80},"waypoints":[{"x":1370.52,"y":100},{"x":1629.48,"y":100}],"labelPosition":{"x":1500,"y":100}},
+          {"id": "watch-connectivity-ui", "from": "watch-connectivity", "to": "watch-ui", "description": "수신한 songID + BeatGrid를 전달합니다", "technology": "onSongReceived closure", "status": "active", "sourceAnchor":{"x":505,"y":75},"targetAnchor":{"x":545,"y":75},"waypoints":[{"x":1371.6,"y":237},{"x":1628.4,"y":237}],"labelPosition":{"x":1500,"y":237}},
+          {"id": "watch-ui-motion", "from": "watch-ui", "to": "motion-capture", "description": "센서 수집을 시작하고 종료합니다", "technology": "ArmSwingDetector.start / stop", "status": "active", "sourceAnchor":{"x":650,"y":180},"targetAnchor":{"x":140,"y":245},"waypoints":[{"x":1394.88,"y":760},{"x":1605.12,"y":760}],"labelPosition":{"x":1500,"y":760}},
+          {"id": "watch-motion-swing", "from": "motion-capture", "to": "swing-detector", "description": "가속도 표본을 처리합니다", "technology": "process(timestamp, magnitude)", "status": "active", "sourceAnchor":{"x":245,"y":300},"targetAnchor":{"x":285,"y":300},"waypoints":[{"x":40.3,"y":450},{"x":239.7,"y":450}],"labelPosition":{"x":140,"y":450}},
+          {"id": "watch-motion-judge", "from": "motion-capture", "to": "rhythm-judge", "description": "검출된 swing uptime을 전달합니다", "technology": "onSwing closure", "status": "active", "sourceAnchor":{"x":245,"y":360},"targetAnchor":{"x":545,"y":320},"waypoints":[{"x":286.6,"y":450},{"x":513.4,"y":450}],"labelPosition":{"x":400,"y":450}},
+          {"id": "watch-ui-judge", "from": "watch-ui", "to": "rhythm-judge", "description": "BeatGrid를 로드하고 판정을 시작·종료합니다", "technology": "load / start / stop", "status": "active", "sourceAnchor":{"x":700,"y":245},"targetAnchor":{"x":700,"y":265},"waypoints":[{"x":1405.08,"y":450},{"x":1594.92,"y":450}],"labelPosition":{"x":1500,"y":450}},
+          {"id": "watch-judge-matcher", "from": "rhythm-judge", "to": "beat-matcher", "description": "스윙·시간을 판정하고 마디 정확도를 계산합니다", "technology": "registerSwing / advance / barAccuracies", "status": "active", "sourceAnchor":{"x":755,"y":320},"targetAnchor":{"x":790,"y":320},"waypoints":[{"x":774.1,"y":450},{"x":1025.9,"y":450}],"labelPosition":{"x":900,"y":450}},
+          {"id": "watch-judge-coach", "from": "rhythm-judge", "to": "rhythm-coach", "description": "각 판정으로 코칭 상태를 갱신합니다", "technology": "RhythmCoach.record", "status": "active", "sourceAnchor":{"x":650,"y":390},"targetAnchor":{"x":650,"y":485},"waypoints":[{"x":536.84,"y":680},{"x":763.16,"y":680}],"labelPosition":{"x":650,"y":680}},
+          {"id": "watch-judge-ui", "from": "rhythm-judge", "to": "watch-ui", "description": "이탈·종료 상태를 알립니다", "technology": "onOffBeatChanged / onFinished", "status": "active", "sourceAnchor":{"x":600,"y":265},"targetAnchor":{"x":600,"y":245},"waypoints":[{"x":799.9,"y":760},{"x":1000.1,"y":760}],"labelPosition":{"x":900,"y":760}},
+          {"id": "watch-ui-background", "from": "watch-ui", "to": "background-runtime", "description": "백그라운드 세션을 시작·종료합니다", "technology": "HKWorkoutSession", "status": "active", "sourceAnchor":{"x":755,"y":120},"targetAnchor":{"x":790,"y":120},"waypoints":[{"x":1388.4,"y":550},{"x":1611.6,"y":550}],"labelPosition":{"x":1500,"y":550}},
+          {"id": "watch-ui-connectivity", "from": "watch-ui", "to": "watch-connectivity", "description": "시작·이탈·결과를 전송합니다", "technology": "sendMessage / transferUserInfo", "status": "active", "sourceAnchor":{"x":545,"y":135},"targetAnchor":{"x":505,"y":135},"waypoints":[{"x":547,"y":450},{"x":753,"y":450}],"labelPosition":{"x":650,"y":450}},
+          {"id": "watch-phone-out", "from": "watch-connectivity", "to": "iphone-app-external", "description": "세션 상태와 결과를 돌려줍니다", "technology": "WCSession", "status": "active", "sourceAnchor":{"x":505,"y":220},"targetAnchor":{"x":1120,"y":160},"waypoints":[{"x":1376.88,"y":632},{"x":1575.12,"y":632}],"labelPosition":{"x":1476,"y":632}}
         ]
       }
     }
@@ -1826,8 +1826,35 @@
     }
 
     function currentBoundaryAnchor(node, other, explicitAnchor) {
-      // Geometry is authoritative: legacy coordinates may still sit on a boundary but face the wrong side after a node move.
-      return anchorFor(node, other);
+      const fallback = anchorFor(node, other);
+      if (!isFinitePoint(explicitAnchor)) return fallback;
+      const margin = Math.min(10, node.w / 4, node.h / 4);
+      const clampX = Math.max(node.x + margin, Math.min(node.x + node.w - margin, explicitAnchor.x));
+      const clampY = Math.max(node.y + margin, Math.min(node.y + node.h - margin, explicitAnchor.y));
+      const candidates = [
+        { distance: Math.abs(explicitAnchor.x - node.x), point: { x: node.x, y: clampY } },
+        { distance: Math.abs(explicitAnchor.x - (node.x + node.w)), point: { x: node.x + node.w, y: clampY } },
+        { distance: Math.abs(explicitAnchor.y - node.y), point: { x: clampX, y: node.y } },
+        { distance: Math.abs(explicitAnchor.y - (node.y + node.h)), point: { x: clampX, y: node.y + node.h } }
+      ];
+      return candidates.sort((first, second) => first.distance - second.distance)[0].point;
+    }
+
+    function relationshipLaneOffset(relationshipId) {
+      let hash = 2166136261;
+      for (const character of relationshipId) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0;
+      return 8 + (hash % 3001) / 1000;
+    }
+
+    function relationshipPort(node, anchor, distance) {
+      if (anchor.x === node.x) return { x: anchor.x - distance, y: anchor.y };
+      if (anchor.x === node.x + node.w) return { x: anchor.x + distance, y: anchor.y };
+      if (anchor.y === node.y) return { x: anchor.x, y: anchor.y - distance };
+      return { x: anchor.x, y: anchor.y + distance };
+    }
+
+    function polylineSegments(points) {
+      return points.slice(1).map((end, index) => ({ start: points[index], end }));
     }
 
     function relationshipPolyline(nodes, relationship) {
@@ -1836,17 +1863,22 @@
       if (!from || !to) return [];
       const start = currentBoundaryAnchor(from, to, relationship.sourceAnchor);
       const end = currentBoundaryAnchor(to, from, relationship.targetAnchor);
-      const allNodes = [...nodes.values()];
-      const hasClearance = (point) => isFinitePoint(point) && !allNodes.some((node) => pointInRect(point, { left: node.x + 1, right: node.x + node.w - 1, top: node.y + 1, bottom: node.y + node.h - 1 }));
-      const labelGuide = relationship.labelPosition
-        ? { x: relationship.labelPosition.x + 24, y: relationship.labelPosition.y + 18 }
-        : null;
-      const routeStops = [start, ...(relationship.waypoints ?? []).filter(hasClearance), ...(hasClearance(labelGuide) ? [labelGuide] : []), end]
+      const portDistance = relationshipLaneOffset(relationship.id);
+      const routeStops = [
+        start,
+        relationshipPort(from, start, portDistance),
+        ...(relationship.waypoints ?? []).filter(isFinitePoint),
+        relationshipPort(to, end, portDistance),
+        end
+      ]
         .filter((point, index, all) => index === 0 || point.x !== all[index - 1].x || point.y !== all[index - 1].y);
       const path = [];
+      const forbiddenSegments = [];
       for (let index = 1; index < routeStops.length; index += 1) {
-        const leg = findObstacleFreePath(nodes, relationship, routeStops[index - 1], routeStops[index], 8);
+        const leg = findObstacleFreePath(nodes, relationship, routeStops[index - 1], routeStops[index], 8, forbiddenSegments);
+        if (leg.length < 2) return [];
         path.push(...(index === 1 ? leg : leg.slice(1)));
+        forbiddenSegments.push(...polylineSegments(leg));
       }
       const deduplicated = path.filter((point, index) => index === 0 || point.x !== path[index - 1].x || point.y !== path[index - 1].y);
       return simplifyOrthogonalPath(deduplicated);
@@ -1864,6 +1896,20 @@
 
     function orientation(a, b, c) {
       return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    }
+
+    function positiveCollinearOverlapLength(a, b, c, d) {
+      const firstHorizontal = a.y === b.y;
+      const secondHorizontal = c.y === d.y;
+      if (firstHorizontal !== secondHorizontal) return 0;
+      if (firstHorizontal) {
+        if (a.y !== c.y) return 0;
+        return Math.max(0, Math.min(Math.max(a.x, b.x), Math.max(c.x, d.x))
+          - Math.max(Math.min(a.x, b.x), Math.min(c.x, d.x)));
+      }
+      if (a.x !== b.x || c.x !== d.x || a.x !== c.x) return 0;
+      return Math.max(0, Math.min(Math.max(a.y, b.y), Math.max(c.y, d.y))
+        - Math.max(Math.min(a.y, b.y), Math.min(c.y, d.y)));
     }
 
     function segmentsIntersect(a, b, c, d) {
@@ -1914,24 +1960,39 @@
     }
 
     function simplifyOrthogonalPath(points) {
-      return points.filter((point, index) => {
-        if (index === 0 || index === points.length - 1) return true;
-        const previous = points[index - 1];
-        const next = points[index + 1];
-        const liesBetween = (value, first, second) => value >= Math.min(first, second) && value <= Math.max(first, second);
-        return !((previous.x === point.x && point.x === next.x && liesBetween(point.y, previous.y, next.y))
-          || (previous.y === point.y && point.y === next.y && liesBetween(point.x, previous.x, next.x)));
-      });
+      let result = points;
+      while (true) {
+        const nextResult = result.filter((point, index) => {
+          if (index === 0 || index === result.length - 1) return true;
+          const previous = result[index - 1];
+          const next = result[index + 1];
+          const liesBetween = (value, first, second) => value >= Math.min(first, second) && value <= Math.max(first, second);
+          return !((previous.x === point.x && point.x === next.x && liesBetween(point.y, previous.y, next.y))
+            || (previous.y === point.y && point.y === next.y && liesBetween(point.x, previous.x, next.x)));
+        });
+        if (nextResult.length === result.length) return result;
+        result = nextResult;
+      }
     }
 
-    function findObstacleFreePath(nodes, relationship, start, end, padding = 8) {
+    function findObstacleFreePath(nodes, relationship, start, end, padding = 8, forbiddenSegments = []) {
       const source = nodes.get(relationship.from);
       const target = nodes.get(relationship.to);
       const endpointNodes = [source, target].filter(Boolean);
       const unrelated = [...nodes.values()].filter((node) => ![relationship.from, relationship.to].includes(node.id));
-      const clearance = padding + 2;
-      const xValues = [start.x, end.x, ...endpointNodes.flatMap((node) => [node.x, node.x + node.w]), ...unrelated.flatMap((node) => [node.x - clearance, node.x + node.w + clearance])];
-      const yValues = [start.y, end.y, ...endpointNodes.flatMap((node) => [node.y, node.y + node.h]), ...unrelated.flatMap((node) => [node.y - clearance, node.y + node.h + clearance])];
+      const clearance = padding + 2 + relationshipLaneOffset(relationship.id);
+      const xValues = [
+        start.x,
+        end.x,
+        ...endpointNodes.flatMap((node) => [node.x - clearance, node.x + node.w + clearance]),
+        ...unrelated.flatMap((node) => [node.x - clearance, node.x + node.w + clearance])
+      ];
+      const yValues = [
+        start.y,
+        end.y,
+        ...endpointNodes.flatMap((node) => [node.y - clearance, node.y + node.h + clearance]),
+        ...unrelated.flatMap((node) => [node.y - clearance, node.y + node.h + clearance])
+      ];
       const xs = [...new Set(xValues)].sort((a, b) => a - b);
       const ys = [...new Set(yValues)].sort((a, b) => a - b);
       const points = [];
@@ -1959,11 +2020,12 @@
           if (a.x !== b.x && a.y !== b.y) continue;
           if (unrelated.some((node) => segmentIntersectsRect(a, b, node, padding))) continue;
           if (endpointNodes.some((node) => segmentTraversesNodeInterior(a, b, node))) continue;
+          if (forbiddenSegments.some((segment) => positiveCollinearOverlapLength(a, b, segment.start, segment.end) > 0)) continue;
           const candidate = distance[current] + Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + 1;
           if (candidate < distance[index]) { distance[index] = candidate; previous[index] = current; }
         }
       }
-      if (!Number.isFinite(distance[endIndex])) return [start, end];
+      if (!Number.isFinite(distance[endIndex])) return [];
       const path = [];
       for (let cursor = endIndex; cursor >= 0; cursor = previous[cursor]) { path.unshift(points[cursor]); if (cursor === startIndex) break; }
       return simplifyOrthogonalPath(path);
@@ -2178,7 +2240,9 @@
       relationshipPolyline,
       relationshipPath,
       segmentsIntersect,
+      positiveCollinearOverlapLength,
       segmentIntersectsRect,
+      segmentTraversesNodeInterior,
       relationshipTraversesUnrelatedNode,
       relationshipLabelPoint,
       pointToPolylineDistance,

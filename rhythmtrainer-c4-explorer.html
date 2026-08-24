@@ -48,7 +48,6 @@
     .canvas-region { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
     .diagram-viewport { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
     .diagram-svg { width: 100%; height: 100%; display: block; }
-    .diagram-nodes { position: absolute; inset: 0; z-index: 2; }
 
     .side-panel {
       min-width: 0;
@@ -217,38 +216,24 @@
       background-size: 20px 20px;
     }
 
-    .relationship-layer, .diagram-nodes { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .relationship-layer { z-index: 1; pointer-events: none; }
-    .diagram-nodes { z-index: 2; }
-
-    .diagram-node {
-      position: absolute;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: stretch;
-      overflow: hidden;
-      padding: 12px 13px;
-      border: 1px solid rgba(0,0,0,.08);
-      border-radius: 12px;
-      background: var(--blue);
-      color: #fff;
-      text-align: left;
-      box-shadow: 0 8px 22px rgba(30, 62, 88, .16);
-      cursor: pointer;
-      transition: transform 140ms ease-out, box-shadow 180ms ease, filter 180ms ease;
-    }
-    .diagram-node:hover { transform: translateY(-2px); filter: brightness(1.04); box-shadow: 0 12px 28px rgba(30, 62, 88, .23); }
-    .diagram-node:active { transform: translateY(0) scale(.985); transition-duration: 80ms; }
-    .diagram-node[aria-pressed="true"] { box-shadow: 0 0 0 4px rgba(255,138,30,.42), 0 12px 28px rgba(30,62,88,.2); }
-    .diagram-node.status-person { background: var(--person); }
-    .diagram-node.status-external { background: var(--external); }
-    .diagram-node.status-gap { border: 2px dashed var(--gap); background: var(--gap-soft); color: #6e3a04; }
-    .node-name { font-size: clamp(12px, 1.15vw, 16px); font-weight: 750; line-height: 1.22; letter-spacing: -.01em; }
-    .node-meta { margin-top: 4px; font-size: 10px; line-height: 1.25; opacity: .86; }
-    .node-description { margin-top: 8px; font-size: clamp(10px, .85vw, 12px); line-height: 1.35; opacity: .94; }
-    .node-drill { margin-top: 8px; font-size: 10px; font-weight: 750; letter-spacing: .02em; }
-    .node-status { margin-top: 7px; font-size: 10px; font-weight: 800; }
+    .c4-boundary rect { fill: rgba(22, 102, 154, .045); stroke: var(--blue-deep); stroke-width: 2; stroke-dasharray: 12 8; }
+    .c4-boundary text { fill: var(--blue-deep); font-size: 16px; font-weight: 750; }
+    .c4-boundary .boundary-type { fill: var(--muted); font-size: 12px; font-weight: 650; }
+    .relationship-layer { pointer-events: none; }
+    .diagram-node { cursor: pointer; outline: none; }
+    .diagram-node .node-surface, .diagram-node .semantic-person-head { fill: var(--blue); stroke: rgba(0,0,0,.12); stroke-width: 1.5; }
+    .diagram-node .semantic-file-fold, .diagram-node .semantic-store-top, .diagram-node .semantic-store-bottom, .diagram-node .semantic-app-chrome, .diagram-node .semantic-device-cue, .diagram-node .semantic-component-cue { fill: none; stroke: rgba(255,255,255,.76); stroke-width: 2; }
+    .diagram-node .semantic-app-chrome + circle, .diagram-node .semantic-app-chrome + circle + circle, .diagram-node .semantic-app-chrome + circle + circle + circle { fill: rgba(255,255,255,.76); }
+    .diagram-node.status-person .node-surface, .diagram-node.status-person .semantic-person-head { fill: var(--person); }
+    .diagram-node.status-external .node-surface, .diagram-node.status-external .semantic-person-head { fill: var(--external); }
+    .diagram-node.status-gap .node-surface, .diagram-node.status-gap .semantic-person-head { fill: var(--gap-soft); stroke: var(--gap); stroke-width: 2; stroke-dasharray: 7 6; }
+    .diagram-node.status-gap .semantic-file-fold, .diagram-node.status-gap .semantic-store-top, .diagram-node.status-gap .semantic-store-bottom, .diagram-node.status-gap .semantic-app-chrome, .diagram-node.status-gap .semantic-device-cue, .diagram-node.status-gap .semantic-component-cue { stroke: var(--gap); }
+    .diagram-node .node-name { fill: #fff; font-size: 16px; font-weight: 750; letter-spacing: -.01em; }
+    .diagram-node .node-meta { fill: rgba(255,255,255,.86); font-size: 10px; }
+    .diagram-node .node-description { fill: rgba(255,255,255,.94); font-size: 12px; }
+    .diagram-node .node-open text, .diagram-node .node-status { fill: #fff; font-size: 10px; font-weight: 800; }
+    .diagram-node.status-gap .node-name, .diagram-node.status-gap .node-meta, .diagram-node.status-gap .node-description, .diagram-node.status-gap .node-open text, .diagram-node.status-gap .node-status { fill: #6e3a04; }
+    .diagram-node[aria-pressed="true"] .node-surface, .diagram-node[aria-pressed="true"] .semantic-person-head, .diagram-node:focus-visible .node-surface, .diagram-node:focus-visible .semantic-person-head { stroke: var(--focus); stroke-width: 4; }
 
     .relationship-path { fill: none; stroke: var(--line-strong); stroke-width: 1.8; }
     .relationship-path.status-gap { stroke: var(--gap); stroke-dasharray: 7 6; }
@@ -356,20 +341,6 @@
       .diagram-panel { padding: 16px; border-radius: 16px; }
       .diagram-stage { min-height: 0; aspect-ratio: auto; overflow: visible; background-size: 16px 16px; }
       .relationship-layer { display: none; }
-      .diagram-nodes { position: relative; display: grid; gap: 14px; padding: 12px; }
-      .diagram-node {
-        position: relative !important;
-        inset: auto !important;
-        width: 100% !important;
-        height: auto !important;
-        min-height: 128px;
-        padding: 16px 15px;
-        transform: none !important;
-      }
-      .node-name { font-size: 16px; line-height: 1.3; }
-      .node-meta { font-size: 11px; line-height: 1.4; }
-      .node-description { font-size: 12px; line-height: 1.55; }
-      .node-drill, .node-status { font-size: 11px; }
       .relationship-summary { display: block; }
       .relationship-summary-list { grid-template-columns: 1fr; gap: 12px; }
       .relationship-summary-item { padding: 15px 16px; }
@@ -434,7 +405,6 @@
         <svg id="diagram-svg" class="diagram-svg" viewBox="0 0 1020 640" role="group" aria-label="C4 다이어그램">
           <g id="diagram-world"></g>
         </svg>
-        <div id="diagram-nodes" class="diagram-nodes" aria-label="다이어그램 요소"></div>
         <div id="canvas-tools" class="canvas-tools" role="toolbar" aria-label="캔버스 도구">
           <button type="button" class="canvas-tool" data-tool="select" aria-pressed="true" title="선택 도구">↖</button>
           <button type="button" class="canvas-tool" data-tool="hand" aria-pressed="false" title="이동 도구">✋</button>
@@ -957,14 +927,85 @@
       return next;
     }
 
-    function buildNodeMarkup(node, selected) {
-      const left = (node.x / 10.2).toFixed(3);
-      const top = (node.y / 6.4).toFixed(3);
-      const width = (node.w / 10.2).toFixed(3);
-      const height = (node.h / 6.4).toFixed(3);
-      const statusLabel = node.status === "gap" ? '<span class="node-status">구현됨 · 미배선</span>' : "";
-      const drillLabel = node.drilldown ? '<span class="node-drill">자세히 보기 →</span>' : "";
-      return `<button type="button" class="diagram-node status-${escapeHTML(node.status)}" data-node-id="${escapeHTML(node.id)}" aria-pressed="${selected ? "true" : "false"}" style="left:${left}%;top:${top}%;width:${width}%;height:${height}%"><span class="node-name">${escapeHTML(node.name)}</span><span class="node-meta">[${escapeHTML(node.type)} · ${escapeHTML(node.technology)}]</span><span class="node-description">${escapeHTML(node.description)}</span>${statusLabel}${drillLabel}</button>`;
+    function buildShapeGeometry(node) {
+      const w = node.w;
+      const h = node.h;
+      const common = `<rect class="node-surface" x="1" y="1" width="${w - 2}" height="${h - 2}" rx="20"/>`;
+      if (node.visualRole === "person") {
+        return `<circle class="semantic-person-head" cx="${w / 2}" cy="34" r="26"/>
+          <path class="node-surface semantic-person-body" d="M 26 118 Q 26 66 72 66 H ${w - 72} Q ${w - 26} 66 ${w - 26} 118 V ${h - 2} H 26 Z"/>`;
+      }
+      if (node.visualRole === "softwareSystem") {
+        return `<path class="node-surface" d="M 1 1 H ${w - 30} L ${w - 1} 30 V ${h - 1} H 1 Z"/>
+          <path class="semantic-file-fold" d="M ${w - 30} 1 V 30 H ${w - 1}"/>`;
+      }
+      if (node.visualRole === "dataStore") {
+        return `<path class="node-surface" d="M 1 24 C 1 2 ${w - 1} 2 ${w - 1} 24 V ${h - 24} C ${w - 1} ${h - 2} 1 ${h - 2} 1 ${h - 24} Z"/>
+          <ellipse class="semantic-store-top" cx="${w / 2}" cy="24" rx="${w / 2 - 1}" ry="22"/>
+          <path class="semantic-store-bottom" d="M 1 ${h - 24} C 1 ${h - 2} ${w - 1} ${h - 2} ${w - 1} ${h - 24}"/>`;
+      }
+      if (node.visualRole === "application") {
+        return `${common}<path class="semantic-app-chrome" d="M 1 38 H ${w - 1}"/>
+          <circle cx="20" cy="20" r="4"/><circle cx="34" cy="20" r="4"/><circle cx="48" cy="20" r="4"/>`;
+      }
+      if (node.visualRole === "mobileApplication") {
+        return `${common}<path class="semantic-app-chrome" d="M 1 38 H ${w - 1}"/>
+          <rect class="semantic-device-cue" x="${w - 46}" y="10" width="26" height="18" rx="6"/>`;
+      }
+      return `${common}<path class="semantic-component-cue" d="M 18 1 V 14 H 34 V 1"/>`;
+    }
+
+    function wrapSvgText(value, maxChars = 28) {
+      const chars = Array.from(String(value));
+      const lines = [];
+      for (let index = 0; index < chars.length; index += maxChars) {
+        lines.push(chars.slice(index, index + maxChars).join("").trim());
+      }
+      return lines.filter(Boolean);
+    }
+
+    function svgTextLines(lines, x, startY, className, lineHeight = 21) {
+      return `<text class="${className}" x="${x}" y="${startY}">${lines.map((line, index) =>
+        `<tspan x="${x}" dy="${index ? lineHeight : 0}">${escapeHTML(line)}</tspan>`
+      ).join("")}</text>`;
+    }
+
+    function buildBoundaryMarkup(boundary) {
+      return `<g class="c4-boundary" data-boundary-id="${escapeHTML(boundary.id)}">
+        <rect x="${boundary.x}" y="${boundary.y}" width="${boundary.w}" height="${boundary.h}" rx="28"/>
+        <text x="${boundary.x + 24}" y="${boundary.y + 34}">${escapeHTML(boundary.name)}</text>
+        <text class="boundary-type" x="${boundary.x + 24}" y="${boundary.y + 56}">[${escapeHTML(boundary.type)}]</text>
+      </g>`;
+    }
+
+    function buildSvgNodeMarkup(node, selected) {
+      const meta = node.technology ? `[${node.type}: ${node.technology}]` : `[${node.type}]`;
+      const textY = node.visualRole === "person" ? 118 : 58;
+      const descriptionY = textY + 52;
+      const drilldown = node.drilldown
+        ? `<g class="node-open" data-open-node-id="${escapeHTML(node.id)}"><text x="24" y="${node.h - 22}">Open L${node.type === "Software System" ? 2 : 3} →</text></g>`
+        : "";
+      const status = node.status === "gap"
+        ? `<text class="node-status" x="24" y="${node.h - 22}">구현됨 · 미배선</text>`
+        : "";
+      return `<g class="diagram-node status-${escapeHTML(node.status)} role-${escapeHTML(node.visualRole)}"
+          transform="translate(${node.x} ${node.y})" data-node-id="${escapeHTML(node.id)}"
+          role="button" tabindex="0" aria-pressed="${selected ? "true" : "false"}">
+        <title>${escapeHTML(`${node.name}, ${node.type}, ${node.description}`)}</title>
+        ${buildShapeGeometry(node)}
+        ${svgTextLines(wrapSvgText(node.name, 22), 24, textY, "node-name", 24)}
+        ${svgTextLines(wrapSvgText(meta, 30), 24, textY + 28, "node-meta", 18)}
+        ${svgTextLines(wrapSvgText(node.description, 30).slice(0, 3), 24, descriptionY, "node-description", 20)}
+        ${drilldown}${status}
+      </g>`;
+    }
+
+    function renderSvgWorld(view, state) {
+      return [
+        `<g class="boundary-layer">${view.boundaries.map(buildBoundaryMarkup).join("")}</g>`,
+        '<g class="relationship-layer"></g>',
+        `<g class="node-layer">${view.nodes.map((node) => buildSvgNodeMarkup(node, node.id === state.selectedNode)).join("")}</g>`
+      ].join("");
     }
 
     function listMarkup(items) {
@@ -1168,9 +1209,9 @@
           paths.push(`${path}<foreignObject x="${labelX}" y="${labelY}" width="150" height="72"><div xmlns="http://www.w3.org/1999/xhtml" class="relationship-label${statusClass}">${escapeHTML(relationship.description + gapText)}<small>[${escapeHTML(relationship.technology ?? "")}]</small></div></foreignObject>`);
         }
       }
-      const diagramWorld = svg.querySelector("#diagram-world");
+      const relationshipLayer = svg.querySelector("#diagram-world .relationship-layer");
       const relationshipMarkup = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f91a3"></path></marker><marker id="arrow-gap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a45a08"></path></marker></defs>${paths.join("")}`;
-      if (diagramWorld) diagramWorld.innerHTML = relationshipMarkup;
+      if (relationshipLayer) relationshipLayer.innerHTML = relationshipMarkup;
       else svg.innerHTML = relationshipMarkup;
     }
 
@@ -1199,6 +1240,8 @@
       if (!view) return;
       workspaceState = { ...workspaceState, currentView: viewId };
       navigationState = { currentView: viewId, selectedNode: workspaceState.selectedNode };
+      const svg = document.getElementById("diagram-svg");
+      if (svg) svg.setAttribute("viewBox", `0 0 ${view.worldSize.width} ${view.worldSize.height}`);
       const kicker = document.getElementById("view-kicker");
       const title = document.getElementById("view-title");
       const description = document.getElementById("view-description");
@@ -1211,11 +1254,17 @@
       renderLevelNav(view.level);
       renderWorkspaceChrome();
 
-      const nodeLayer = document.getElementById("diagram-nodes");
-      if (!nodeLayer) return;
-      nodeLayer.innerHTML = view.nodes.map((node) => buildNodeMarkup(node, node.id === workspaceState.selectedNode)).join("");
-      nodeLayer.querySelectorAll("button[data-node-id]").forEach((button) => {
-        button.addEventListener("click", () => viewAction({ type: "activate-node", nodeId: button.dataset.nodeId }));
+      const diagramWorld = document.getElementById("diagram-world");
+      if (!diagramWorld) return;
+      diagramWorld.innerHTML = renderSvgWorld(view, workspaceState);
+      diagramWorld.querySelectorAll("[data-node-id]").forEach((node) => {
+        const activate = () => viewAction({ type: "activate-node", nodeId: node.dataset.nodeId });
+        node.addEventListener("click", activate);
+        node.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          activate();
+        });
       });
       drawRelationships(view);
       renderRelationshipSummary(view);
@@ -1255,7 +1304,11 @@
       reduceWorkspace,
       createNavigationState,
       reduceNavigation,
-      buildNodeMarkup,
+      buildShapeGeometry,
+      wrapSvgText,
+      buildSvgNodeMarkup,
+      buildBoundaryMarkup,
+      renderSvgWorld,
       buildEvidenceMarkup,
       getLayoutMode,
       buildRelationshipSummary,

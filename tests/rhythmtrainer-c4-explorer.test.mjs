@@ -196,19 +196,37 @@ test("drills from context to both component views and stops at level three", () 
   assert.equal(state.currentView, "watch-components");
 });
 
-test("renders semantic node controls and source-backed evidence", () => {
+test("renders accessible semantic SVG silhouettes", () => {
   const { api, model } = explorerRuntime();
-  assert.equal(typeof api.buildNodeMarkup, "function", "node markup builder must exist");
-  assert.equal(typeof api.buildEvidenceMarkup, "function", "evidence markup builder must exist");
+  const person = model.views.context.nodes.find((node) => node.visualRole === "person");
+  const system = model.views.context.nodes.find((node) => node.visualRole === "softwareSystem");
+  const store = model.views.context.nodes.find((node) => node.visualRole === "dataStore");
+  const app = model.views.containers.nodes.find((node) => node.visualRole === "application");
+  const mobileApp = model.views.containers.nodes.find((node) => node.visualRole === "mobileApplication");
+  const component = model.views["iphone-components"].nodes.find((node) => node.visualRole === "component");
 
-  const beatThis = api.getNodeById(model, "iphone-components", "beatthis-engine");
-  const nodeMarkup = api.buildNodeMarkup(beatThis, true);
-  assert.match(nodeMarkup, /^<button/);
-  assert.match(nodeMarkup, /aria-pressed="true"/);
-  assert.match(nodeMarkup, /BeatThis Native Engine/);
-  const evidenceMarkup = api.buildEvidenceMarkup(beatThis);
-  assert.match(evidenceMarkup, /BeatThisBridge\.mm/);
-  assert.match(evidenceMarkup, /beat_this_api\.cpp/);
+  assert.match(api.buildShapeGeometry(person), /semantic-person-head/);
+  assert.match(api.buildShapeGeometry(system), /semantic-file-fold/);
+  assert.match(api.buildShapeGeometry(store), /semantic-store-top/);
+  assert.match(api.buildShapeGeometry(app), /semantic-app-chrome/);
+  assert.match(api.buildShapeGeometry(mobileApp), /semantic-device-cue/);
+  assert.match(api.buildShapeGeometry(component), /semantic-component-cue/);
+
+  const markup = api.buildSvgNodeMarkup(person, true);
+  assert.match(markup, /^<g/);
+  assert.match(markup, /role="button"/);
+  assert.match(markup, /tabindex="0"/);
+  assert.match(markup, /aria-pressed="true"/);
+  assert.match(markup, /\[Person\]/);
+});
+
+test("renders explicit C4 boundaries around member elements", () => {
+  const { api, model } = explorerRuntime();
+  const boundary = model.views.containers.boundaries[0];
+  const markup = api.buildBoundaryMarkup(boundary);
+  assert.match(markup, /class="c4-boundary/);
+  assert.match(markup, /엇박 리듬 훈련 시스템/);
+  assert.match(markup, /\[Software System\]/);
 });
 
 test("adapts relationship output for compact layouts without external dependencies", () => {

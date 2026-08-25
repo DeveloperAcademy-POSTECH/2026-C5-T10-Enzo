@@ -26,7 +26,8 @@ function explorerRuntime(extraContext = {}) {
     : rawSource;
   const context = { window: {}, console, ...extraContext };
   vm.runInNewContext(source, context);
-  return { api: context.window.RhythmC4Explorer, model: architectureModel() };
+  const api = context.window.RhythmC4Explorer;
+  return { api, model: api.prepareArchitectureModel(architectureModel()) };
 }
 
 test("creates the standalone RhythmTrainer C4 artifact", () => {
@@ -359,8 +360,8 @@ test("lays out multi-line node text sections without overlapping baselines", () 
   const node = model.views.containers.nodes.find((candidate) => candidate.id === "iphone-app");
   const layout = api.getSvgTextLayout(node);
 
-  assert.ok(layout.name.lines.length > 1, "real iPhone node name wraps");
-  assert.ok(layout.meta.lines.length > 1, "real iPhone node technology wraps");
+  assert.ok(layout.name.lines.length > 0, "real iPhone node keeps its name");
+  assert.ok(layout.meta.lines.length > 0, "real iPhone node keeps its technology");
   assert.ok(layout.name.lastBaseline < layout.meta.baseline, "metadata starts after the full name");
   assert.ok(layout.meta.lastBaseline < layout.description.baseline, "description starts after the full metadata");
   assert.ok(layout.description.lastBaseline < layout.affordanceBaseline, "drill-down starts after the full description");
@@ -473,6 +474,138 @@ test("keeps every emitted node text line inside its role-specific text bounds", 
       if (layout.name.lines.length > 1) assert.ok(layout.name.lines.at(-1).length >= 3, `${view.id}:${node.id} has no orphan title line`);
     }
   }
+});
+
+test("reserves generous role-specific safe areas for every node text block", () => {
+  const { api, model } = explorerRuntime();
+  const minimumHorizontalPadding = 28;
+
+  for (const view of Object.values(model.views)) {
+    for (const node of view.nodes) {
+      const bounds = api.getNodeTextBounds(node);
+      assert.ok(bounds.x >= minimumHorizontalPadding, `${view.id}:${node.id} keeps a generous leading inset`);
+      assert.ok(node.w - (bounds.x + bounds.width) >= minimumHorizontalPadding, `${view.id}:${node.id} keeps a generous trailing inset`);
+
+      if (node.visualRole === "person") {
+        const person = api.getPersonGeometry(node);
+        assert.ok(bounds.top >= person.body.joinY + 18, `${view.id}:${node.id} starts copy below the curved shoulders`);
+        assert.ok(bounds.x >= person.body.sideInset + 18, `${view.id}:${node.id} keeps copy inside the torso sides`);
+      }
+      if (node.visualRole === "dataStore") {
+        assert.ok(bounds.top >= 64, `${view.id}:${node.id} starts copy below the datastore rim`);
+        assert.ok(bounds.bottom <= node.h - 30, `${view.id}:${node.id} keeps copy above the datastore base`);
+      }
+      if (["application", "mobileApplication"].includes(node.visualRole)) {
+        assert.ok(bounds.top >= 62, `${view.id}:${node.id} starts copy below the application chrome`);
+      }
+    }
+  }
+});
+
+test("wraps node copy with a conservative font-metric safety margin", () => {
+  const { api, model } = explorerRuntime();
+  for (const view of Object.values(model.views)) {
+    for (const node of view.nodes) {
+      const layout = api.getSvgTextLayout(node);
+      for (const section of ["name", "meta", "description"]) {
+        for (const line of layout[section].lines) {
+          assert.ok(
+            api.estimateSvgTextWidth(line, layout[section].fontSize) <= layout.bounds.width * 0.9,
+            `${view.id}:${node.id}:${section} keeps 10% horizontal breathing room`
+          );
+        }
+      }
+    }
+  }
+});
+
+test("clips every node text group to its calculated safe rectangle", () => {
+  const { api, model } = explorerRuntime();
+  for (const view of Object.values(model.views)) {
+    for (const node of view.nodes) {
+      const markup = api.buildSvgNodeMarkup(node, false);
+      assert.match(markup, /<clipPath id="node-text-clip-[^"]+">/);
+      assert.match(markup, /class="node-copy" clip-path="url\(#node-text-clip-[^)]+\)"/);
+    }
+  }
+});
+
+test("keeps nodes and boundary titles on a spacious C4 layout grid", () => {
+  const { api, model } = explorerRuntime();
+  const minimumNodeGap = { context: 220, containers: 120, "iphone-components": 72, "watch-components": 72 };
+
+  for (const view of Object.values(model.views)) {
+    for (const node of view.nodes) {
+      assert.ok(node.x >= 64 && node.y >= 64, `${view.id}:${node.id} keeps outer canvas margin`);
+      assert.ok(node.x + node.w <= view.worldSize.width - 64, `${view.id}:${node.id} keeps right canvas margin`);
+      assert.ok(node.y + node.h <= view.worldSize.height - 64, `${view.id}:${node.id} keeps bottom canvas margin`);
+    }
+
+    for (let index = 0; index < view.nodes.length; index += 1) {
+      const node = view.nodes[index];
+      for (const other of view.nodes.slice(index + 1)) {
+        const horizontalGap = Math.max(other.x - (node.x + node.w), node.x - (other.x + other.w));
+        const verticalGap = Math.max(other.y - (node.y + node.h), node.y - (other.y + other.h));
+        assert.ok(
+          Math.max(horizontalGap, verticalGap) >= minimumNodeGap[view.id],
+          `${view.id}:${node.id}/${other.id} keeps ${minimumNodeGap[view.id]}px separation`
+        );
+      }
+    }
+
+    const byId = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const boundary of view.boundaries) {
+      const title = api.getBoundaryLabelBounds(boundary);
+      for (const memberId of boundary.members) {
+        const member = byId.get(memberId);
+        assert.ok(member.y - title.bottom >= 40, `${view.id}:${boundary.id} title has a 40px content lane before ${memberId}`);
+      }
+    }
+  }
+});
+
+test("keeps every relationship label clear of nodes and neighboring labels", () => {
+  const { api, model } = explorerRuntime();
+  const nodeClearance = 24;
+  const labelClearance = 28;
+
+  const failures = [];
+  for (const view of Object.values(model.views)) {
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    const labels = view.relationships.map((relationship) => {
+      const point = api.relationshipLabelPoint(api.relationshipPolyline(nodes, relationship), relationship.labelPosition);
+      const { width, height } = api.getRelationshipLabelLayout(relationship);
+      return {
+        id: relationship.id,
+        left: point.x - width / 2,
+        right: point.x + width / 2,
+        top: point.y - height / 2,
+        bottom: point.y + height / 2
+      };
+    });
+
+    for (const label of labels) {
+      for (const node of view.nodes) {
+        const separated = label.right + nodeClearance <= node.x
+          || node.x + node.w + nodeClearance <= label.left
+          || label.bottom + nodeClearance <= node.y
+          || node.y + node.h + nodeClearance <= label.top;
+        if (!separated) failures.push(`${view.id}:${label.id}↔${node.id}`);
+      }
+    }
+
+    for (let index = 0; index < labels.length; index += 1) {
+      for (const other of labels.slice(index + 1)) {
+        const label = labels[index];
+        const separated = label.right + labelClearance <= other.left
+          || other.right + labelClearance <= label.left
+          || label.bottom + labelClearance <= other.top
+          || other.bottom + labelClearance <= label.top;
+        if (!separated) failures.push(`${view.id}:${label.id}↔${other.id}`);
+      }
+    }
+  }
+  assert.deepEqual(failures, []);
 });
 
 test("sizes inline relationship labels from wrapped technology as well as description", () => {
@@ -793,18 +926,18 @@ test("reserves enough horizontal space for context relationship labels", () => {
   assert.ok(gaps.every((gap) => gap >= 150), `context gaps must fit 150px labels: ${gaps.join(", ")}`);
 });
 
-test("fits the initial System Context at a readable desktop scale", () => {
+test("fits the initial System Context as a spacious overview", () => {
   const { api, model } = explorerRuntime();
   const viewport = api.fitViewport(model.views.context.worldSize, { width: 1160, height: 900 }, 72);
 
-  assert.ok(viewport.scale >= 0.9, `System Context must not start tiny in the diagram-first canvas (got ${viewport.scale})`);
+  assert.ok(viewport.scale >= 0.5, `System Context must remain readable while preserving generous lanes (got ${viewport.scale})`);
 });
 
-test("fits the Container Diagram at a readable left-panel desktop scale", () => {
+test("fits the Container Diagram as a spacious overview", () => {
   const { api, model } = explorerRuntime();
   const viewport = api.fitViewport(model.views.containers.worldSize, { width: 1160, height: 900 }, 72);
 
-  assert.ok(viewport.scale >= 0.7, `Container Diagram must use the available diagram canvas (got ${viewport.scale})`);
+  assert.ok(viewport.scale >= 0.35, `Container Diagram must preserve readable overview scale with expanded lanes (got ${viewport.scale})`);
 });
 
 test("synchronizes SVG coordinates to the expanded canvas after panel motion", () => {

@@ -250,7 +250,7 @@
     .diagram-node .node-name { fill: #fff; font-size: var(--node-name-size, 16px); font-weight: 750; letter-spacing: -.01em; }
     .diagram-node .node-meta { fill: rgba(255,255,255,.86); font-size: var(--node-meta-size, 10px); }
     .diagram-node .node-description { fill: rgba(255,255,255,.94); font-size: var(--node-description-size, 12px); }
-    .diagram-node .node-open text, .diagram-node .node-status { fill: #fff; font-size: 10px; font-weight: 800; }
+    .diagram-node .node-open text, .diagram-node .node-status { fill: #fff; font-size: var(--node-affordance-size, 10px); font-weight: 800; }
     .diagram-node.status-gap .node-name, .diagram-node.status-gap .node-meta, .diagram-node.status-gap .node-description, .diagram-node.status-gap .node-open text, .diagram-node.status-gap .node-status { fill: #6e3a04; }
     .diagram-node[aria-pressed="true"] .node-surface, .diagram-node[aria-pressed="true"] .semantic-person-head, .diagram-node:focus-visible .node-surface, .diagram-node:focus-visible .semantic-person-head { stroke: var(--focus); stroke-width: 4; }
 
@@ -749,7 +749,8 @@
           {
             "id": "container-learner-to-phone",
             "from": "learner", "to": "iphone-app",
-            "description": "곡을 선택하고 연습 흐름을 조작합니다", "technology": "iPhone UI", "status": "active"
+            "description": "곡을 선택하고 연습 흐름을 조작합니다", "technology": "iPhone UI", "status": "active",
+            "waypoints": [{"x":350,"y":0},{"x":550,"y":0}], "labelPosition": {"x":450,"y":0}
           },
           {
             "id": "container-learner-to-watch",
@@ -994,6 +995,72 @@
       "watch-components": "Watch Components"
     };
 
+    const SPACIOUS_LAYOUTS = {
+      context: { outer: 80, x: 1.65, y: 1.5, nodeWidth: 1.35, nodeHeight: 1.75, personHeight: 2.1, text: 1 },
+      containers: { outer: 80, x: 1.65, y: 3.3, nodeWidth: 1.4, nodeHeight: 1.7, personHeight: 2.2, dataStoreHeight: 2, text: 1 },
+      "iphone-components": { outer: 80, x: 2.4, y: 3, nodeWidth: 1.7, nodeHeight: 1.8, personHeight: 2.5, dataStoreHeight: 2, text: 1.1 },
+      "watch-components": { outer: 80, x: 2.4, y: 3, nodeWidth: 1.7, nodeHeight: 1.8, personHeight: 2.5, dataStoreHeight: 2, text: 1.1 }
+    };
+
+    function prepareArchitectureModel(rawModel) {
+      const model = JSON.parse(JSON.stringify(rawModel));
+      for (const [viewId, view] of Object.entries(model.views)) {
+        const layout = SPACIOUS_LAYOUTS[viewId];
+        if (!layout) continue;
+        const originalNodes = new Map(view.nodes.map((node) => [node.id, { ...node }]));
+        const transformPoint = (point) => point && ({
+          x: layout.outer + point.x * layout.x,
+          y: layout.outer + point.y * layout.y
+        });
+
+        view.worldSize = {
+          width: view.worldSize.width * layout.x + layout.outer * 2,
+          height: view.worldSize.height * layout.y + layout.outer * 2
+        };
+        view.boundaries = view.boundaries.map((boundary) => ({
+          ...boundary,
+          x: layout.outer + boundary.x * layout.x,
+          y: layout.outer + boundary.y * layout.y,
+          w: boundary.w * layout.x,
+          h: boundary.h * layout.y
+        }));
+        view.nodes = view.nodes.map((node) => {
+          const heightScale = node.visualRole === "person"
+            ? layout.personHeight
+            : node.visualRole === "dataStore"
+              ? layout.dataStoreHeight ?? layout.nodeHeight
+              : layout.nodeHeight;
+          return {
+            ...node,
+            x: layout.outer + node.x * layout.x,
+            y: layout.outer + node.y * layout.y,
+            w: node.w * layout.nodeWidth,
+            h: node.h * heightScale,
+            textScale: layout.text
+          };
+        });
+        const transformedNodes = new Map(view.nodes.map((node) => [node.id, node]));
+        const transformAnchor = (anchor, nodeId) => {
+          if (!anchor) return undefined;
+          const original = originalNodes.get(nodeId);
+          const transformed = transformedNodes.get(nodeId);
+          if (!original || !transformed) return transformPoint(anchor);
+          return {
+            x: transformed.x + ((anchor.x - original.x) / original.w) * transformed.w,
+            y: transformed.y + ((anchor.y - original.y) / original.h) * transformed.h
+          };
+        };
+        view.relationships = view.relationships.map((relationship) => ({
+          ...relationship,
+          sourceAnchor: transformAnchor(relationship.sourceAnchor, relationship.from),
+          targetAnchor: transformAnchor(relationship.targetAnchor, relationship.to),
+          waypoints: relationship.waypoints?.map(transformPoint),
+          labelPosition: transformPoint(relationship.labelPosition)
+        }));
+      }
+      return model;
+    }
+
     function escapeHTML(value) {
       return String(value)
         .replaceAll("&", "&amp;")
@@ -1128,16 +1195,17 @@
     function getPersonGeometry(node) {
       const w = node.w;
       const h = node.h;
-      const headRadius = Math.max(8, Math.min(26, w * 0.16, h * 0.24));
-      const headTop = Math.max(4, h * 0.08);
-      const headCy = Math.min(h - headRadius - 4, headTop + headRadius);
-      const bodyTop = Math.min(h - 2, Math.max(headCy + headRadius + 8, h * 0.44));
-      const joinY = Math.min(h - 2, Math.max(bodyTop + 10, h * 0.58));
+      const scale = node.textScale ?? 1;
+      const headRadius = Math.max(8 * scale, Math.min(26 * scale, w * 0.16, h * 0.2));
+      const headTop = Math.max(6 * scale, h * 0.06);
+      const headCy = Math.min(h - headRadius - 6 * scale, headTop + headRadius);
+      const bodyTop = Math.min(h - 2, Math.max(headCy + headRadius + 10 * scale, h * 0.4));
+      const joinY = Math.min(h - 2, Math.max(bodyTop + 14 * scale, h * 0.56));
       return {
         head: { cx: w / 2, cy: headCy, r: headRadius },
         body: {
-          sideInset: Math.min(26, w * 0.15),
-          shoulderInset: Math.min(72, w * 0.4),
+          sideInset: Math.min(30 * scale, w * 0.16),
+          shoulderInset: Math.min(78 * scale, w * 0.4),
           top: bodyTop,
           joinY,
           bottom: h - 2
@@ -1148,30 +1216,35 @@
     function buildShapeGeometry(node) {
       const w = node.w;
       const h = node.h;
-      const common = `<rect class="node-surface" x="1" y="1" width="${w - 2}" height="${h - 2}" rx="20"/>`;
+      const scale = node.textScale ?? 1;
+      const common = `<rect class="node-surface" x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${20 * scale}"/>`;
       if (node.visualRole === "person") {
         const person = getPersonGeometry(node);
         return `<circle class="semantic-person-head" cx="${person.head.cx}" cy="${person.head.cy}" r="${person.head.r}"/>
           <path class="node-surface semantic-person-body" d="M ${person.body.sideInset} ${person.body.joinY} Q ${person.body.sideInset} ${person.body.top} ${person.body.shoulderInset} ${person.body.top} H ${w - person.body.shoulderInset} Q ${w - person.body.sideInset} ${person.body.top} ${w - person.body.sideInset} ${person.body.joinY} V ${person.body.bottom} H ${person.body.sideInset} Z"/>`;
       }
       if (node.visualRole === "softwareSystem") {
-        return `<path class="node-surface" d="M 1 1 H ${w - 30} L ${w - 1} 30 V ${h - 1} H 1 Z"/>
-          <path class="semantic-file-fold" d="M ${w - 30} 1 V 30 H ${w - 1}"/>`;
+        const fold = 34 * scale;
+        return `<path class="node-surface" d="M 1 1 H ${w - fold} L ${w - 1} ${fold} V ${h - 1} H 1 Z"/>
+          <path class="semantic-file-fold" d="M ${w - fold} 1 V ${fold} H ${w - 1}"/>`;
       }
       if (node.visualRole === "dataStore") {
-        return `<path class="node-surface" d="M 1 24 C 1 2 ${w - 1} 2 ${w - 1} 24 V ${h - 24} C ${w - 1} ${h - 2} 1 ${h - 2} 1 ${h - 24} Z"/>
-          <ellipse class="semantic-store-top" cx="${w / 2}" cy="24" rx="${w / 2 - 1}" ry="22"/>
-          <path class="semantic-store-bottom" d="M 1 ${h - 24} C 1 ${h - 2} ${w - 1} ${h - 2} ${w - 1} ${h - 24}"/>`;
+        const rim = 26 * scale;
+        return `<path class="node-surface" d="M 1 ${rim} C 1 2 ${w - 1} 2 ${w - 1} ${rim} V ${h - rim} C ${w - 1} ${h - 2} 1 ${h - 2} 1 ${h - rim} Z"/>
+          <ellipse class="semantic-store-top" cx="${w / 2}" cy="${rim}" rx="${w / 2 - 1}" ry="${rim - 2}"/>
+          <path class="semantic-store-bottom" d="M 1 ${h - rim} C 1 ${h - 2} ${w - 1} ${h - 2} ${w - 1} ${h - rim}"/>`;
       }
       if (node.visualRole === "application") {
-        return `${common}<path class="semantic-app-chrome" d="M 1 38 H ${w - 1}"/>
-          <circle cx="20" cy="20" r="4"/><circle cx="34" cy="20" r="4"/><circle cx="48" cy="20" r="4"/>`;
+        const chrome = 44 * scale;
+        return `${common}<path class="semantic-app-chrome" d="M 1 ${chrome} H ${w - 1}"/>
+          <circle cx="${20 * scale}" cy="${22 * scale}" r="${4 * scale}"/><circle cx="${35 * scale}" cy="${22 * scale}" r="${4 * scale}"/><circle cx="${50 * scale}" cy="${22 * scale}" r="${4 * scale}"/>`;
       }
       if (node.visualRole === "mobileApplication") {
-        return `${common}<path class="semantic-app-chrome" d="M 1 38 H ${w - 1}"/>
-          <rect class="semantic-device-cue" x="${w - 46}" y="10" width="26" height="18" rx="6"/>`;
+        const chrome = 44 * scale;
+        return `${common}<path class="semantic-app-chrome" d="M 1 ${chrome} H ${w - 1}"/>
+          <rect class="semantic-device-cue" x="${w - 50 * scale}" y="${11 * scale}" width="${29 * scale}" height="${20 * scale}" rx="${7 * scale}"/>`;
       }
-      return `${common}<path class="semantic-component-cue" d="M 18 1 V 14 H 34 V 1"/>`;
+      return `${common}<path class="semantic-component-cue" d="M ${18 * scale} 1 V ${15 * scale} H ${36 * scale} V 1"/>`;
     }
 
     function estimateSvgTextWidth(value, fontSize = 12) {
@@ -1209,16 +1282,20 @@
     }
 
     function getNodeTextBounds(node) {
-      const base = { x: 18, top: 30, width: Math.max(72, node.w - 36), bottom: node.h - 14 };
+      const scale = node.textScale ?? 1;
+      const inset = Math.max(28, 30 * scale);
+      const base = { x: inset, top: 38 * scale, width: Math.max(72, node.w - inset * 2), bottom: node.h - 22 * scale };
       if (node.visualRole === "person") {
         const person = getPersonGeometry(node);
-        const x = 20;
-        return { x, top: person.body.top + 4, width: Math.max(60, node.w - x * 2), bottom: node.h - 12 };
+        const x = person.body.sideInset + 18 * scale;
+        return { x, top: person.body.joinY + 18 * scale, width: Math.max(60, node.w - x * 2), bottom: node.h - 24 * scale };
       }
-      if (node.visualRole === "softwareSystem") return { ...base, top: 48, width: Math.max(80, node.w - 52) };
-      if (node.visualRole === "dataStore") return { ...base, x: 22, top: 50, width: Math.max(76, node.w - 44), bottom: node.h - 18 };
-      if (["application", "mobileApplication"].includes(node.visualRole)) return { ...base, top: 50, width: Math.min(190, base.width), bottom: node.h - (node.drilldown || node.status === "gap" ? 32 : 14) };
-      return { ...base, top: 30, bottom: node.h - (node.status === "gap" ? 32 : 14) };
+      if (node.visualRole === "softwareSystem") return { ...base, top: 62 * scale };
+      if (node.visualRole === "dataStore") return { ...base, top: 64 * scale, bottom: node.h - 30 * scale };
+      if (["application", "mobileApplication"].includes(node.visualRole)) {
+        return { ...base, top: 62 * scale, bottom: node.h - (node.drilldown || node.status === "gap" ? 44 * scale : 24 * scale) };
+      }
+      return { ...base, top: 42 * scale, bottom: node.h - (node.status === "gap" ? 44 * scale : 24 * scale) };
     }
 
     function svgTextLines(lines, x, startY, className, lineHeight = 21) {
@@ -1228,10 +1305,11 @@
     }
 
     function createSvgTextLayout(node, bounds, typography) {
-      const nameLines = wrapSvgText(node.name, bounds.width, typography.name);
+      const safeWidth = bounds.width * 0.88;
+      const nameLines = wrapSvgText(node.name, safeWidth, typography.name);
       const meta = node.technology ? `[${node.type}: ${node.technology}]` : `[${node.type}]`;
-      const metaLines = wrapSvgText(meta, bounds.width, typography.meta);
-      const descriptionLines = wrapSvgText(node.description, bounds.width, typography.description);
+      const metaLines = wrapSvgText(meta, safeWidth, typography.meta);
+      const descriptionLines = wrapSvgText(node.description, safeWidth, typography.description);
       const nameBaseline = bounds.top + typography.name;
       const metaBaseline = nameBaseline + (nameLines.length - 1) * typography.nameLineHeight + typography.gap + typography.meta;
       const descriptionBaseline = metaBaseline + (metaLines.length - 1) * typography.metaLineHeight + typography.gap + typography.description;
@@ -1241,16 +1319,17 @@
         name: { lines: nameLines, baseline: nameBaseline, lastBaseline: lastBaseline(nameBaseline, nameLines, typography.nameLineHeight), lineHeight: typography.nameLineHeight, fontSize: typography.name },
         meta: { lines: metaLines, baseline: metaBaseline, lastBaseline: lastBaseline(metaBaseline, metaLines, typography.metaLineHeight), lineHeight: typography.metaLineHeight, fontSize: typography.meta },
         description: { lines: descriptionLines, baseline: descriptionBaseline, lastBaseline: lastBaseline(descriptionBaseline, descriptionLines, typography.descriptionLineHeight), lineHeight: typography.descriptionLineHeight, fontSize: typography.description },
-        affordanceBaseline: node.h - 22
+        affordanceBaseline: node.h - 24 * (node.textScale ?? 1)
       };
     }
 
     function getSvgTextLayout(node) {
       const bounds = getNodeTextBounds(node);
+      const textScale = node.textScale ?? 1;
       const compact = node.h <= 170 || node.visualRole === "component";
       const base = compact
-        ? { name: 14, nameLineHeight: 16, meta: 9, metaLineHeight: 11, description: 10, descriptionLineHeight: 12, gap: 7 }
-        : { name: 16, nameLineHeight: 20, meta: 10, metaLineHeight: 12, description: 12, descriptionLineHeight: 14, gap: 9 };
+        ? { name: 14 * textScale, nameLineHeight: 17 * textScale, meta: 9 * textScale, metaLineHeight: 12 * textScale, description: 10 * textScale, descriptionLineHeight: 13 * textScale, gap: 9 * textScale }
+        : { name: 16 * textScale, nameLineHeight: 21 * textScale, meta: 10 * textScale, metaLineHeight: 13 * textScale, description: 12 * textScale, descriptionLineHeight: 16 * textScale, gap: 11 * textScale };
       for (const scale of [1, .9, .8, .72, .65]) {
         const typography = {
           name: Math.max(10, Math.round(base.name * scale * 10) / 10),
@@ -1265,7 +1344,7 @@
         if (layout.description.lastBaseline <= bounds.bottom) return layout;
       }
       return createSvgTextLayout(node, bounds, {
-        name: 10, nameLineHeight: 11, meta: 8, metaLineHeight: 9, description: 8, descriptionLineHeight: 9, gap: 4
+        name: 10 * textScale, nameLineHeight: 12 * textScale, meta: 8 * textScale, metaLineHeight: 10 * textScale, description: 8 * textScale, descriptionLineHeight: 10 * textScale, gap: 5 * textScale
       });
     }
 
@@ -1286,21 +1365,26 @@
 
     function buildSvgNodeMarkup(node, selected) {
       const layout = getSvgTextLayout(node);
+      const textScale = node.textScale ?? 1;
+      const clipId = `node-text-clip-${String(node.id).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
       const drilldown = node.drilldown
-        ? `<g class="node-open" data-open-node-id="${escapeHTML(node.id)}"><text x="${layout.bounds.x}" y="${node.h - 22}">Open L${node.type === "Software System" ? 2 : 3} →</text></g>`
+        ? `<g class="node-open" data-open-node-id="${escapeHTML(node.id)}"><text x="${layout.bounds.x}" y="${node.h - 24 * textScale}">Open L${node.type === "Software System" ? 2 : 3} →</text></g>`
         : "";
       const status = node.status === "gap"
-        ? `<text class="node-status" x="24" y="${node.h - 22}">구현됨 · 미배선</text>`
+        ? `<text class="node-status" x="${layout.bounds.x}" y="${node.h - 24 * textScale}">구현됨 · 미배선</text>`
         : "";
       return `<g class="diagram-node status-${escapeHTML(node.status)} role-${escapeHTML(node.visualRole)}"
           transform="translate(${node.x} ${node.y})" data-node-id="${escapeHTML(node.id)}"
           role="button" tabindex="0" aria-pressed="${selected ? "true" : "false"}"
-          style="--node-name-size:${layout.name.fontSize}px;--node-meta-size:${layout.meta.fontSize}px;--node-description-size:${layout.description.fontSize}px">
+          style="--node-name-size:${layout.name.fontSize}px;--node-meta-size:${layout.meta.fontSize}px;--node-description-size:${layout.description.fontSize}px;--node-affordance-size:${10 * textScale}px">
         <title>${escapeHTML(`${node.name}, ${node.type}, ${node.description}`)}</title>
         ${buildShapeGeometry(node)}
-        ${svgTextLines(layout.name.lines, layout.bounds.x, layout.name.baseline, "node-name", layout.name.lineHeight)}
-        ${svgTextLines(layout.meta.lines, layout.bounds.x, layout.meta.baseline, "node-meta", layout.meta.lineHeight)}
-        ${svgTextLines(layout.description.lines, layout.bounds.x, layout.description.baseline, "node-description", layout.description.lineHeight)}
+        <defs><clipPath id="${clipId}"><rect x="${layout.bounds.x}" y="${layout.bounds.top}" width="${layout.bounds.width}" height="${Math.max(1, layout.bounds.bottom - layout.bounds.top)}"/></clipPath></defs>
+        <g class="node-copy" clip-path="url(#${clipId})">
+          ${svgTextLines(layout.name.lines, layout.bounds.x, layout.name.baseline, "node-name", layout.name.lineHeight)}
+          ${svgTextLines(layout.meta.lines, layout.bounds.x, layout.meta.baseline, "node-meta", layout.meta.lineHeight)}
+          ${svgTextLines(layout.description.lines, layout.bounds.x, layout.description.baseline, "node-description", layout.description.lineHeight)}
+        </g>
         ${drilldown}${status}
       </g>`;
     }
@@ -2337,7 +2421,7 @@
     function boot() {
       const fallback = document.getElementById("fallback-summary");
       try {
-        architectureModel = JSON.parse(document.getElementById("architecture-model").textContent);
+        architectureModel = prepareArchitectureModel(JSON.parse(document.getElementById("architecture-model").textContent));
         const validation = validateModel(architectureModel);
         if (!validation.valid) throw new Error(`치명적인 모델 오류: ${validation.fatalErrors.join(", ")}`);
         if (validation.recoverableErrors.length) console.warn("Recoverable C4 relationship errors", validation.recoverableErrors);
@@ -2369,6 +2453,7 @@
     }
 
     window.RhythmC4Explorer = {
+      prepareArchitectureModel,
       validateModel,
       getParentViewId,
       getBreadcrumbs,

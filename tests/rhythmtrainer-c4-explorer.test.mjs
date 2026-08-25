@@ -35,6 +35,14 @@ test("creates the standalone RhythmTrainer C4 artifact", () => {
   assert.match(html, /<title>엇박 · C4 Architecture Explorer<\/title>/);
 });
 
+test("keeps the generated semantic-container style reference in the project", () => {
+  const assetPath = fileURLToPath(new URL("../assets/c4-node-shape-style-reference.png", import.meta.url));
+  assert.ok(fs.existsSync(assetPath), "generated Person, Document, and Data Store reference must be preserved");
+  const asset = fs.readFileSync(assetPath);
+  assert.equal(asset.subarray(0, 8).toString("hex"), "89504e470d0a1a0a", "style reference remains a PNG");
+  assert.ok(asset.byteLength > 100_000, "style reference keeps enough detail for vector interpretation");
+});
+
 test("ships the complete offline diagram-first C4 contract", () => {
   const { api, model } = explorerRuntime();
   assert.equal(api.validateModel(model).valid, true);
@@ -355,6 +363,41 @@ test("keeps generated Person silhouettes inside each current node height", () =>
   }
 });
 
+test("gives Person, Document, and Data Store nodes one roomy vector-card grammar", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.getSemanticCardGeometry, "function");
+  const semanticNodes = Object.values(model.views).flatMap((view) => view.nodes.filter((node) =>
+    ["person", "softwareSystem", "dataStore"].includes(node.visualRole)
+  ));
+
+  for (const node of semanticNodes) {
+    const geometry = api.getSemanticCardGeometry(node);
+    assert.ok(geometry.content.width >= node.w * 0.72, `${node.id} keeps at least 72% width for copy`);
+    assert.ok(geometry.content.height >= node.h * 0.55, `${node.id} keeps at least 55% height for copy`);
+    assert.ok(geometry.content.x >= 18, `${node.id} keeps a calm inner inset`);
+    assert.ok(geometry.content.x + geometry.content.width <= node.w - 18, `${node.id} keeps a matching trailing inset`);
+    const markup = api.buildShapeGeometry(node);
+    assert.match(markup, /class="node-content-surface"/, `${node.id} renders a dedicated text card`);
+    assert.doesNotMatch(markup, /<image\b/, `${node.id} remains a true SVG vector`);
+  }
+});
+
+test("aligns the System Context arrows on one shared horizontal connection lane", () => {
+  const { api, model } = explorerRuntime();
+  const view = model.views.context;
+  const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+  const laneYs = [];
+
+  for (const relationship of view.relationships) {
+    assert.equal(relationship.connectionLane?.axis, "horizontal", `${relationship.id} declares horizontal alignment`);
+    const points = api.relationshipPolyline(nodes, relationship);
+    assert.equal(points[0].y, points.at(-1).y, `${relationship.id} enters and leaves containers at one height`);
+    assert.ok(points.every((point) => point.y === points[0].y), `${relationship.id} stays on a clean horizontal line`);
+    laneYs.push(points[0].y);
+  }
+  assert.equal(new Set(laneYs).size, 1, "all System Context arrows share the same baseline");
+});
+
 test("lays out multi-line node text sections without overlapping baselines", () => {
   const { api, model } = explorerRuntime();
   const node = model.views.containers.nodes.find((candidate) => candidate.id === "iphone-app");
@@ -532,13 +575,13 @@ test("clips every node text group to its calculated safe rectangle", () => {
 
 test("keeps nodes and boundary titles on a spacious C4 layout grid", () => {
   const { api, model } = explorerRuntime();
-  const minimumNodeGap = { context: 220, containers: 120, "iphone-components": 72, "watch-components": 72 };
+  const minimumNodeGap = { context: 280, containers: 180, "iphone-components": 110, "watch-components": 110 };
 
   for (const view of Object.values(model.views)) {
     for (const node of view.nodes) {
-      assert.ok(node.x >= 64 && node.y >= 64, `${view.id}:${node.id} keeps outer canvas margin`);
-      assert.ok(node.x + node.w <= view.worldSize.width - 64, `${view.id}:${node.id} keeps right canvas margin`);
-      assert.ok(node.y + node.h <= view.worldSize.height - 64, `${view.id}:${node.id} keeps bottom canvas margin`);
+      assert.ok(node.x >= 96 && node.y >= 96, `${view.id}:${node.id} keeps outer canvas margin`);
+      assert.ok(node.x + node.w <= view.worldSize.width - 96, `${view.id}:${node.id} keeps right canvas margin`);
+      assert.ok(node.y + node.h <= view.worldSize.height - 96, `${view.id}:${node.id} keeps bottom canvas margin`);
     }
 
     for (let index = 0; index < view.nodes.length; index += 1) {
@@ -566,8 +609,8 @@ test("keeps nodes and boundary titles on a spacious C4 layout grid", () => {
 
 test("keeps every relationship label clear of nodes and neighboring labels", () => {
   const { api, model } = explorerRuntime();
-  const nodeClearance = 24;
-  const labelClearance = 28;
+  const nodeClearance = 32;
+  const labelClearance = 40;
 
   const failures = [];
   for (const view of Object.values(model.views)) {
@@ -868,7 +911,7 @@ test("filters non-finite relationship route points before making SVG paths", () 
 
 test("clamps, pans, zooms around the pointer, and fits the SVG world", () => {
   const { api } = explorerRuntime();
-  assert.equal(api.clampScale(0.1), 0.25);
+  assert.equal(api.clampScale(0.1), 0.2);
   assert.equal(api.clampScale(3), 2);
   assert.deepEqual(JSON.parse(JSON.stringify(api.panViewport({ x: 10, y: 20, scale: 1 }, 5, -4))), {
     x: 15, y: 16, scale: 1
@@ -930,14 +973,14 @@ test("fits the initial System Context as a spacious overview", () => {
   const { api, model } = explorerRuntime();
   const viewport = api.fitViewport(model.views.context.worldSize, { width: 1160, height: 900 }, 72);
 
-  assert.ok(viewport.scale >= 0.5, `System Context must remain readable while preserving generous lanes (got ${viewport.scale})`);
+  assert.ok(viewport.scale >= 0.45, `System Context must remain readable while preserving generous lanes (got ${viewport.scale})`);
 });
 
 test("fits the Container Diagram as a spacious overview", () => {
   const { api, model } = explorerRuntime();
   const viewport = api.fitViewport(model.views.containers.worldSize, { width: 1160, height: 900 }, 72);
 
-  assert.ok(viewport.scale >= 0.35, `Container Diagram must preserve readable overview scale with expanded lanes (got ${viewport.scale})`);
+  assert.ok(viewport.scale >= 0.3, `Container Diagram must preserve readable overview scale with expanded lanes (got ${viewport.scale})`);
 });
 
 test("synchronizes SVG coordinates to the expanded canvas after panel motion", () => {

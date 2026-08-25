@@ -223,6 +223,7 @@ test("starts as a diagram-first workspace and reduces panel state independently"
     leftTab: "views",
     inspectorTab: "overview",
     tool: "select",
+    relationshipMode: "focus",
     viewports: {}
   });
 
@@ -456,20 +457,23 @@ test("keeps every opposing relationship pair on distinct paths and label positio
   }
 });
 
-test("gives every dense component relationship an explicit clear label route", () => {
+test("gives every dense component relationship a compact generated route", () => {
   const { api, model } = explorerRuntime();
   for (const viewId of ["iphone-components", "watch-components"]) {
     const view = model.views[viewId];
     const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    const items = new Map(api.getRelationshipRenderItems(view, { ...api.createWorkspaceState(), currentView: viewId, relationshipMode: "all" })
+      .map((item) => [item.relationship.id, item]));
     for (const relationship of view.relationships) {
-      assert.ok(relationship.labelPosition, `${viewId}:${relationship.id} has an explicit label position`);
-      assert.ok(Array.isArray(relationship.waypoints) && relationship.waypoints.length > 0, `${viewId}:${relationship.id} has an explicit route`);
+      assert.ok(["horizontal", "vertical"].includes(relationship.routeLane?.axis), `${viewId}:${relationship.id} declares a consistent route axis`);
+      assert.equal(relationship.waypoints, undefined, `${viewId}:${relationship.id} no longer uses a distant manual detour`);
       const points = api.relationshipPolyline(nodes, relationship);
       assert.ok(points.every((point) => Number.isFinite(point.x) && Number.isFinite(point.y)), `${viewId}:${relationship.id} keeps finite route points`);
-      const label = api.relationshipLabelPoint(points, relationship.labelPosition);
+      assert.ok(points.every((point) => point.x >= 0 && point.x <= view.worldSize.width && point.y >= 0 && point.y <= view.worldSize.height), `${viewId}:${relationship.id} stays inside its compact canvas`);
+      const label = items.get(relationship.id).labelPoint;
       const { width, height } = api.getRelationshipLabelLayout(relationship);
       for (const node of view.nodes) {
-        const clearsNode = label.x + width / 2 <= node.x - 6 || label.x - width / 2 >= node.x + node.w + 6 || label.y + height / 2 <= node.y - 6 || label.y - height / 2 >= node.y + node.h + 6;
+        const clearsNode = label.x + width / 2 <= node.x - 20 || label.x - width / 2 >= node.x + node.w + 20 || label.y + height / 2 <= node.y - 20 || label.y - height / 2 >= node.y + node.h + 20;
         assert.ok(clearsNode, `${viewId}:${relationship.id} label clears ${node.id}`);
       }
     }
@@ -481,11 +485,9 @@ test("keeps dense component relationship label surfaces at least 12 units apart"
   const minimumGap = 12;
   for (const viewId of ["iphone-components", "watch-components"]) {
     const view = model.views[viewId];
-    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
-    const labels = view.relationships.map((relationship) => {
-      const point = api.relationshipLabelPoint(api.relationshipPolyline(nodes, relationship), relationship.labelPosition);
-      const { width, height } = api.getRelationshipLabelLayout(relationship);
-      return { id: relationship.id, left: point.x - width / 2, right: point.x + width / 2, top: point.y - height / 2, bottom: point.y + height / 2 };
+    const labels = api.getRelationshipRenderItems(view, { ...api.createWorkspaceState(), currentView: viewId, relationshipMode: "all" }).map((item) => {
+      const { width, height } = api.getRelationshipLabelLayout(item.relationship);
+      return { id: item.relationship.id, left: item.labelPoint.x - width / 2, right: item.labelPoint.x + width / 2, top: item.labelPoint.y - height / 2, bottom: item.labelPoint.y + height / 2 };
     });
     for (let index = 0; index < labels.length; index += 1) {
       for (const other of labels.slice(index + 1)) {
@@ -495,6 +497,63 @@ test("keeps dense component relationship label surfaces at least 12 units apart"
       }
     }
   }
+});
+
+test("progressively reveals dense L3 relationships around the selected container", () => {
+  const { api, model } = explorerRuntime();
+  const view = model.views["iphone-components"];
+  const idleState = { ...api.createWorkspaceState(), currentView: view.id };
+
+  assert.equal(idleState.relationshipMode, "focus", "dense diagrams begin as a quiet relationship map");
+  const idleItems = api.getRelationshipRenderItems(view, idleState);
+  assert.equal(idleItems.length, view.relationships.length);
+  assert.ok(idleItems.every((item) => item.presentation === "ambient" && item.labelVisible === false));
+
+  const selectedState = api.reduceWorkspace(model, idleState, { type: "select-node", nodeId: "app-flow" });
+  const selectedItems = api.getRelationshipRenderItems(view, selectedState);
+  const directlyConnected = new Set(view.relationships
+    .filter((relationship) => [relationship.from, relationship.to].includes("app-flow"))
+    .map((relationship) => relationship.id));
+
+  for (const item of selectedItems) {
+    if (directlyConnected.has(item.relationship.id)) {
+      assert.equal(item.presentation, "emphasized", `${item.relationship.id} becomes the foreground`);
+      assert.equal(item.labelVisible, true, `${item.relationship.id} reveals its inline label`);
+    } else {
+      assert.equal(item.presentation, "muted", `${item.relationship.id} recedes behind the selection`);
+      assert.equal(item.labelVisible, false, `${item.relationship.id} keeps its label out of the way`);
+    }
+  }
+
+  const allState = api.reduceWorkspace(model, selectedState, { type: "set-relationship-mode", mode: "all" });
+  assert.equal(allState.relationshipMode, "all");
+  assert.ok(api.getRelationshipRenderItems(view, allState)
+    .every((item) => item.presentation === "emphasized" && item.labelVisible === true));
+
+  const controls = api.buildLayersMarkup(view, allState);
+  assert.match(controls, /data-relationship-mode="focus"/);
+  assert.match(controls, /data-relationship-mode="all"[^>]*aria-pressed="true"/);
+});
+
+test("renders relationship hierarchy as quiet structure and explicit foreground", () => {
+  const { api, model } = explorerRuntime();
+  const view = model.views["iphone-components"];
+  const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+  const relationship = view.relationships.find(({ id }) => id === "iphone-flow-audio");
+
+  const ambient = api.buildRelationshipMarkup(nodes, relationship, {
+    presentation: "ambient",
+    labelVisible: false
+  });
+  assert.match(ambient, /class="relationship is-ambient/);
+  assert.match(ambient, /class="relationship-label"[^>]*aria-hidden="true"/);
+
+  const emphasized = api.buildRelationshipMarkup(nodes, relationship, {
+    presentation: "emphasized",
+    labelVisible: true
+  });
+  assert.match(emphasized, /class="relationship is-emphasized/);
+  assert.match(emphasized, /class="relationship-label"[^>]*aria-hidden="false"/);
 });
 
 test("keeps every emitted node text line inside its role-specific text bounds", () => {
@@ -607,23 +666,103 @@ test("keeps nodes and boundary titles on a spacious C4 layout grid", () => {
   }
 });
 
+test("balances L3 canvases around aligned component rows and consistent arrow ports", () => {
+  const { api, model } = explorerRuntime();
+  const rows = {
+    "iphone-components": [
+      ["learner", "iphone-ui", "app-flow", "audio-io", "beat-adapter"],
+      ["file-store", "result-scoring", "phone-connectivity", "beatthis-engine", "persistence", "watch-app-external"]
+    ],
+    "watch-components": [
+      ["iphone-app-external", "watch-connectivity", "watch-ui", "background-runtime"],
+      ["learner", "motion-capture", "swing-detector", "rhythm-judge", "beat-matcher"]
+    ]
+  };
+
+  for (const [viewId, alignedRows] of Object.entries(rows)) {
+    const view = model.views[viewId];
+    const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+    for (const ids of alignedRows) {
+      const centers = ids.map((id) => {
+        const node = nodes.get(id);
+        return node.y + node.h / 2;
+      });
+      assert.ok(centers.every((center) => Math.abs(center - centers[0]) < 0.01), `${viewId}:${ids.join(",")} shares one visual centerline`);
+    }
+
+    const extents = [...view.nodes, ...view.boundaries].reduce((bounds, item) => ({
+      left: Math.min(bounds.left, item.x),
+      top: Math.min(bounds.top, item.y),
+      right: Math.max(bounds.right, item.x + (item.w ?? 0)),
+      bottom: Math.max(bounds.bottom, item.y + (item.h ?? 0))
+    }), { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+    const margins = [extents.left, extents.top, view.worldSize.width - extents.right, view.worldSize.height - extents.bottom];
+    assert.ok(Math.max(...margins) <= 140, `${viewId} avoids a large empty canvas edge: ${margins.join(",")}`);
+    assert.ok(Math.max(...margins) - Math.min(...margins) <= 40, `${viewId} balances outer whitespace: ${margins.join(",")}`);
+
+    for (const relationship of view.relationships) {
+      const source = nodes.get(relationship.from);
+      const target = nodes.get(relationship.to);
+      const points = api.relationshipPolyline(nodes, relationship);
+      if (Math.abs((source.y + source.h / 2) - (target.y + target.h / 2)) < 0.01) {
+        assert.equal(points[0].y, points.at(-1).y, `${viewId}:${relationship.id} keeps a shared horizontal port lane`);
+      }
+      if (Math.abs((source.x + source.w / 2) - (target.x + target.w / 2)) < 0.01) {
+        assert.equal(points[0].x, points.at(-1).x, `${viewId}:${relationship.id} keeps a shared vertical port lane`);
+      }
+    }
+  }
+});
+
+test("places selected relationship labels near their container without collisions", () => {
+  const { api, model } = explorerRuntime();
+  for (const [viewId, nodeId] of [["iphone-components", "app-flow"], ["watch-components", "watch-ui"]]) {
+    const view = model.views[viewId];
+    const state = { ...api.createWorkspaceState(), currentView: viewId, selectedNode: nodeId };
+    const node = view.nodes.find(({ id }) => id === nodeId);
+    const visible = api.getRelationshipRenderItems(view, state).filter((item) => item.labelVisible);
+    const labelRects = [];
+
+    for (const item of visible) {
+      const layout = api.getRelationshipLabelLayout(item.relationship);
+      const rect = {
+        left: item.labelPoint.x - layout.width / 2,
+        right: item.labelPoint.x + layout.width / 2,
+        top: item.labelPoint.y - layout.height / 2,
+        bottom: item.labelPoint.y + layout.height / 2
+      };
+      const dx = Math.max(node.x - item.labelPoint.x, 0, item.labelPoint.x - (node.x + node.w));
+      const dy = Math.max(node.y - item.labelPoint.y, 0, item.labelPoint.y - (node.y + node.h));
+      assert.ok(Math.hypot(dx, dy) <= 520, `${viewId}:${item.relationship.id} label stays near ${nodeId}`);
+      for (const other of labelRects) {
+        const separated = rect.right + 20 <= other.left || other.right + 20 <= rect.left || rect.bottom + 20 <= other.top || other.bottom + 20 <= rect.top;
+        assert.ok(separated, `${viewId}:${item.relationship.id} label does not collide with another focused label`);
+      }
+      labelRects.push(rect);
+    }
+  }
+});
+
 test("keeps every relationship label clear of nodes and neighboring labels", () => {
   const { api, model } = explorerRuntime();
-  const nodeClearance = 32;
-  const labelClearance = 40;
 
   const failures = [];
   for (const view of Object.values(model.views)) {
     const nodes = new Map(view.nodes.map((node) => [node.id, node]));
-    const labels = view.relationships.map((relationship) => {
-      const point = api.relationshipLabelPoint(api.relationshipPolyline(nodes, relationship), relationship.labelPosition);
-      const { width, height } = api.getRelationshipLabelLayout(relationship);
+    const state = { ...api.createWorkspaceState(), currentView: view.id, relationshipMode: "all" };
+    const renderItems = view.level === 3
+      ? api.getRelationshipRenderItems(view, state)
+      : view.relationships.map((relationship) => ({ relationship, labelPoint: api.relationshipLabelPoint(api.relationshipPolyline(nodes, relationship), relationship.labelPosition) }));
+    const nodeClearance = view.level === 3 ? 20 : 32;
+    const labelClearance = view.level === 3 ? 20 : 40;
+    const labels = renderItems.map((item) => {
+      const { width, height } = api.getRelationshipLabelLayout(item.relationship);
       return {
-        id: relationship.id,
-        left: point.x - width / 2,
-        right: point.x + width / 2,
-        top: point.y - height / 2,
-        bottom: point.y + height / 2
+        id: item.relationship.id,
+        left: item.labelPoint.x - width / 2,
+        right: item.labelPoint.x + width / 2,
+        top: item.labelPoint.y - height / 2,
+        bottom: item.labelPoint.y + height / 2
       };
     });
 
@@ -952,6 +1091,19 @@ test("reserves Space for a focused C4 node but enables temporary Hand on the can
   assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, focusedNode), false);
   assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, canvas), true);
   assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, { tagName: "INPUT", closest: () => null }), false);
+});
+
+test("returns progressive disclosure to its quiet map from an empty canvas click", () => {
+  const { api } = explorerRuntime();
+  const canvas = { closest: () => null };
+  const node = { closest: (selector) => selector.includes("[data-node-id]") ? {} : null };
+  const control = { closest: (selector) => selector.includes("button") ? {} : null };
+
+  assert.equal(api.shouldClearSelectionOnCanvasTap(canvas, "select", 0), true);
+  assert.equal(api.shouldClearSelectionOnCanvasTap(node, "select", 0), false);
+  assert.equal(api.shouldClearSelectionOnCanvasTap(control, "select", 0), false);
+  assert.equal(api.shouldClearSelectionOnCanvasTap(canvas, "hand", 0), false);
+  assert.equal(api.shouldClearSelectionOnCanvasTap(canvas, "select", 1), false);
 });
 
 test("names every C4 canvas toolbar control for assistive technology", () => {

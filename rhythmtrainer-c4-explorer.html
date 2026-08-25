@@ -76,6 +76,9 @@
     .layer-groups h3, .layer-groups ul { margin: 0; }
     .layer-groups ul { display: grid; gap: .35rem; padding-left: 1rem; }
     .layer-groups li { display: grid; gap: .15rem; }
+    .relationship-mode-control { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .relationship-mode-control button { min-width: 0; align-content: start; }
+    .relationship-mode-control button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--blue-deep); }
     .inspector-tabs { display: flex; gap: .35rem; flex-wrap: wrap; margin: 1rem 1rem .75rem; }
     .inspector-tabs button { padding: .38rem .55rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); color: var(--muted); text-transform: capitalize; }
     .inspector-tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
@@ -259,6 +262,12 @@
     .diagram-node.status-gap .node-name, .diagram-node.status-gap .node-meta, .diagram-node.status-gap .node-description, .diagram-node.status-gap .node-open text, .diagram-node.status-gap .node-status { fill: #6e3a04; }
     .diagram-node[aria-pressed="true"] .node-surface, .diagram-node[aria-pressed="true"] .semantic-person-head, .diagram-node:focus-visible .node-surface, .diagram-node:focus-visible .semantic-person-head { stroke: var(--focus); stroke-width: 4; }
 
+    .relationship { opacity: 1; transition: opacity 180ms ease-out; }
+    .relationship-label { opacity: 1; transition: opacity 160ms ease-out; }
+    .relationship.is-ambient { opacity: .16; }
+    .relationship.is-muted { opacity: .055; }
+    .relationship.is-ambient .relationship-label, .relationship.is-muted .relationship-label { opacity: 0; }
+    .relationship.is-emphasized { opacity: 1; }
     .relationship-path { fill: none; stroke: var(--line-strong); stroke-width: 1.8; }
     .relationship-path.status-gap { stroke: var(--gap); stroke-dasharray: 7 6; }
     .arrow-marker { fill: var(--line-strong); }
@@ -349,12 +358,15 @@
       .arrow-marker, .arrow-marker-gap { fill: CanvasText; }
       .relationship-label-surface { fill: Canvas; stroke: CanvasText; stroke-width: 2; }
       .relationship-description, .relationship-technology { fill: CanvasText; font-weight: 800; }
+      .relationship.is-ambient { opacity: .42; }
+      .relationship.is-muted { opacity: .18; }
       .c4-boundary rect { fill: Canvas; stroke: CanvasText; stroke-width: 3; }
       .diagram-node .node-surface, .diagram-node .semantic-person-head { stroke: CanvasText; stroke-width: 3; }
     }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
+      .relationship, .relationship-label { transition: none !important; }
     }
 
     /* Diagram-first workspace polish: calm structural chrome, with the canvas in charge. */
@@ -547,6 +559,8 @@
       .arrow-marker, .arrow-marker-gap { fill: CanvasText; }
       .relationship-label-surface { fill: Canvas; stroke: CanvasText; stroke-width: 2; }
       .relationship-description, .relationship-technology { fill: CanvasText; font-weight: 800; }
+      .relationship.is-ambient { opacity: .42; }
+      .relationship.is-muted { opacity: .18; }
       .c4-boundary rect { fill: Canvas; stroke: CanvasText; stroke-width: 3; }
       .diagram-node .node-surface, .diagram-node .semantic-person-head { stroke: CanvasText; stroke-width: 3; }
     }
@@ -808,73 +822,73 @@
         "title": "Component Diagram",
         "scopeName": "RhythmTrainer iPhone App",
         "description": "음원 처리와 BeatThis 분석, 연습 흐름, Watch 통신을 구성하는 핵심 컴포넌트입니다.",
-        "worldSize": {"width": 1800, "height": 1000},
-        "boundaries": [{"id":"iphone-boundary","name":"RhythmTrainer iPhone App","type":"Container","members":["iphone-ui","app-flow","audio-io","beat-adapter","result-scoring","phone-connectivity","beatthis-engine","persistence"],"x":20,"y":10,"w":1040,"h":470}],
+        "worldSize": {"width": 4140, "height": 1420},
+        "boundaries": [{"id":"iphone-boundary","name":"RhythmTrainer iPhone App","type":"Container","members":["iphone-ui","app-flow","audio-io","beat-adapter","result-scoring","phone-connectivity","beatthis-engine","persistence"],"x":620,"y":100,"w":2640,"h":1200}],
         "nodes": [
-          {"id":"learner","name":"리듬을 연습하는 사용자","type":"Person","visualRole":"person","technology":"","description":"곡을 고르고 연습을 시작해 결과를 확인하는 사람입니다.","status":"person","evidence":["README.md"],"inputs":["연습 화면", "실시간 경고", "세션 결과"],"outputs":["곡 선택", "연습 시작·종료"],"x":20,"y":500,"w":180,"h":140},
-          {"id":"file-store","name":"사용자 파일 저장소","type":"External Software System","visualRole":"dataStore","technology":"Files / iCloud Drive","description":"Audio I/O에 선택 음원의 보안 범위 URL을 공급합니다.","status":"external","evidence":["RhythmTrainer/Services/SongUploadService.swift"],"inputs":["사용자 오디오 파일"],"outputs":["Security-scoped audio URL"],"x":20,"y":650,"w":190,"h":140},
+          {"id":"learner","name":"리듬을 연습하는 사용자","type":"Person","visualRole":"person","technology":"","description":"곡을 고르고 연습을 시작해 결과를 확인하는 사람입니다.","status":"person","evidence":["README.md"],"inputs":["연습 화면", "실시간 경고", "세션 결과"],"outputs":["곡 선택", "연습 시작·종료"],"x":100,"y":260,"w":400,"h":340},
+          {"id":"file-store","name":"사용자 파일 저장소","type":"External Software System","visualRole":"dataStore","technology":"Files / iCloud Drive","description":"Audio I/O에 선택 음원의 보안 범위 URL을 공급합니다.","status":"external","evidence":["RhythmTrainer/Services/SongUploadService.swift"],"inputs":["사용자 오디오 파일"],"outputs":["Security-scoped audio URL"],"x":100,"y":820,"w":400,"h":340},
           {
             "id": "iphone-ui", "name": "Presentation & Navigation", "type": "Component", "visualRole": "component", "technology": "SwiftUI",
             "description": "온보딩, 탭 셸, 곡 선택, 분석·연습·결과 화면을 구성합니다.", "status": "active",
             "evidence": ["RhythmTrainer/RhythmTrainerApp.swift", "RhythmTrainer/AppRootView.swift", "RhythmTrainer/AppShellView.swift", "RhythmTrainer/Views/PracticeJourneyView.swift"],
             "inputs": ["사용자 행동", "AppFlow 화면 상태", "SessionResult"], "outputs": ["곡 선택", "시작·종료 명령", "결과 표현"],
-            "x": 35, "y": 95, "w": 210, "h": 150
+            "x": 760, "y": 280, "w": 380, "h": 300
           },
           {
             "id": "app-flow", "name": "Practice Flow Coordinator", "type": "Component", "visualRole": "component", "technology": "Combine · @MainActor",
             "description": "분석→Watch 준비→연습→종료→결과의 상태 전이를 조정합니다.", "status": "active",
             "evidence": ["RhythmTrainer/ViewModels/AppFlowViewModel.swift"],
             "inputs": ["선택한 Song", "Watch 시작·이탈·결과"], "outputs": ["Screen 상태", "분석·재생·통신 명령"],
-            "x": 285, "y": 95, "w": 220, "h": 145
+            "x": 1420, "y": 280, "w": 400, "h": 300
           },
           {
             "id": "audio-io", "name": "Audio I/O & Playback", "type": "Component", "visualRole": "component", "technology": "AVFoundation",
             "description": "오디오를 44.1kHz mono Float32 PCM으로 변환하고 예약 시각에 재생합니다.", "status": "active",
             "evidence": ["RhythmTrainer/Services/SongUploadService.swift", "RhythmTrainer/ViewModels/PhonePlaybackClock.swift"],
             "inputs": ["Security-scoped audio URL", "songStartUptime"], "outputs": ["PCM samples", "재생 위치"],
-            "x": 545, "y": 95, "w": 210, "h": 150
+            "x": 2100, "y": 280, "w": 380, "h": 300
           },
           {
             "id": "beat-adapter", "name": "Beat Analysis Adapter", "type": "Component", "visualRole": "component", "technology": "Swift / Objective-C bridge",
             "description": "PCM을 네이티브 분석기로 전달하고 결과를 BeatGrid로 변환합니다.", "status": "active",
             "evidence": ["RhythmTrainer/Services/BeatAnalysisService.swift"],
             "inputs": ["PCM samples + sample rate"], "outputs": ["BeatGrid"],
-            "x": 790, "y": 95, "w": 190, "h": 165
+            "x": 2760, "y": 280, "w": 360, "h": 300
           },
           {
             "id": "result-scoring", "name": "Result Scoring", "type": "Component", "visualRole": "component", "technology": "Swift domain logic",
             "description": "마디 정확도를 전체 점수와 가사 구간별 점수로 변환합니다.", "status": "active",
             "evidence": ["RhythmTrainer/Models/LyricScoring.swift", "RhythmTrainer/Views/SessionResultView.swift"],
             "inputs": ["SessionResult", "BeatGrid", "Lyrics"], "outputs": ["전체·가사 구간 점수"],
-            "x": 35, "y": 265, "w": 210, "h": 145
+            "x": 760, "y": 840, "w": 380, "h": 300
           },
           {
             "id": "phone-connectivity", "name": "Phone Connectivity Gateway", "type": "Component", "visualRole": "component", "technology": "WatchConnectivity",
             "description": "곡 패키지, 시계 동기화, 시작·이탈·종료·결과 메시지를 처리합니다.", "status": "active",
             "evidence": ["RhythmTrainer/WatchConnectivity/PhoneConnectivityManager.swift", "RhythmTrainer/WatchConnectivity/ConnectivityMessageKeys.swift"],
             "inputs": ["Song + BeatGrid", "Watch messages"], "outputs": ["WCSession messages", "AppFlow callbacks"],
-            "x": 285, "y": 265, "w": 220, "h": 145
+            "x": 1420, "y": 840, "w": 400, "h": 300
           },
           {
             "id": "beatthis-engine", "name": "BeatThis Native Engine", "type": "Component", "visualRole": "component", "technology": "Objective-C++ · C++ · ONNX Runtime",
             "description": "멜 스펙트로그램, ONNX 추론, 후처리로 beat time과 beat count를 추출합니다.", "status": "active",
             "evidence": ["RhythmTrainer/Services/Library/BeatThis_Bridging-Header/BeatThisBridge.mm", "RhythmTrainer/Services/Library/BeatThis_Source/beat_this_api.cpp", "RhythmTrainer/Services/beat_this.onnx"],
             "inputs": ["Float PCM buffer", "sample rate", "ONNX model"], "outputs": ["beat times", "beat counts"],
-            "x": 545, "y": 265, "w": 210, "h": 165
+            "x": 2100, "y": 840, "w": 380, "h": 300
           },
           {
             "id": "persistence", "name": "Persistence Repository", "type": "Component", "visualRole": "component", "technology": "SwiftData",
             "description": "연습 세션과 BeatGrid 캐시 타입은 구현되어 있지만 현재 앱 진입점과 흐름에 주입되지 않았습니다.", "status": "gap",
             "evidence": ["RhythmTrainer/Models/PracticeSessionStore.swift", "RhythmTrainer/RhythmTrainerApp.swift"],
             "inputs": ["PracticeSession", "BeatGrid"], "outputs": ["저장된 세션", "캐시된 BeatGrid"],
-            "x": 790, "y": 265, "w": 190, "h": 195
+            "x": 2760, "y": 840, "w": 360, "h": 300
           },
           {
             "id": "watch-app-external", "name": "RhythmTrainer Watch App", "type": "Container", "visualRole": "mobileApplication", "technology": "watchOS",
             "description": "곡과 BeatGrid를 받아 자체 판정하고 시작·이탈·결과를 돌려주는 상대 컨테이너입니다.", "status": "external",
             "evidence": ["RhythmTrainerWatch Watch App/Services/WatchConnectivityManager.swift"],
             "inputs": ["Song + BeatGrid", "session stop"], "outputs": ["start", "alert state", "SessionResult"],
-            "x": 360, "y": 485, "w": 280, "h": 160
+            "x": 3560, "y": 830, "w": 460, "h": 320
           }
         ],
         "relationships": [
@@ -902,72 +916,72 @@
         "title": "Component Diagram",
         "scopeName": "RhythmTrainer Watch App",
         "description": "센서 입력부터 정박 판정, 코칭, 결과 전송까지 Watch에서 자체 완결되는 핵심 파이프라인입니다.",
-        "worldSize": {"width": 1800, "height": 1000},
-        "boundaries": [{"id":"watch-boundary","name":"RhythmTrainer Watch App","type":"Container","members":["watch-connectivity","watch-ui","background-runtime","motion-capture","swing-detector","rhythm-judge","beat-matcher","rhythm-coach"],"x":20,"y":10,"w":1040,"h":650}],
+        "worldSize": {"width": 3380, "height": 1940},
+        "boundaries": [{"id":"watch-boundary","name":"RhythmTrainer Watch App","type":"Container","members":["watch-connectivity","watch-ui","background-runtime","motion-capture","swing-detector","rhythm-judge","beat-matcher","rhythm-coach"],"x":620,"y":100,"w":2640,"h":1720}],
         "nodes": [
-          {"id":"learner","name":"리듬을 연습하는 사용자","type":"Person","visualRole":"person","technology":"","description":"Watch를 착용하고 연습을 시작·종료하는 사람입니다.","status":"person","evidence":["README.md"],"inputs":["연습 상태", "햅틱·화면 경고"],"outputs":["연습 시작·종료", "팔 움직임"],"x":20,"y":700,"w":180,"h":140},
+          {"id":"learner","name":"리듬을 연습하는 사용자","type":"Person","visualRole":"person","technology":"","description":"Watch를 착용하고 연습을 시작·종료하는 사람입니다.","status":"person","evidence":["README.md"],"inputs":["연습 상태", "햅틱·화면 경고"],"outputs":["연습 시작·종료", "팔 움직임"],"x":100,"y":820,"w":400,"h":340},
           {
             "id": "iphone-app-external", "name": "RhythmTrainer iPhone App", "type": "Container", "visualRole": "application", "technology": "iOS",
             "description": "곡과 BeatGrid를 보내고 Watch가 만든 세션 상태와 결과를 받는 상대 컨테이너입니다.", "status": "external",
             "evidence": ["RhythmTrainer/WatchConnectivity/PhoneConnectivityManager.swift"],
             "inputs": ["start", "alert state", "SessionResult"], "outputs": ["Song + BeatGrid", "session stop", "clock ping"],
-            "x": 1120, "y": 30, "w": 210, "h": 165
+            "x": 100, "y": 260, "w": 400, "h": 340
           },
           {
             "id": "watch-connectivity", "name": "Watch Connectivity Gateway", "type": "Component", "visualRole": "component", "technology": "WatchConnectivity",
             "description": "곡·BeatGrid를 수신하고 시작·이탈·결과·종료 메시지를 처리합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/Services/WatchConnectivityManager.swift", "RhythmTrainerWatch Watch App/Services/ConnectivityMessageKeys.swift"],
             "inputs": ["WCSession package", "stop / clock ping"], "outputs": ["song callback", "start / alert / result"],
-            "x": 285, "y": 95, "w": 220, "h": 135
+            "x": 760, "y": 280, "w": 400, "h": 300
           },
           {
             "id": "watch-ui", "name": "Watch UI Orchestrator", "type": "Component", "visualRole": "component", "technology": "SwiftUI",
             "description": "waiting→ready→practicing→done 화면과 서비스 수명주기를 연결합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/ContentView.swift"],
             "inputs": ["song callback", "judge state", "사용자 시작·종료"], "outputs": ["service start·stop", "햅틱·화면 경고"],
-            "x": 545, "y": 95, "w": 210, "h": 150
+            "x": 1420, "y": 280, "w": 380, "h": 300
           },
           {
             "id": "background-runtime", "name": "Background Runtime", "type": "Component", "visualRole": "component", "technology": "HealthKit",
             "description": "HKWorkoutSession으로 화면이 꺼진 동안에도 센서와 판정 실행을 유지합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/Services/WorkoutSessionManager.swift", "RhythmTrainerWatch-Watch-App-Info.plist"],
             "inputs": ["start / stop", "HealthKit authorization"], "outputs": ["background workout session state"],
-            "x": 790, "y": 95, "w": 190, "h": 150
+            "x": 2100, "y": 280, "w": 360, "h": 300
           },
           {
             "id": "motion-capture", "name": "Motion Capture", "type": "Component", "visualRole": "component", "technology": "CoreMotion · 50Hz",
             "description": "deviceMotion에서 사용자 가속도 크기와 timestamp를 수집합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/Services/ArmSwingDetector.swift"],
             "inputs": ["CMDeviceMotion samples"], "outputs": ["timestamp + acceleration magnitude", "swing uptime callback"],
-            "x": 35, "y": 265, "w": 210, "h": 145
+            "x": 760, "y": 840, "w": 380, "h": 300
           },
           {
             "id": "swing-detector", "name": "Swing Detector", "type": "Component", "visualRole": "component", "technology": "Pure Swift state machine",
             "description": "가속도 상승·하강·재상승 전환에서 팔 스윙 최저점을 검출합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/Services/SwingPeakDetector.swift"],
             "inputs": ["timestamp + magnitude"], "outputs": ["swing trough timestamp"],
-            "x": 285, "y": 265, "w": 220, "h": 145
+            "x": 1420, "y": 840, "w": 400, "h": 300
           },
           {
             "id": "rhythm-judge", "name": "Rhythm Judge", "type": "Component", "visualRole": "component", "technology": "Combine · 20ms Timer",
             "description": "카운트인, 정박 발화, 스윙 등록, 놓침 감지, 세션 종료를 조정합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/Services/RhythmJudge.swift"],
             "inputs": ["BeatGrid", "songStartUptime", "swing uptime"], "outputs": ["verdict stream", "offBeat", "SessionResult data"],
-            "x": 545, "y": 265, "w": 210, "h": 145
+            "x": 2100, "y": 840, "w": 380, "h": 300
           },
           {
             "id": "beat-matcher", "name": "Beat Matcher", "type": "Component", "visualRole": "component", "technology": "Pure Swift · binary search",
             "description": "가장 가까운 정박과 스윙을 비교해 정확·빠름·느림·놓침을 계산합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/Services/BeatMatcher.swift"],
             "inputs": ["beat times", "swing position", "current position"], "outputs": ["Verdict", "bar accuracies"],
-            "x": 790, "y": 265, "w": 190, "h": 145
+            "x": 2760, "y": 840, "w": 360, "h": 300
           },
           {
             "id": "rhythm-coach", "name": "Rhythm Coach", "type": "Component", "visualRole": "component", "technology": "Pure Swift state machine",
             "description": "3연속 이탈 시 경고하고 2연속 정확 시 정상으로 복귀합니다.", "status": "active",
             "evidence": ["RhythmTrainerWatch Watch App/Services/RhythmCoach.swift"],
             "inputs": ["BeatMatcher.Verdict"], "outputs": ["normal / offBeat state"],
-            "x": 545, "y": 485, "w": 210, "h": 130
+            "x": 2100, "y": 1400, "w": 380, "h": 300
           }
         ],
         "relationships": [
@@ -1005,9 +1019,56 @@
     const SPACIOUS_LAYOUTS = {
       context: { outer: 96, x: 1.85, y: 1.7, nodeWidth: 1.35, nodeHeight: 1.75, personHeight: 2.1, text: 1 },
       containers: { outer: 96, x: 1.85, y: 3.7, nodeWidth: 1.4, nodeHeight: 1.7, personHeight: 2.2, dataStoreHeight: 2, text: 1 },
-      "iphone-components": { outer: 96, x: 2.7, y: 3.3, nodeWidth: 1.7, nodeHeight: 1.8, personHeight: 2.5, dataStoreHeight: 2, text: 1.1 },
-      "watch-components": { outer: 96, x: 2.7, y: 3.3, nodeWidth: 1.7, nodeHeight: 1.8, personHeight: 2.5, dataStoreHeight: 2, text: 1.1 }
+      "iphone-components": { outer: 0, x: 1, y: 1, nodeWidth: 1, nodeHeight: 1, personHeight: 1, dataStoreHeight: 1, text: 1 },
+      "watch-components": { outer: 0, x: 1, y: 1, nodeWidth: 1, nodeHeight: 1, personHeight: 1, dataStoreHeight: 1, text: 1 }
     };
+
+    function normalizeDenseRelationshipGeometry(view) {
+      const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+      const pairGroups = new Map();
+      for (const relationship of view.relationships) {
+        const key = [relationship.from, relationship.to].sort().join("::");
+        pairGroups.set(key, [...(pairGroups.get(key) ?? []), relationship]);
+      }
+      for (const relationships of pairGroups.values()) {
+        relationships.sort((first, second) => first.id.localeCompare(second.id));
+        relationships.forEach((relationship, index) => {
+          const source = nodes.get(relationship.from);
+          const target = nodes.get(relationship.to);
+          if (!source || !target) return;
+          const laneOffset = (index - (relationships.length - 1) / 2) * 76;
+          const sourceCenter = { x: source.x + source.w / 2, y: source.y + source.h / 2 };
+          const targetCenter = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
+          const horizontal = Math.abs(targetCenter.x - sourceCenter.x) >= Math.abs(targetCenter.y - sourceCenter.y);
+          if (horizontal) {
+            const targetIsRight = targetCenter.x >= sourceCenter.x;
+            relationship.sourceAnchor = {
+              x: targetIsRight ? source.x + source.w : source.x,
+              y: sourceCenter.y + Math.max(-source.h * .42, Math.min(source.h * .42, laneOffset))
+            };
+            relationship.targetAnchor = {
+              x: targetIsRight ? target.x : target.x + target.w,
+              y: targetCenter.y + Math.max(-target.h * .42, Math.min(target.h * .42, laneOffset))
+            };
+            relationship.routeLane = { axis: "horizontal", offset: laneOffset };
+          } else {
+            const targetIsBelow = targetCenter.y >= sourceCenter.y;
+            relationship.sourceAnchor = {
+              x: sourceCenter.x + Math.max(-source.w * .42, Math.min(source.w * .42, laneOffset)),
+              y: targetIsBelow ? source.y + source.h : source.y
+            };
+            relationship.targetAnchor = {
+              x: targetCenter.x + Math.max(-target.w * .42, Math.min(target.w * .42, laneOffset)),
+              y: targetIsBelow ? target.y : target.y + target.h
+            };
+            relationship.routeLane = { axis: "vertical", offset: laneOffset };
+          }
+          relationship.waypoints = undefined;
+          relationship.labelPosition = undefined;
+        });
+      }
+      return view;
+    }
 
     function prepareArchitectureModel(rawModel) {
       const model = JSON.parse(JSON.stringify(rawModel));
@@ -1078,6 +1139,7 @@
           }
           return prepared;
         });
+        if (view.level === 3) normalizeDenseRelationshipGeometry(view);
       }
       return model;
     }
@@ -1122,6 +1184,7 @@
         leftTab: "views",
         inspectorTab: "overview",
         tool: "select",
+        relationshipMode: "focus",
         viewports: {}
       };
     }
@@ -1141,6 +1204,7 @@
       if (action.type === "set-left-tab" && ["views", "layers"].includes(action.tab)) next.leftTab = action.tab;
       if (action.type === "set-inspector-tab" && ["overview", "flow", "evidence", "model"].includes(action.tab)) next.inspectorTab = action.tab;
       if (action.type === "set-tool" && ["select", "hand"].includes(action.tool)) next.tool = action.tool;
+      if (action.type === "set-relationship-mode" && ["focus", "all"].includes(action.mode)) next.relationshipMode = action.mode;
       return next;
     }
 
@@ -1486,7 +1550,13 @@
       const boundaries = view.boundaries.map((boundary) => `<li><span>${escapeHTML(boundary.name)}</span><small>[${escapeHTML(boundary.type)}]</small></li>`).join("");
       const nodes = view.nodes.map((node) => `<li><button type="button" data-node-id="${escapeHTML(node.id)}"${state.selectedNode === node.id ? ' aria-current="true"' : ""}>${escapeHTML(node.name)}<small>[${escapeHTML(node.type)}]</small></button></li>`).join("");
       const relationships = view.relationships.map((relationship) => `<li>${escapeHTML(relationship.description)}${relationship.technology ? `<small>[${escapeHTML(relationship.technology)}]</small>` : ""}</li>`).join("");
+      const relationshipMode = state.relationshipMode ?? "focus";
+      const relationshipControls = view.level === 3 ? `<section><h3>Relationship visibility</h3><div class="relationship-mode-control" role="group" aria-label="관계 표시 방식">
+        <button type="button" data-relationship-mode="focus" aria-pressed="${relationshipMode === "focus"}"><strong>선택 중심</strong><small>연결된 관계만 강조</small></button>
+        <button type="button" data-relationship-mode="all" aria-pressed="${relationshipMode === "all"}"><strong>전체 보기</strong><small>모든 라벨 표시</small></button>
+      </div></section>` : "";
       return `<div class="layer-groups">
+        ${relationshipControls}
         <section><h3>Boundaries</h3><ul>${boundaries}</ul></section>
         <section><h3>Elements</h3><ul>${nodes}</ul></section>
         <section><h3>Relationships</h3><ul>${relationships}</ul></section>
@@ -1700,6 +1770,7 @@
         return node ? `${node.name} 요소를 선택했습니다.` : "";
       }
       if (action.type === "clear-selection") return "요소 선택을 해제했습니다.";
+      if (action.type === "set-relationship-mode") return action.mode === "all" ? "모든 관계와 라벨을 표시합니다." : "선택한 요소의 관계만 강조합니다.";
       if (action.type === "toggle-left-panel") return state.leftPanelOpen ? "탐색 패널을 열었습니다." : "탐색 패널을 닫았습니다.";
       if (action.type === "toggle-right-panel") return state.rightPanelOpen ? "인스펙터를 열었습니다." : "인스펙터를 닫았습니다.";
       return "";
@@ -1742,6 +1813,7 @@
             ? "right"
             : undefined;
       applyWorkspaceState(reduceWorkspace(architectureModel, workspaceState, action), openedPanel);
+      if (typeof document !== "undefined") drawRelationships(architectureModel.views[workspaceState.currentView], workspaceState);
       announceWorkspace(action);
       restoreWorkspaceFocus(action, previousState);
     }
@@ -1877,6 +1949,9 @@
           openNodeDrilldown(element.dataset.nodeId);
         });
       });
+      document.querySelectorAll("#left-panel-content [data-relationship-mode]").forEach((button) => {
+        button.addEventListener("click", () => updateWorkspace({ type: "set-relationship-mode", mode: button.dataset.relationshipMode }));
+      });
       document.querySelectorAll("#inspector-content [role=tablist]").forEach((tablist) => bindRovingTablist(tablist, (tab) => updateWorkspace({ type: "set-inspector-tab", tab: tab.dataset.inspectorTab })));
       document.querySelectorAll("#inspector-content [data-open-node-id]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -1961,6 +2036,11 @@
       return !activeElement?.closest?.("[data-node-id], button, [role=button], a[href]");
     }
 
+    function shouldClearSelectionOnCanvasTap(target, tool, button = 0) {
+      if (tool !== "select" || button !== 0) return false;
+      return !target?.closest?.("[data-node-id], button, [role=button], a[href]");
+    }
+
     function bindToolbarActions() {
       document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => {
         const action = button.dataset.action;
@@ -1989,6 +2069,11 @@
           event.shiftKey ? 0 : -event.deltaY
         ));
       }, { passive: false });
+
+      viewport.addEventListener("click", (event) => {
+        if (!workspaceState.selectedNode || !shouldClearSelectionOnCanvasTap(event.target, workspaceState.tool, event.button)) return;
+        dispatchWorkspace({ type: "clear-selection" });
+      });
 
       viewport.addEventListener("pointerdown", (event) => {
         const canPan = workspaceState.tool === "hand" || spaceHeld || event.button === 1;
@@ -2371,7 +2456,7 @@
     }
 
     function getRelationshipLabelLayout(relationship) {
-      const maxTextWidth = 250;
+      const maxTextWidth = 190;
       const descriptionLines = wrapSvgText(relationship.description, maxTextWidth, 12);
       const technologyLines = relationship.technology ? wrapSvgText(`[${relationship.technology}]`, maxTextWidth, 10) : [];
       const widestLine = Math.max(
@@ -2382,15 +2467,91 @@
       return {
         descriptionLines,
         technologyLines,
-        width: Math.max(148, Math.min(280, widestLine + 30)),
+        width: Math.max(132, Math.min(220, widestLine + 30)),
         height: descriptionLines.length * 16 + technologyLines.length * 13 + (technologyLines.length ? 3 : 0) + 14
       };
     }
 
-    function buildRelationshipMarkup(nodes, relationship) {
-      const points = relationshipPolyline(nodes, relationship);
+    function relationshipPresentation(view, relationship, state) {
+      if (view.level !== 3 || (state.relationshipMode ?? "focus") === "all") return "emphasized";
+      if (!state.selectedNode) return "ambient";
+      return [relationship.from, relationship.to].includes(state.selectedNode) ? "emphasized" : "muted";
+    }
+
+    function relationshipLabelRect(point, relationship) {
+      const { width, height } = getRelationshipLabelLayout(relationship);
+      return { left: point.x - width / 2, right: point.x + width / 2, top: point.y - height / 2, bottom: point.y + height / 2 };
+    }
+
+    function rectanglesSeparated(first, second, clearance = 0) {
+      return first.right + clearance <= second.left || second.right + clearance <= first.left
+        || first.bottom + clearance <= second.top || second.bottom + clearance <= first.top;
+    }
+
+    function relationshipLabelCandidates(points, fromTarget = false, step = 20) {
+      const route = fromTarget ? [...points].reverse() : points;
+      const candidates = [];
+      for (let index = 1; index < route.length; index += 1) {
+        const start = route[index - 1];
+        const end = route[index];
+        const length = Math.hypot(end.x - start.x, end.y - start.y);
+        const samples = Math.max(1, Math.ceil(length / step));
+        for (let sample = 0; sample <= samples; sample += 1) {
+          if (index > 1 && sample === 0) continue;
+          const ratio = sample / samples;
+          candidates.push({ x: start.x + (end.x - start.x) * ratio, y: start.y + (end.y - start.y) * ratio });
+        }
+      }
+      return candidates;
+    }
+
+    function focusedRelationshipLabelPoint(nodes, relationship, points, focusNodeId, occupiedRects = []) {
+      const fromTarget = focusNodeId === relationship.to;
+      const candidates = relationshipLabelCandidates(points, fromTarget);
+      const nodeRects = [...nodes.values()].map((node) => ({ left: node.x, right: node.x + node.w, top: node.y, bottom: node.y + node.h }));
+      for (const candidate of candidates) {
+        const rect = relationshipLabelRect(candidate, relationship);
+        if (!nodeRects.every((nodeRect) => rectanglesSeparated(rect, nodeRect, 20))) continue;
+        if (!occupiedRects.every((occupied) => rectanglesSeparated(rect, occupied, 20))) continue;
+        return candidate;
+      }
+      return relationshipLabelPoint(points, relationship.labelPosition);
+    }
+
+    function getRelationshipRenderItems(view, state) {
+      const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+      const items = view.relationships.map((relationship) => {
+        const presentation = relationshipPresentation(view, relationship, state);
+        const labelVisible = presentation === "emphasized";
+        const points = relationshipPolyline(nodes, relationship);
+        return {
+          relationship,
+          presentation,
+          labelVisible,
+          labelPoint: relationshipLabelPoint(points, relationship.labelPosition),
+          points
+        };
+      });
+      if (view.level !== 3) return items;
+      const occupiedRects = [];
+      const visibleItems = items.filter((item) => item.labelVisible).sort((first, second) => {
+        const routeLength = (item) => item.points.slice(1).reduce((sum, point, index) => sum + Math.hypot(point.x - item.points[index].x, point.y - item.points[index].y), 0);
+        return routeLength(first) - routeLength(second);
+      });
+      for (const item of visibleItems) {
+        const focusNodeId = (state.relationshipMode ?? "focus") === "all" ? item.relationship.from : state.selectedNode;
+        item.labelPoint = focusedRelationshipLabelPoint(nodes, item.relationship, item.points, focusNodeId, occupiedRects);
+        occupiedRects.push(relationshipLabelRect(item.labelPoint, item.relationship));
+      }
+      return items;
+    }
+
+    function buildRelationshipMarkup(nodes, relationship, options = {}) {
+      const points = options.points ?? relationshipPolyline(nodes, relationship);
       if (points.length < 2) return "";
-      const label = relationshipLabelPoint(points, relationship.labelPosition);
+      const presentation = options.presentation ?? "emphasized";
+      const labelVisible = options.labelVisible ?? true;
+      const label = options.labelPoint ?? relationshipLabelPoint(points, relationship.labelPosition);
       const statusClass = relationship.status === "gap" ? " status-gap" : "";
       const { descriptionLines, technologyLines, width: labelWidth, height: labelHeight } = getRelationshipLabelLayout(relationship);
       const descriptionStart = -labelHeight / 2 + 19;
@@ -2399,13 +2560,13 @@
         `<tspan x="0" dy="${index ? 16 : 0}">${escapeHTML(line)}</tspan>`
       ).join("")}</text>`;
       const technologyText = technologyLines.length
-        ? `<text class="relationship-technology" x="0" y="${technologyY}" text-anchor="middle">${technologyLines.map((line, index) =>
+        ? `<text class="relationship-technology" aria-label="[${escapeHTML(relationship.technology)}]" x="0" y="${technologyY}" text-anchor="middle">${technologyLines.map((line, index) =>
           `<tspan x="0" dy="${index ? 13 : 0}">${escapeHTML(line)}</tspan>`
         ).join("")}</text>`
         : "";
-      return `<g class="relationship${statusClass}" data-relationship-id="${escapeHTML(relationship.id)}">
+      return `<g class="relationship is-${escapeHTML(presentation)}${statusClass}" data-relationship-id="${escapeHTML(relationship.id)}">
         <path class="relationship-path${statusClass}" d="${relationshipPath(points)}" marker-end="url(#arrow${relationship.status === "gap" ? "-gap" : ""})"/>
-        <g class="relationship-label" transform="translate(${label.x} ${label.y})">
+        <g class="relationship-label" aria-hidden="${!labelVisible}" transform="translate(${label.x} ${label.y})">
           <rect class="relationship-label-surface" x="${-labelWidth / 2}" y="${-labelHeight / 2}" width="${labelWidth}" height="${labelHeight}" rx="8"/>
           ${descriptionText}${technologyText}
         </g>
@@ -2414,15 +2575,12 @@
 
     const ARROW_MARKERS = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-marker" d="M 0 0 L 10 5 L 0 10 z"/></marker><marker id="arrow-gap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-marker-gap" d="M 0 0 L 10 5 L 0 10 z"/></marker></defs>`;
 
-    function drawRelationships(view) {
+    function drawRelationships(view, state = workspaceState) {
       const svg = document.getElementById("diagram-svg") ?? document.getElementById("relationship-layer");
       if (!svg) return;
       const relationshipLayer = svg.querySelector("#diagram-world .relationship-layer");
-      if (!relationshipMarkupCache.has(view.id)) {
-        const nodes = new Map(view.nodes.map((node) => [node.id, node]));
-        relationshipMarkupCache.set(view.id, `${ARROW_MARKERS}${view.relationships.map((relationship) => buildRelationshipMarkup(nodes, relationship)).join("")}`);
-      }
-      const relationshipMarkup = relationshipMarkupCache.get(view.id);
+      const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+      const relationshipMarkup = `${ARROW_MARKERS}${getRelationshipRenderItems(view, state).map((item) => buildRelationshipMarkup(nodes, item.relationship, item)).join("")}`;
       if (relationshipLayer) relationshipLayer.innerHTML = relationshipMarkup;
       else svg.innerHTML = relationshipMarkup;
     }
@@ -2563,6 +2721,7 @@
       relationshipLabelPoint,
       pointToPolylineDistance,
       getRelationshipLabelLayout,
+      getRelationshipRenderItems,
       buildRelationshipMarkup,
       clampScale,
       panViewport,
@@ -2580,6 +2739,7 @@
       renderCanvasTools,
       updateWorkspace,
       shouldUseTemporaryHand,
+      shouldClearSelectionOnCanvasTap,
       bindToolbarActions,
       bindViewportInteractions,
       navigateTo,

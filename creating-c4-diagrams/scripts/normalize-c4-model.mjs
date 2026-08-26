@@ -5,6 +5,26 @@ import { fileURLToPath } from "node:url";
 const ELEMENT_TYPES = new Set(["Person", "Software System", "Container", "Component"]);
 const CONFIDENCE_VALUES = new Set(["confirmed", "inferred", "review-required"]);
 const IMPLEMENTATION_STATUS_VALUES = new Set(["active", "external", "gap", "review-required"]);
+const LAYOUT_DIRECTIONS = new Set(["TopBottom", "BottomTop", "LeftRight", "RightLeft"]);
+const VISUAL_ROLES_BY_TYPE = Object.freeze({
+  Person: new Set(["person"]),
+  "Software System": new Set(["software-system", "external-system", "data-store"]),
+  Container: new Set(["application-container", "data-store"]),
+  Component: new Set(["component"]),
+});
+
+export const MODEL_ISSUE_SEVERITY = Object.freeze({
+  "evidence-required": "warning",
+  "element-technology-required": "warning",
+  "relationship-technology-required": "warning",
+  "person-description-defaulted": "warning",
+  "software-system-description-defaulted": "warning",
+  "container-description-defaulted": "warning",
+  "component-description-defaulted": "warning",
+  "relationship-description-defaulted": "warning",
+  "element-name-duplicate-repaired": "warning",
+  "relationship-description-duplicate-repaired": "warning",
+});
 
 function normalizedString(value) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
@@ -111,13 +131,12 @@ function defaultVisualRole(element) {
 }
 
 export function deriveElementTags(element) {
-  return ["Element", element.type, defaultVisualRole(element)];
+  return ["Element", element.type, element.visualRole || defaultVisualRole(element)];
 }
 
 export function normalizeLayoutConfiguration(value = {}) {
-  const directions = new Set(["TopBottom", "BottomTop", "LeftRight", "RightLeft"]);
   return {
-    direction: directions.has(value.direction) ? value.direction : "LeftRight",
+    direction: LAYOUT_DIRECTIONS.has(value.direction) ? value.direction : "LeftRight",
     rankSeparation: Math.max(112, Number(value.rankSeparation) || 176),
     nodeSeparation: Math.max(72, Number(value.nodeSeparation) || 280),
     relationshipSeparation: Math.max(28, Number(value.relationshipSeparation) || 36),
@@ -129,7 +148,22 @@ function unknownDescription(language, type) {
 }
 
 function issue(code, message, details = {}) {
-  return { severity: "warning", code, message, ...details };
+  return { severity: MODEL_ISSUE_SEVERITY[code] ?? "error", code, message, ...details };
+}
+
+function validVisualRole(element) {
+  if (!VISUAL_ROLES_BY_TYPE[element.type]?.has(element.visualRole)) return false;
+  if (element.type === "Software System" && element.visualRole === "external-system" && !element.external) return false;
+  if (element.type === "Software System" && element.visualRole === "software-system" && element.external) return false;
+  return true;
+}
+
+function validLayoutConfiguration(value) {
+  return value
+    && LAYOUT_DIRECTIONS.has(value.direction)
+    && Number.isFinite(value.rankSeparation) && value.rankSeparation >= 112
+    && Number.isFinite(value.nodeSeparation) && value.nodeSeparation >= 72
+    && Number.isFinite(value.relationshipSeparation) && value.relationshipSeparation >= 28;
 }
 
 function viewRelationships(relationships, elementIds) {
@@ -237,9 +271,16 @@ export function validateC4Model(model) {
     if (!normalizedString(element.description)) issues.push(issue("element-description-required", "Element description is required.", { elementId: element.id }));
     if (["Container", "Component"].includes(element.type) && !normalizedString(element.technology)) issues.push(issue("element-technology-required", "Container and Component technology is required.", { elementId: element.id }));
     if (!CONFIDENCE_VALUES.has(element.confidence)) issues.push(issue("confidence-invalid", "Element confidence is invalid.", { elementId: element.id }));
+    if (!IMPLEMENTATION_STATUS_VALUES.has(element.implementationStatus)) issues.push(issue("element-implementation-status-invalid", "Element implementation status is invalid.", { elementId: element.id }));
     if (!Array.isArray(element.evidence) || element.evidence.length === 0) issues.push(issue("evidence-required", "Element source evidence is required.", { elementId: element.id }));
+    if (["Person", "Software System"].includes(element.type) && normalizedString(element.parentId)) issues.push(issue("element-parent-invalid", "Person and Software System elements must be top-level.", { elementId: element.id }));
     if (element.type === "Container" && byId.get(element.parentId)?.type !== "Software System") issues.push(issue("element-parent-invalid", "Container parent must be a Software System.", { elementId: element.id }));
     if (element.type === "Component" && byId.get(element.parentId)?.type !== "Container") issues.push(issue("element-parent-invalid", "Component parent must be a Container.", { elementId: element.id }));
+    if (!validVisualRole(element)) issues.push(issue("element-visual-role-invalid", "Element visual role is incompatible with its C4 type and ownership.", { elementId: element.id }));
+    const requiredTags = deriveElementTags(element);
+    if (!Array.isArray(element.tags) || requiredTags.some((tag) => !element.tags.includes(tag))) {
+      issues.push(issue("element-tags-required", "Element tags must include its canonical C4 type and visual role.", { elementId: element.id }));
+    }
   }
 
   const relationshipIds = new Set();
@@ -266,8 +307,23 @@ export function validateC4Model(model) {
     if (!view.id || viewIds.has(view.id)) issues.push(issue("view-id-invalid", "View IDs must be present and unique.", { viewId: view.id }));
     viewIds.add(view.id);
     if (![1, 2, 3].includes(view.level)) issues.push(issue("view-level-invalid", "Only C4 levels 1, 2, and 3 are supported.", { viewId: view.id }));
-    if (!byId.has(view.scopeId)) issues.push(issue("view-scope-invalid", "View scope must reference an element.", { viewId: view.id }));
+    const scope = byId.get(view.scopeId);
+    if (!scope) issues.push(issue("view-scope-invalid", "View scope must reference an element.", { viewId: view.id }));
+    if ((view.level === 1 || view.level === 2) && (scope?.type !== "Software System" || scope.external)) issues.push(issue("view-scope-invalid", "L1 and L2 views must scope an internal Software System.", { viewId: view.id }));
+    if (view.level === 3 && scope?.type !== "Container") issues.push(issue("view-scope-invalid", "L3 views must scope a Container.", { viewId: view.id }));
+    if (!validLayoutConfiguration(view.layoutConfiguration)) issues.push(issue("view-layout-configuration-invalid", "View layout configuration must use a supported direction and finite minimum spacing.", { viewId: view.id }));
+    if (new Set(view.elementIds ?? []).size !== (view.elementIds ?? []).length) issues.push(issue("view-element-duplicate-invalid", "View element IDs must be unique.", { viewId: view.id }));
+    if (new Set(view.relationshipIds ?? []).size !== (view.relationshipIds ?? []).length) issues.push(issue("view-relationship-duplicate-invalid", "View relationship IDs must be unique.", { viewId: view.id }));
     for (const elementId of view.elementIds ?? []) if (!byId.has(elementId)) issues.push(issue("view-element-dangling", "View references a missing element.", { viewId: view.id, elementId }));
+    for (const elementId of view.elementIds ?? []) {
+      const element = byId.get(elementId);
+      const validAtLevel = view.level === 1
+        ? element && (element.type === "Person" || element.type === "Software System" && (element.external || element.id === view.scopeId))
+        : view.level === 2
+          ? element && (element.type === "Person" || element.type === "Software System" && element.external || element.type === "Container" && element.parentId === view.scopeId)
+          : element && (element.type === "Person" || element.type === "Software System" || element.type === "Container" || element.type === "Component" && element.parentId === view.scopeId);
+      if (!validAtLevel) issues.push(issue("view-abstraction-invalid", "View element membership does not match its C4 abstraction level and scope.", { viewId: view.id, elementId }));
+    }
     const visible = new Set(view.elementIds ?? []);
     for (const relationshipId of view.relationshipIds ?? []) {
       const relationship = relationships.find(({ id }) => id === relationshipId);
@@ -310,12 +366,16 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
     if (!["Container", "Component"].includes(type) && sourceTechnology) {
       repairs.push({ code: "element-technology-removed", elementId: id, type, original: sourceTechnology });
     }
+    const sourceParentId = normalizedString(source.parentId);
+    if (["Person", "Software System"].includes(type) && sourceParentId) {
+      repairs.push({ code: "element-top-level-parent-removed", elementId: id, parentId: sourceParentId });
+    }
     const element = {
       id,
       type,
       name: dslSafeString(source.name, repairs, { field: "element.name", elementId: id }) || id,
       description: description || unknownDescription(language, type),
-      ...(normalizedString(source.parentId) ? { parentId: normalizedString(source.parentId) } : {}),
+      ...(["Container", "Component"].includes(type) && sourceParentId ? { parentId: sourceParentId } : {}),
       ...(["Container", "Component"].includes(type) ? { technology: technology || "Unknown" } : technology ? { technology } : {}),
       ...(Boolean(source.external) ? { external: true } : {}),
       responsibilities: normalizeStringList(source.responsibilities),
@@ -329,7 +389,13 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
       evidence: normalizeEvidence(source.evidence),
       confidence: description && CONFIDENCE_VALUES.has(source.confidence) ? source.confidence : "review-required",
     };
-    element.visualRole = normalizedString(source.visualRole) || defaultVisualRole({ ...source, ...element });
+    const requestedVisualRole = normalizedString(source.visualRole);
+    element.visualRole = requestedVisualRole || defaultVisualRole({ ...source, ...element });
+    if (!validVisualRole(element)) {
+      const replacement = defaultVisualRole(element);
+      repairs.push({ code: "element-visual-role-repaired", elementId: id, original: element.visualRole, value: replacement });
+      element.visualRole = replacement;
+    }
     element.tags = [...new Set([
       ...deriveElementTags(element),
       ...(Array.isArray(source.tags)

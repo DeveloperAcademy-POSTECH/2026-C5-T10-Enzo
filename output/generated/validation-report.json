@@ -1,104 +1,124 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-08-26T16:16:03.309Z",
+  "generatedAt": "2026-08-26T17:08:46.097Z",
   "errors": [],
   "warnings": [],
   "repairs": [
     {
       "code": "element-technology-removed",
-      "elementId": "user-file-store",
+      "elementId": "external-file-store",
       "type": "Software System",
-      "original": "Files · iCloud Drive"
+      "original": "Security-scoped URL"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-2",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "external-file-store-rhythmtrainer-ios-app-선택한-파일-url을-제공합니다-2",
+      "survivorRelationshipId": "external-file-store-rhythmtrainer-ios-app-선택한-파일-url을-제공합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-2",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "external-file-store-rhythmtrainer-ios-app-application-service-읽을-파일-url을-제공합니다-2",
+      "survivorRelationshipId": "external-file-store-rhythmtrainer-ios-app-application-service-읽을-파일-url을-제공합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-3",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "external-file-store-rhythmtrainer-ios-app-선택한-파일-url을-제공합니다-3",
+      "survivorRelationshipId": "external-file-store-rhythmtrainer-ios-app-선택한-파일-url을-제공합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-3",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "external-file-store-rhythmtrainer-ios-app-application-service-읽을-파일-url을-제공합니다-3",
+      "survivorRelationshipId": "external-file-store-rhythmtrainer-ios-app-application-service-읽을-파일-url을-제공합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-연습-기록을-조회합니다-2",
-      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-연습-기록을-조회합니다"
+      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-2",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-연습-기록을-조회합니다-2",
-      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-연습-기록을-조회합니다"
+      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-2",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-4",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-3",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-4",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-3",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-연습-기록을-조회합니다-3",
-      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-연습-기록을-조회합니다"
+      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-애플리케이션-데이터를-조회합니다-2",
+      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-애플리케이션-데이터를-조회합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-연습-기록을-조회합니다-3",
-      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-연습-기록을-조회합니다"
+      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-애플리케이션-데이터를-조회합니다-2",
+      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-애플리케이션-데이터를-조회합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-연습-기록을-조회합니다-4",
-      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-연습-기록을-조회합니다"
+      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-4",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-연습-기록을-조회합니다-4",
-      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-연습-기록을-조회합니다"
+      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-4",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-5",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-애플리케이션-데이터를-조회합니다-3",
+      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-애플리케이션-데이터를-조회합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-5",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-애플리케이션-데이터를-조회합니다-3",
+      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-애플리케이션-데이터를-조회합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-6",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-애플리케이션-데이터를-조회합니다-4",
+      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-저장된-애플리케이션-데이터를-조회합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-6",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-애플리케이션-데이터를-조회합니다-4",
+      "survivorRelationshipId": "rhythmtrainer-application-data-store-rhythmtrainer-ios-app-persistence-저장된-애플리케이션-데이터를-조회합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-7",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-5",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
     },
     {
       "code": "relationship-duplicate-removed",
-      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다-7",
-      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-연습-결과와-진행-상태를-저장합니다"
+      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-5",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
+    },
+    {
+      "code": "relationship-duplicate-removed",
+      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-6",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
+    },
+    {
+      "code": "relationship-duplicate-removed",
+      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-6",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
+    },
+    {
+      "code": "relationship-duplicate-removed",
+      "relationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-7",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
+    },
+    {
+      "code": "relationship-duplicate-removed",
+      "relationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다-7",
+      "survivorRelationshipId": "rhythmtrainer-ios-app-persistence-rhythmtrainer-application-data-store-애플리케이션-데이터를-저장합니다"
     }
   ],
   "checks": {

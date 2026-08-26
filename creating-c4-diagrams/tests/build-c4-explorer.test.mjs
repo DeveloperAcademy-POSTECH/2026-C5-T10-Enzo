@@ -10,6 +10,7 @@ import {
 import {
   validateC4Output,
 } from "../scripts/validate-c4-output.mjs";
+import { measureRelationshipLabel } from "../scripts/layout-c4-model.mjs";
 
 const shellPath = path.resolve(import.meta.dirname, "../assets/c4-explorer-shell.html");
 
@@ -32,20 +33,21 @@ function explorerRuntime() {
 
 function canonicalFixture() {
   const evidence = [{ file: "Fixture.swift", line: 1, reason: "Test evidence" }];
+  const layoutConfiguration = { direction: "LeftRight", rankSeparation: 176, nodeSeparation: 280, relationshipSeparation: 36 };
   return {
     version: "1.0.0",
     project: { name: "Atlas", description: "Maps work", language: "en" },
     elements: [
-      { id: "user", type: "Person", name: "Planner", description: "Plans work", visualRole: "person", evidence, confidence: "confirmed" },
-      { id: "system", type: "Software System", name: "Atlas", description: "Maps work", visualRole: "software-system", evidence, confidence: "confirmed" },
-      { id: "phone", parentId: "system", type: "Container", name: "Desktop App", description: "Presents maps", technology: "SwiftUI", visualRole: "application-container", evidence, confidence: "confirmed" },
-      { id: "store", parentId: "system", type: "Container", name: "Map Store", description: "Stores maps", technology: "SwiftData", visualRole: "data-store", evidence, confidence: "confirmed" },
+      { id: "user", type: "Person", name: "Planner", description: "Plans work", visualRole: "person", tags: ["Element", "Person", "person"], implementationStatus: "active", evidence, confidence: "confirmed" },
+      { id: "system", type: "Software System", name: "Atlas", description: "Maps work", visualRole: "software-system", tags: ["Element", "Software System", "software-system"], implementationStatus: "active", evidence, confidence: "confirmed" },
+      { id: "phone", parentId: "system", type: "Container", name: "Desktop App", description: "Presents maps", technology: "SwiftUI", visualRole: "application-container", tags: ["Element", "Container", "application-container"], implementationStatus: "active", evidence, confidence: "confirmed" },
+      { id: "store", parentId: "system", type: "Container", name: "Map Store", description: "Stores maps", technology: "SwiftData", visualRole: "data-store", tags: ["Element", "Container", "data-store"], implementationStatus: "active", evidence, confidence: "confirmed" },
       {
         id: "flow", parentId: "phone", type: "Component", name: "Map Flow", description: "Coordinates mapping", technology: "Swift", visualRole: "component",
         responsibilities: ["Coordinates mapping", "Publishes progress"],
         inputs: [{ name: "Selected work", evidence }],
         outputs: [{ name: "Updated map", evidence }],
-        implementationStatus: "gap",
+        implementationStatus: "gap", tags: ["Element", "Component", "component"],
         evidenceSummary: "Three source signals",
         evidence, confidence: "confirmed",
       },
@@ -64,19 +66,19 @@ function canonicalFixture() {
     views: [
       {
         id: "atlas-context", level: 1, scopeId: "system", title: "Atlas — System Context", description: "Context", elementIds: ["user", "system"], relationshipIds: ["uses-system"],
-        worldSize: { width: 1000, height: 700 }, boundaries: [],
+        layoutConfiguration, worldSize: { width: 1000, height: 700 }, boundaries: [],
         nodes: [{ elementId: "user", x: 80, y: 160, w: 300, h: 360 }, { elementId: "system", x: 560, y: 200, w: 340, h: 320 }],
         relationshipLayouts: [{ relationshipId: "uses-system", sourcePort: "right", targetPort: "left", laneHint: 0 }], legend: ["person", "software-system"],
       },
       {
         id: "atlas-containers", level: 2, scopeId: "system", title: "Atlas — Containers", description: "Containers", elementIds: ["user", "phone", "store"], relationshipIds: ["uses-phone", "saves"],
-        worldSize: { width: 1500, height: 900 }, boundaries: [{ id: "system-boundary", scopeId: "system", x: 480, y: 80, w: 920, h: 700, titleBand: 64 }],
+        layoutConfiguration, worldSize: { width: 1500, height: 900 }, boundaries: [{ id: "system-boundary", scopeId: "system", x: 480, y: 80, w: 920, h: 700, titleBand: 64 }],
         nodes: [{ elementId: "user", x: 80, y: 260, w: 300, h: 360 }, { elementId: "phone", x: 560, y: 220, w: 340, h: 300 }, { elementId: "store", x: 980, y: 230, w: 340, h: 280 }],
         relationshipLayouts: [{ relationshipId: "uses-phone", sourcePort: "right", targetPort: "left", laneHint: 0 }, { relationshipId: "saves", sourcePort: "right", targetPort: "left", laneHint: 1 }], legend: ["person", "application-container", "data-store"],
       },
       {
         id: "phone-components", level: 3, scopeId: "phone", title: "Desktop App — Components", description: "Components", elementIds: ["user", "flow"], relationshipIds: ["uses-flow"],
-        worldSize: { width: 1100, height: 760 }, boundaries: [{ id: "phone-boundary", scopeId: "phone", x: 480, y: 80, w: 520, h: 580, titleBand: 64 }],
+        layoutConfiguration, worldSize: { width: 1100, height: 760 }, boundaries: [{ id: "phone-boundary", scopeId: "phone", x: 480, y: 80, w: 520, h: 580, titleBand: 64 }],
         nodes: [{ elementId: "user", x: 80, y: 190, w: 300, h: 360 }, { elementId: "flow", x: 580, y: 220, w: 320, h: 230 }],
         relationshipLayouts: [{ relationshipId: "uses-flow", sourcePort: "right", targetPort: "left", laneHint: 0 }], legend: ["person", "component"],
       },
@@ -95,6 +97,31 @@ test("keeps one project-neutral offline explorer shell", () => {
   assert.match(shell, /data-tool="hand"/);
   assert.match(shell, /data-relationship-mode="focus"/);
   assert.doesNotMatch(shell, /\bfetch\s*\(|https?:\/\//);
+});
+
+test("generated long-label bounds contain the renderer's wrapped text", () => {
+  const api = explorerRuntime();
+  const relationship = {
+    description: "Transfers an unusually long evidence-backed command description without letting any rendered text escape its generated relationship label rectangle",
+    technology: "A deliberately long protocol and transport technology identifier that wraps across several lines",
+    geometryVersion: 2,
+    vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
+  };
+  relationship.label = { x: 0, y: 0, ...measureRelationshipLabel(relationship, 3, "en") };
+  const rendered = api.getRelationshipLabelLayout(relationship);
+  const widest = Math.max(
+    ...rendered.descriptionLines.map((line) => api.estimateSvgTextWidth(line, 12)),
+    ...rendered.technologyLines.map((line) => api.estimateSvgTextWidth(line, 10)),
+  );
+  const requiredHeight = rendered.descriptionLines.length * 16
+    + rendered.technologyLines.length * 13
+    + (rendered.technologyLines.length ? 3 : 0)
+    + 14;
+
+  assert.equal(rendered.width, relationship.label.width);
+  assert.equal(rendered.height, relationship.label.height);
+  assert.ok(widest + 30 <= rendered.width);
+  assert.ok(requiredHeight <= rendered.height);
 });
 
 test("adapts a canonical model into dynamic views and drilldown navigation", () => {

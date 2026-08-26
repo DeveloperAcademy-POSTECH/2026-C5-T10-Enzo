@@ -19,9 +19,24 @@ function embeddedModelText(html) {
 }
 
 function externalRuntimeUrls(html) {
-  return [...String(html).matchAll(/<(?:script|link|img)[^>]+(?:src|href)=["']([^"']+)["']/gi)]
-    .map((match) => match[1])
-    .filter((url) => /^https?:\/\//i.test(url));
+  const source = String(html);
+  const requiresRuntimeResource = (value) => {
+    const candidate = String(value).trim().replace(/^["']|["']$/g, "");
+    return candidate && !candidate.startsWith("#") && !/^data:/i.test(candidate);
+  };
+  const attributeValues = [...source.matchAll(/<(?:script|link|img|iframe|video|audio|object|embed|source)\b[^>]*\b(src|href|data|poster|srcset)\s*=\s*["']([^"']+)["']/gi)]
+    .flatMap((match) => match[1].toLowerCase() === "srcset" && !/^data:/i.test(match[2].trim())
+      ? match[2].split(",").map((candidate) => candidate.trim().split(/\s+/)[0])
+      : [match[2]])
+    .filter(requiresRuntimeResource);
+  const cssValues = [
+    ...[...source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((match) => match[1]),
+    ...[...source.matchAll(/\bstyle\s*=\s*["']([^"']+)["']/gi)].map((match) => match[1]),
+  ].flatMap((css) => [
+    ...[...css.matchAll(/@import\s+(?:url\(\s*)?["']?([^"'\s;)]+)["']?\s*\)?/gi)].map((match) => match[1]),
+    ...[...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/gi)].map((match) => match[1]),
+  ]).filter(requiresRuntimeResource);
+  return [...new Set([...attributeValues, ...cssValues])];
 }
 
 function labelRectangle(label) {
@@ -186,6 +201,18 @@ export function inspectViewGeometry(model, view) {
       }
     }
 
+    if (validWorldSize(view.worldSize)
+      && Array.isArray(vertices)
+      && vertices.some((point) => !point
+        || !finiteNumber(point.x)
+        || !finiteNumber(point.y)
+        || point.x < 0
+        || point.y < 0
+        || point.x > view.worldSize.width
+        || point.y > view.worldSize.height)) {
+      errors.push(validationIssue("geometry-path-outside-world", "Every relationship vertex and segment must remain inside the SVG world.", { viewId: view.id, relationshipId }));
+    }
+
     if (!validLabel(layout?.label)) {
       errors.push(validationIssue("geometry-label-invalid", "Relationship labels must have finite center coordinates and positive bounds.", { viewId: view.id, relationshipId }));
     } else {
@@ -317,6 +344,22 @@ function stableGeometryJson(model) {
   return JSON.stringify(stableValue(geometryProjection(model)));
 }
 
+const NONCONTRACT_TOP_LEVEL_FIELDS = new Set(["generatedAt"]);
+
+function semanticProjection(model) {
+  const topLevel = Object.fromEntries(Object.entries(model ?? {})
+    .filter(([key]) => !NONCONTRACT_TOP_LEVEL_FIELDS.has(key) && key !== "geometryVersion"));
+  return {
+    ...topLevel,
+    views: (topLevel.views ?? []).map((view) => Object.fromEntries(Object.entries(view)
+      .filter(([key]) => !["geometryVersion", "nodes", "boundaries", "worldSize", "relationshipLayouts"].includes(key)))),
+  };
+}
+
+function stableSemanticJson(model) {
+  return JSON.stringify(stableValue(semanticProjection(model)));
+}
+
 function validWorldSize(worldSize) {
   return finiteNumber(worldSize?.width)
     && finiteNumber(worldSize?.height)
@@ -382,8 +425,11 @@ function geometryIssues(model) {
         }
       }
     }
-    if ((view.relationshipLayouts ?? []).length !== (view.relationshipIds ?? []).length) {
-      errors.push(validationIssue("geometry-relationship-layout-missing", "Every visible relationship requires layout hints.", { viewId: view.id }));
+    const relationshipIds = view.relationshipIds ?? [];
+    const layoutIds = (view.relationshipLayouts ?? []).map(({ relationshipId }) => relationshipId);
+    if (JSON.stringify(layoutIds) !== JSON.stringify(relationshipIds)
+      || new Set(layoutIds).size !== layoutIds.length) {
+      errors.push(validationIssue("geometry-relationship-layout-closure", "Relationship layouts must exactly match relationshipIds in order without duplicates.", { viewId: view.id, relationshipIds, layoutIds }));
     }
     const relationshipGeometry = inspectViewGeometry(model, view);
     errors.push(...relationshipGeometry.errors);
@@ -397,9 +443,8 @@ export async function validateC4Output({ model, html, workspaceDsl, repairs = []
   const errors = [];
   const warnings = [];
   const modelIssues = validateC4Model(model);
-  const fatalModelCodes = /(?:invalid|dangling|required|forbidden)$/;
   for (const item of modelIssues) {
-    (fatalModelCodes.test(item.code) ? errors : warnings).push(item);
+    (item.severity === "warning" ? warnings : errors).push(item);
   }
 
   const levels = (model.views ?? []).map(({ level }) => level);
@@ -439,6 +484,9 @@ export async function validateC4Output({ model, html, workspaceDsl, repairs = []
   }
   if (embeddedModel && embeddedModel.project?.name !== model.project?.name) {
     errors.push(validationIssue("embedded-model-mismatch", "Embedded model does not match c4-model.json."));
+  }
+  if (embeddedModel && stableSemanticJson(embeddedModel) !== stableSemanticJson(model)) {
+    errors.push(validationIssue("embedded-model-semantic-mismatch", "Embedded canonical semantics do not match c4-model.json."));
   }
   if (embeddedModel && stableGeometryJson(embeddedModel) !== stableGeometryJson(model)) {
     errors.push(validationIssue("embedded-model-geometry-mismatch", "Embedded model geometry does not match c4-model.json."));
@@ -481,7 +529,7 @@ export async function validateC4Output({ model, html, workspaceDsl, repairs = []
     warnings,
     repairs: Array.isArray(repairs) ? repairs : [],
     checks: {
-      model: !errors.some(({ code }) => code.startsWith("element-") || code.startsWith("relationship-") || code.startsWith("view-") && !code.includes("level-")),
+      model: !errors.some(({ code }) => code.startsWith("element-") || code.startsWith("relationship-") || code.startsWith("view-")),
       views: levels.includes(1) && levels.includes(2) && levels.includes(3) && !levels.includes(4),
       geometry: geometry.errors.length === 0,
       offline: externalUrls.length === 0 && !hasFetch && !hasModuleRuntime,

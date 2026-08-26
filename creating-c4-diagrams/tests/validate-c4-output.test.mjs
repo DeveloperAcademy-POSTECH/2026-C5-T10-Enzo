@@ -85,7 +85,7 @@ test("rejects HTML whose embedded geometry differs from c4-model.json", async ()
   assert.ok(report.errors.some(({ code }) => code === "embedded-model-geometry-mismatch"));
 });
 
-test("ignores unrelated semantic metadata in the embedded geometry comparison", async () => {
+test("rejects semantic differences between the embedded and canonical models", async () => {
   const model = laidOutFixture();
   const changed = structuredClone(model);
   changed.project.description = "A semantically revised description";
@@ -95,6 +95,7 @@ test("ignores unrelated semantic metadata in the embedded geometry comparison", 
   const report = await validateC4Output({ model, html: validHtmlFor(changed) });
 
   assert.equal(report.errors.some(({ code }) => code === "embedded-model-geometry-mismatch"), false);
+  assert.ok(report.errors.some(({ code }) => code === "embedded-model-semantic-mismatch"));
 });
 
 test("rejects a relationship path through an unrelated node", async () => {
@@ -185,6 +186,92 @@ test("validation CLI preserves authoritative repairs and warnings during revalid
   assert.deepEqual(report.repairs, [repair]);
   assert.ok(report.warnings.some(({ code }) => code === sourceWarning.code));
   assert.equal(report.checks.dslParity, true);
+});
+
+test("warning-only model uncertainty keeps CLI exit zero while structural invalidity exits one", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "creating-c4-validate-severity-"));
+  const paths = {
+    model: path.join(directory, "c4-model.json"),
+    html: path.join(directory, "explorer.html"),
+    report: path.join(directory, "validation-report.json"),
+    dsl: path.join(directory, "workspace.dsl"),
+  };
+  const write = async (model) => Promise.all([
+    fs.writeFile(paths.model, JSON.stringify(model)),
+    fs.writeFile(paths.html, validHtmlFor(model)),
+    fs.writeFile(paths.dsl, exportStructurizrDsl(model)),
+  ]);
+  const uncertain = laidOutFixture();
+  delete uncertain.relationships.find(({ id }) => id === "saves").technology;
+  await write(uncertain);
+
+  assert.equal(await runValidateCli([paths.model, paths.html, paths.report, paths.dsl], { error() {} }), 0);
+  let report = JSON.parse(await fs.readFile(paths.report, "utf8"));
+  assert.equal(report.errors.length, 0);
+  assert.ok(report.warnings.some(({ code, severity }) => code === "relationship-technology-required" && severity === "warning"));
+
+  const invalid = laidOutFixture();
+  invalid.views.find(({ level }) => level === 2).elementIds.push("flow");
+  await write(invalid);
+  assert.equal(await runValidateCli([paths.model, paths.html, paths.report, paths.dsl], { error() {} }), 1);
+  report = JSON.parse(await fs.readFile(paths.report, "utf8"));
+  assert.ok(report.errors.some(({ code, severity }) => code === "view-abstraction-invalid" && severity === "error"));
+});
+
+test("requires exact ordered relationship layout closure without duplicates", async () => {
+  const mutations = [
+    (view) => view.relationshipLayouts.reverse(),
+    (view) => { view.relationshipLayouts[1].relationshipId = view.relationshipLayouts[0].relationshipId; },
+  ];
+
+  for (const mutate of mutations) {
+    const model = laidOutFixture();
+    const view = model.views.find(({ level }) => level === 2);
+    mutate(view);
+    const report = await validateC4Output({ model, html: validHtmlFor(model) });
+    assert.ok(report.errors.some(({ code }) => code === "geometry-relationship-layout-closure"));
+  }
+});
+
+test("rejects relationship vertices and segments outside the SVG world", async () => {
+  const model = laidOutFixture();
+  const view = model.views.find(({ level }) => level === 2);
+  const layout = layoutFor(model, 2, "uses-phone");
+  const source = layout.vertices[0];
+  const target = layout.vertices.at(-1);
+  layout.vertices = [
+    source,
+    { x: view.worldSize.width + 40, y: source.y },
+    { x: view.worldSize.width + 40, y: target.y },
+    target,
+  ];
+
+  const report = await validateC4Output({ model, html: validHtmlFor(model) });
+
+  assert.ok(report.errors.some(({ code }) => code === "geometry-path-outside-world"));
+});
+
+test("rejects external CSS and embedded browsing or media resources", async () => {
+  const resources = [
+    '<style>@import "https://cdn.example/theme.css";</style>',
+    '<style>@import "theme.css";</style>',
+    '<style>.hero { background: url(//cdn.example/image.png); }</style>',
+    '<style>.hero { background: url(images/hero.png); }</style>',
+    '<iframe src="https://example.com/embed"></iframe>',
+    '<iframe src="embedded.html"></iframe>',
+    '<video src="https://example.com/movie.mp4"></video>',
+    '<audio src="recording.mp3"></audio>',
+    '<object data="https://example.com/object.bin"></object>',
+    '<embed src="https://example.com/plugin.bin">',
+    '<picture><source srcset="https://example.com/image.webp 1x"></picture>',
+  ];
+
+  for (const resource of resources) {
+    const model = laidOutFixture();
+    const html = validHtmlFor(model).replace("</body>", `${resource}</body>`);
+    const report = await validateC4Output({ model, html });
+    assert.ok(report.errors.some(({ code }) => code === "external-runtime-forbidden"), resource);
+  }
 });
 
 test("rejects a zero-length relationship segment", async () => {

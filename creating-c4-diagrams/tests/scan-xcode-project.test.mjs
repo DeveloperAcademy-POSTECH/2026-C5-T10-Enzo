@@ -54,6 +54,41 @@ test("extracts paired messages, native bridges, dependencies, and model artifact
   assert.ok(result.artifacts.some(({ path: artifactPath }) => artifactPath.endsWith("beat_model.onnx")));
 });
 
+test("parses explicit target dependencies, linked frameworks, and relevant target configuration evidence", async () => {
+  const result = await scanXcodeProject(fixture);
+  const phone = result.targets.find(({ name }) => name === "TempoCoach");
+  const watch = result.targets.find(({ name }) => name === "TempoCoachWatch");
+  const tests = result.targets.find(({ name }) => name === "TempoCoachWatchTests");
+
+  assert.deepEqual(phone.targetDependencyNames, ["TempoCoachWatch"]);
+  assert.deepEqual(tests.targetDependencyNames, ["TempoCoachWatch"]);
+  assert.ok(phone.linkedFrameworks.includes("WatchConnectivity.framework"));
+  assert.ok(watch.linkedFrameworks.includes("HealthKit.framework"));
+  assert.equal(phone.buildSettings.CODE_SIGN_ENTITLEMENTS, "TempoCoach.entitlements");
+  assert.equal(phone.buildSettings.INFOPLIST_FILE, "TempoCoach/Info.plist");
+  assert.ok(phone.configurationFiles.includes("TempoCoach.entitlements"));
+  assert.ok(phone.configurationFiles.includes("TempoCoach/Info.plist"));
+  assert.ok(phone.capabilities.some(({ name, status, sourceEvidence = [] }) =>
+    name === "WatchConnectivity" && status === "confirmed" && sourceEvidence.length > 0));
+  assert.ok(phone.capabilities.some(({ name, status, sourceEvidence = [] }) =>
+    name === "HealthKit" && status === "review-required" && sourceEvidence.length === 0));
+  assert.ok(watch.capabilities.some(({ name, status, sourceEvidence = [] }) =>
+    name === "HealthKit" && status === "confirmed" && sourceEvidence.length > 0));
+  assert.equal(result.interactions.some(({ evidence }) => /\.entitlements$|Info\.plist$/.test(evidence.file)), false);
+});
+
+test("normalizes direct Xcode bundle inputs to the owning source directory", async () => {
+  const directProject = await scanXcodeProject(path.join(macFixture, "FocusNotes.xcodeproj"));
+  const directWorkspace = await scanXcodeProject(path.join(macFixture, "FocusNotes.xcworkspace"));
+
+  for (const result of [directProject, directWorkspace]) {
+    assert.equal(result.project.root, macFixture);
+    assert.equal(result.project.name, "FocusNotes");
+    assert.ok(result.declarations.some(({ name }) => name === "FocusNotesApp"));
+    assert.ok(result.targets[0].sourceFiles.includes("FocusNotes/FocusNotesApp.swift"));
+  }
+});
+
 test("uses Xcode SDK settings instead of guessing the application platform", async () => {
   const result = await scanXcodeProject(macFixture);
   assert.equal(result.targets.length, 1);

@@ -320,14 +320,55 @@ export function routeRelationship({ relationship, source, target, nodes, laneInd
   throw new Error(`Unable to route relationship ${relationship.id} without traversing an unrelated node.`);
 }
 
-export function measureRelationshipLabel(relationship, level, locale = "ko") {
-  const lines = [relationship.description, relationship.technology].map((value) => String(value ?? "").trim()).filter(Boolean);
-  const fontSize = level === 1 ? 18 : level === 2 ? 17 : 16;
-  const characterWidth = fontSize * (locale === "ko" ? 0.92 : 0.56);
-  const longestLine = Math.max(1, ...lines.map((line) => Array.from(line).length));
+function estimateRelationshipTextWidth(value, fontSize = 12) {
+  const units = Array.from(String(value)).reduce((total, character) => {
+    if (/\s/.test(character)) return total + 0.34;
+    if (/[A-Za-z0-9]/.test(character)) return total + 0.58;
+    if (/[.,:;()\[\]{}&+\-\/·→]/.test(character)) return total + 0.42;
+    return total + 1;
+  }, 0);
+  return units * fontSize;
+}
+
+function wrapRelationshipText(value, maxWidth = 210, fontSize = 12) {
+  const tokens = String(value).trim().split(/(\s+)/).filter(Boolean);
+  const lines = [];
+  let line = "";
+  const pushLine = () => {
+    if (line.trim()) lines.push(line.trim());
+    line = "";
+  };
+  for (const token of tokens) {
+    if (estimateRelationshipTextWidth(`${line}${token}`, fontSize) <= maxWidth || !line.trim()) {
+      line += token;
+      continue;
+    }
+    pushLine();
+    if (estimateRelationshipTextWidth(token, fontSize) <= maxWidth) {
+      line = token.trimStart();
+      continue;
+    }
+    for (const character of Array.from(token.trim())) {
+      if (estimateRelationshipTextWidth(`${line}${character}`, fontSize) > maxWidth && line) pushLine();
+      line += character;
+    }
+  }
+  pushLine();
+  return lines.filter(Boolean);
+}
+
+export function measureRelationshipLabel(relationship) {
+  const maxTextWidth = 210;
+  const descriptionLines = wrapRelationshipText(relationship.description, maxTextWidth, 12);
+  const technologyLines = relationship.technology ? wrapRelationshipText(`[${relationship.technology}]`, maxTextWidth, 10) : [];
+  const widestLine = Math.max(
+    ...descriptionLines.map((line) => estimateRelationshipTextWidth(line, 12)),
+    ...technologyLines.map((line) => estimateRelationshipTextWidth(line, 10)),
+    118,
+  );
   return {
-    width: Math.max(140, Math.ceil(longestLine * characterWidth + 48)),
-    height: Math.ceil(Math.max(1, lines.length) * fontSize * 1.35 + 24),
+    width: Math.max(148, Math.ceil(widestLine + 30)),
+    height: descriptionLines.length * 16 + technologyLines.length * 13 + (technologyLines.length ? 3 : 0) + 14,
   };
 }
 

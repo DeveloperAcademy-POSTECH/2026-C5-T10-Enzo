@@ -62,6 +62,17 @@ function field(body, name) {
   return cleanPbxValue(body.match(new RegExp(`\\b${name}\\s*=\\s*([^;]+);`))?.[1]);
 }
 
+function selectedBuildSettings(body) {
+  const settingsBody = body.match(/\bbuildSettings\s*=\s*\{([\s\S]*?)\};/)?.[1] ?? "";
+  return Object.fromEntries([
+    "SDKROOT",
+    "CODE_SIGN_ENTITLEMENTS",
+    "INFOPLIST_FILE",
+    "PRODUCT_BUNDLE_IDENTIFIER",
+    "SWIFT_VERSION",
+  ].map((name) => [name, field(settingsBody, name)]).filter(([, value]) => value));
+}
+
 function idList(body, name) {
   const raw = body.match(new RegExp(`\\b${name}\\s*=\\s*\\(([^)]*)\\)`, "s"))?.[1] ?? "";
   return [...raw.matchAll(/\b[A-Za-z0-9]{24}\b/g)].map(([id]) => id);
@@ -160,23 +171,86 @@ export async function discoverProjectFiles(projectRoot) {
   return discovered;
 }
 
+function commonProjectInputRoot(bundlePath) {
+  return path.dirname(path.resolve(bundlePath));
+}
+
+function workspaceProjectReferences(contents, workspacePath) {
+  const owner = path.dirname(path.resolve(workspacePath));
+  return [...String(contents).matchAll(/\blocation\s*=\s*["']([^"']+\.xcodeproj)["']/gi)]
+    .map(([, location]) => {
+      const separator = location.indexOf(":");
+      const scheme = separator >= 0 ? location.slice(0, separator).toLowerCase() : "group";
+      const value = separator >= 0 ? location.slice(separator + 1) : location;
+      if (scheme === "absolute") return path.resolve(`/${value.replace(/^\/+/, "")}`);
+      if (["group", "container", "self"].includes(scheme)) return path.resolve(owner, value);
+      return null;
+    })
+    .filter(Boolean);
+}
+
+async function resolveProjectInput(projectRoot) {
+  const input = path.resolve(projectRoot);
+  await fs.access(input);
+  if (input.endsWith(".xcodeproj")) {
+    return { root: commonProjectInputRoot(input), projectBundles: [input], searchRoots: [commonProjectInputRoot(input)] };
+  }
+  if (input.endsWith(".xcworkspace")) {
+    const contentsPath = path.join(input, "contents.xcworkspacedata");
+    const projectBundles = workspaceProjectReferences(await fs.readFile(contentsPath, "utf8"), input);
+    if (projectBundles.length === 0) {
+      const error = new Error(`No referenced .xcodeproj bundles found in ${contentsPath}`);
+      error.code = "NO_APPLE_PROJECT";
+      throw error;
+    }
+    const root = path.dirname(input);
+    return { root, projectBundles, searchRoots: [...new Set([root, ...projectBundles.map(commonProjectInputRoot)])] };
+  }
+  return { root: input, projectBundles: null, searchRoots: [input] };
+}
+
+async function discoverInputFiles({ root, searchRoots }) {
+  const byAbsolutePath = new Map();
+  for (const searchRoot of searchRoots) {
+    const discovered = await discoverProjectFiles(searchRoot);
+    for (const item of discovered) {
+      byAbsolutePath.set(item.absolutePath, {
+        ...item,
+        path: posix(path.relative(root, item.absolutePath)),
+      });
+    }
+  }
+  return [...byAbsolutePath.values()].sort((first, second) => first.path.localeCompare(second.path));
+}
+
 export function parsePbxTargets(pbxText) {
   const objects = objectBlocks(pbxText);
   const fileReferences = new Map();
   const buildFiles = new Map();
   const sourcePhases = new Map();
+  const frameworkPhases = new Map();
   const configurations = new Map();
   const configurationLists = new Map();
   const synchronizedRootGroups = new Map();
+  const targetDependencies = new Map();
 
   for (const [id, body] of objects) {
     const isa = field(body, "isa");
-    if (isa === "PBXFileReference") fileReferences.set(id, field(body, "path") || field(body, "name"));
+    if (isa === "PBXFileReference") fileReferences.set(id, {
+      path: field(body, "path") || field(body, "name"),
+      name: field(body, "name"),
+      sourceTree: field(body, "sourceTree"),
+    });
     if (isa === "PBXBuildFile") buildFiles.set(id, field(body, "fileRef"));
     if (isa === "PBXSourcesBuildPhase") sourcePhases.set(id, idList(body, "files"));
-    if (isa === "XCBuildConfiguration") configurations.set(id, field(body, "SDKROOT"));
+    if (isa === "PBXFrameworksBuildPhase") frameworkPhases.set(id, idList(body, "files"));
+    if (isa === "XCBuildConfiguration") configurations.set(id, {
+      settings: selectedBuildSettings(body),
+      baseConfigurationReference: field(body, "baseConfigurationReference"),
+    });
     if (isa === "XCConfigurationList") configurationLists.set(id, idList(body, "buildConfigurations"));
     if (isa === "PBXFileSystemSynchronizedRootGroup") synchronizedRootGroups.set(id, field(body, "path") || field(body, "name"));
+    if (isa === "PBXTargetDependency") targetDependencies.set(id, field(body, "target"));
   }
 
   const targets = [];
@@ -186,15 +260,28 @@ export function parsePbxTargets(pbxText) {
     const sourceFiles = buildPhaseIds
       .flatMap((phaseId) => sourcePhases.get(phaseId) ?? [])
       .map((buildFileId) => buildFiles.get(buildFileId))
-      .map((fileReferenceId) => fileReferences.get(fileReferenceId))
+      .map((fileReferenceId) => fileReferences.get(fileReferenceId)?.path)
       .filter(Boolean);
     const configurationIds = configurationLists.get(field(body, "buildConfigurationList")) ?? [];
-    const sdkRoot = configurationIds.map((configurationId) => configurations.get(configurationId)).find(Boolean) ?? "";
+    const targetConfigurations = configurationIds.map((configurationId) => configurations.get(configurationId)).filter(Boolean);
+    const buildSettings = Object.assign({}, ...targetConfigurations.map(({ settings }) => settings));
+    const sdkRoot = buildSettings.SDKROOT ?? "";
     const productType = field(body, "productType");
     const synchronizedRoots = idList(body, "fileSystemSynchronizedGroups")
       .map((groupId) => synchronizedRootGroups.get(groupId))
       .filter(Boolean);
     const name = field(body, "name") || field(body, "productName") || id;
+    const linkedFrameworks = buildPhaseIds
+      .flatMap((phaseId) => frameworkPhases.get(phaseId) ?? [])
+      .map((buildFileId) => buildFiles.get(buildFileId))
+      .map((fileReferenceId) => fileReferences.get(fileReferenceId)?.path)
+      .filter(Boolean)
+      .map((frameworkPath) => path.posix.basename(frameworkPath));
+    const configurationFiles = [
+      buildSettings.CODE_SIGN_ENTITLEMENTS,
+      buildSettings.INFOPLIST_FILE,
+      ...targetConfigurations.map(({ baseConfigurationReference }) => fileReferences.get(baseConfigurationReference)?.path),
+    ].filter(Boolean);
     targets.push({
       id,
       name,
@@ -203,8 +290,17 @@ export function parsePbxTargets(pbxText) {
       runtimeKind: runtimeKindFor(productType, sdkRoot),
       sourceFiles,
       synchronizedRoots,
+      buildSettings,
+      configurationFiles: [...new Set(configurationFiles)].sort(),
+      linkedFrameworks: [...new Set(linkedFrameworks)].sort(),
+      targetDependencyIds: idList(body, "dependencies").map((dependencyId) => targetDependencies.get(dependencyId)).filter(Boolean),
       isTest: /unit-test|ui-testing|xctest/i.test(`${productType} ${name}`),
     });
+  }
+
+  const targetNameById = new Map(targets.map((target) => [target.id, target.name]));
+  for (const target of targets) {
+    target.targetDependencyNames = target.targetDependencyIds.map((id) => targetNameById.get(id)).filter(Boolean);
   }
 
   return targets;
@@ -471,13 +567,16 @@ function selectPrimaryProject(projects, rootName) {
 }
 
 export async function scanXcodeProject(projectRoot, options = {}) {
-  const root = path.resolve(projectRoot);
-  await fs.access(root);
-  const files = await discoverProjectFiles(root);
+  const input = await resolveProjectInput(projectRoot);
+  const root = input.root;
+  const files = await discoverInputFiles(input);
   const swiftFiles = files.filter(({ kind }) => kind === "swift");
   const nativeFiles = files.filter(({ kind }) => kind === "native-source");
   const sourceFiles = files.filter(({ path: filePath }) => SOURCE_EXTENSIONS.has(path.extname(filePath).toLowerCase()));
-  const projectFiles = files.filter(({ kind }) => kind === "xcode-project");
+  const allowedProjectFiles = input.projectBundles
+    ? new Set(input.projectBundles.map((bundle) => path.resolve(bundle, "project.pbxproj")))
+    : null;
+  const projectFiles = files.filter(({ kind, absolutePath }) => kind === "xcode-project" && (!allowedProjectFiles || allowedProjectFiles.has(absolutePath)));
   if (projectFiles.length === 0 && !files.some(({ path: file }) => file === "Package.swift")) {
     const error = new Error(`No analyzable Apple/Xcode project found at ${root}`);
     error.code = "NO_APPLE_PROJECT";
@@ -568,6 +667,22 @@ export async function scanXcodeProject(projectRoot, options = {}) {
   const projectName = primaryProject
     ? primaryProject.name
     : path.basename(root);
+
+  for (const target of targets) {
+    target.capabilities = target.linkedFrameworks.map((framework) => {
+      const name = framework.replace(/\.(?:framework|xcframework|tbd)$/i, "");
+      const sourceEvidence = imports
+        .filter(({ name: imported, targetNames = [] }) => imported === name && targetNames.includes(target.name))
+        .map(({ evidence }) => evidence);
+      return {
+        kind: "linked-framework",
+        name,
+        status: sourceEvidence.length ? "confirmed" : "review-required",
+        evidence: [target.evidence],
+        sourceEvidence,
+      };
+    });
+  }
 
   return {
     version: "1.0.0",

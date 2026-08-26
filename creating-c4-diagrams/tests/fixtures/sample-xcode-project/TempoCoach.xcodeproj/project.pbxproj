@@ -10,6 +10,10 @@
         A10000000000000000000005 /* TempoCoachWatchApp.swift */ = { isa = PBXFileReference; path = TempoCoachWatchApp.swift; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift; };
         A10000000000000000000006 /* MotionSampler.swift */ = { isa = PBXFileReference; path = MotionSampler.swift; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift; };
         A10000000000000000000007 /* WatchBridgeTests.swift */ = { isa = PBXFileReference; path = WatchBridgeTests.swift; sourceTree = "<group>"; lastKnownFileType = sourcecode.swift; };
+        A10000000000000000000008 /* TempoCoach.entitlements */ = { isa = PBXFileReference; path = TempoCoach.entitlements; sourceTree = "<group>"; lastKnownFileType = text.plist.entitlements; };
+        A10000000000000000000009 /* Info.plist */ = { isa = PBXFileReference; path = TempoCoach/Info.plist; sourceTree = "<group>"; lastKnownFileType = text.plist.xml; };
+        A1000000000000000000000A /* WatchConnectivity.framework */ = { isa = PBXFileReference; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; lastKnownFileType = wrapper.framework; };
+        A1000000000000000000000B /* HealthKit.framework */ = { isa = PBXFileReference; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; lastKnownFileType = wrapper.framework; };
         B10000000000000000000001 /* TempoCoachApp.swift in Sources */ = { isa = PBXBuildFile; fileRef = A10000000000000000000001 /* TempoCoachApp.swift */; };
         B10000000000000000000002 /* PracticeView.swift in Sources */ = { isa = PBXBuildFile; fileRef = A10000000000000000000002 /* PracticeView.swift */; };
         B10000000000000000000003 /* SessionBridge.swift in Sources */ = { isa = PBXBuildFile; fileRef = A10000000000000000000003 /* SessionBridge.swift */; };
@@ -17,6 +21,10 @@
         B10000000000000000000005 /* TempoCoachWatchApp.swift in Sources */ = { isa = PBXBuildFile; fileRef = A10000000000000000000005 /* TempoCoachWatchApp.swift */; };
         B10000000000000000000006 /* MotionSampler.swift in Sources */ = { isa = PBXBuildFile; fileRef = A10000000000000000000006 /* MotionSampler.swift */; };
         B10000000000000000000007 /* WatchBridgeTests.swift in Sources */ = { isa = PBXBuildFile; fileRef = A10000000000000000000007 /* WatchBridgeTests.swift */; };
+        B10000000000000000000008 /* WatchConnectivity.framework in Frameworks */ = { isa = PBXBuildFile; fileRef = A1000000000000000000000A /* WatchConnectivity.framework */; };
+        B10000000000000000000009 /* HealthKit.framework in Frameworks */ = { isa = PBXBuildFile; fileRef = A1000000000000000000000B /* HealthKit.framework */; };
+        B1000000000000000000000A /* WatchConnectivity.framework in Frameworks */ = { isa = PBXBuildFile; fileRef = A1000000000000000000000A /* WatchConnectivity.framework */; };
+        B1000000000000000000000B /* HealthKit.framework in Frameworks */ = { isa = PBXBuildFile; fileRef = A1000000000000000000000B /* HealthKit.framework */; };
         C10000000000000000000001 /* Sources */ = {
             isa = PBXSourcesBuildPhase;
             files = (B10000000000000000000001, B10000000000000000000002, B10000000000000000000003, B10000000000000000000004,);
@@ -29,13 +37,22 @@
             isa = PBXSourcesBuildPhase;
             files = (B10000000000000000000007,);
         };
+        C10000000000000000000004 /* Frameworks */ = {
+            isa = PBXFrameworksBuildPhase;
+            files = (B10000000000000000000008, B10000000000000000000009,);
+        };
+        C10000000000000000000005 /* Frameworks */ = {
+            isa = PBXFrameworksBuildPhase;
+            files = (B1000000000000000000000A, B1000000000000000000000B,);
+        };
         D10000000000000000000001 /* TempoCoach */ = {
             isa = PBXNativeTarget;
             name = TempoCoach;
             productName = TempoCoach;
             productType = "com.apple.product-type.application";
-            buildPhases = (C10000000000000000000001,);
+            buildPhases = (C10000000000000000000001, C10000000000000000000004,);
             fileSystemSynchronizedGroups = (G10000000000000000000001 /* TempoCoach */,);
+            dependencies = (H10000000000000000000001,);
             buildConfigurationList = F10000000000000000000001;
         };
         D10000000000000000000002 /* TempoCoachWatch */ = {
@@ -43,7 +60,7 @@
             name = TempoCoachWatch;
             productName = TempoCoachWatch;
             productType = "com.apple.product-type.application.watchapp2";
-            buildPhases = (C10000000000000000000002,);
+            buildPhases = (C10000000000000000000002, C10000000000000000000005,);
             buildConfigurationList = F10000000000000000000002;
         };
         D10000000000000000000003 /* TempoCoachWatchTests */ = {
@@ -52,9 +69,10 @@
             productName = TempoCoachWatchTests;
             productType = "com.apple.product-type.bundle.unit-test";
             buildPhases = (C10000000000000000000003,);
+            dependencies = (H10000000000000000000002,);
             buildConfigurationList = F10000000000000000000003;
         };
-        E10000000000000000000001 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { SDKROOT = iphoneos; }; name = Debug; };
+        E10000000000000000000001 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { SDKROOT = iphoneos; CODE_SIGN_ENTITLEMENTS = TempoCoach.entitlements; INFOPLIST_FILE = TempoCoach/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.example.TempoCoach; SWIFT_VERSION = 6.0; }; name = Debug; };
         E10000000000000000000002 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { SDKROOT = watchos; }; name = Debug; };
         E10000000000000000000003 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { SDKROOT = watchos; }; name = Debug; };
         F10000000000000000000001 /* Build configuration list for TempoCoach */ = { isa = XCConfigurationList; buildConfigurations = (E10000000000000000000001,); };
@@ -65,6 +83,8 @@
             path = TempoCoach;
             sourceTree = "<group>";
         };
+        H10000000000000000000001 /* PBXTargetDependency */ = { isa = PBXTargetDependency; target = D10000000000000000000002 /* TempoCoachWatch */; };
+        H10000000000000000000002 /* PBXTargetDependency */ = { isa = PBXTargetDependency; target = D10000000000000000000002 /* TempoCoachWatch */; };
     };
     rootObject = E10000000000000000000001;
 }

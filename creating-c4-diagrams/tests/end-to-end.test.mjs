@@ -139,6 +139,43 @@ test("uses the evidence-backed synthesizer by default", async () => {
   const analysis = await fs.readFile(result.paths.analysis, "utf8");
   assert.match(analysis, /## 요소와 책임/);
   assert.match(analysis, /## 관계와 데이터 흐름/);
-  assert.match(analysis, /Song \+ BeatGrid|곡 \+ BeatGrid/);
+  assert.match(analysis, /Beat Grid|Song/);
   assert.match(analysis, /SessionBridge\.swift|PhoneSessionBridge\.swift/);
+});
+
+test("generates all five FocusNotes artifacts without unrelated product claims", async () => {
+  const fixture = path.resolve(import.meta.dirname, "fixtures/minimal-macos-project");
+  const output = await fs.mkdtemp(path.join(os.tmpdir(), "creating-c4-focusnotes-"));
+  const result = await runPipeline({ projectRoot: fixture, outputDirectory: output, language: "en" });
+  const [analysis, dsl, validation, html] = await Promise.all([
+    fs.readFile(result.paths.analysis, "utf8"),
+    fs.readFile(result.paths.workspaceDsl, "utf8"),
+    fs.readFile(result.paths.validation, "utf8"),
+    fs.readFile(result.paths.html, "utf8"),
+  ]);
+  const embedded = html.match(/<script[^>]*id="architecture-model"[^>]*>([\s\S]*?)<\/script>/)?.[1] ?? "";
+  const claims = [JSON.stringify(result.model), analysis, dsl, validation, embedded].join("\n");
+
+  assert.deepEqual((await fs.readdir(output)).sort(), ["c4-analysis.md", "c4-model.json", "focusnotes-c4-explorer.html", "validation-report.json", "workspace.dsl"]);
+  assert.deepEqual(result.validation.errors, []);
+  assert.doesNotMatch(claims, /rhythm|watch|audio|song|beatgrid|scor(?:e|ing)|iphone|wrist/i);
+  assert.ok(result.model.elements
+    .filter(({ type, visualRole }) => type === "Person" || (type === "Software System" && visualRole === "software-system") || visualRole === "application-container")
+    .every(({ implementationStatus }) => implementationStatus === "review-required"));
+});
+
+test("accepts a direct xcodeproj bundle and a referencing xcworkspace as pipeline inputs", async () => {
+  const fixture = path.resolve(import.meta.dirname, "fixtures/minimal-macos-project");
+  for (const input of [
+    path.join(fixture, "FocusNotes.xcodeproj"),
+    path.join(fixture, "FocusNotes.xcworkspace"),
+  ]) {
+    const output = await fs.mkdtemp(path.join(os.tmpdir(), "creating-c4-direct-bundle-"));
+    const result = await runPipeline({ projectRoot: input, outputDirectory: output, language: "en" });
+
+    assert.equal(result.scan.project.root, fixture);
+    assert.equal(result.scan.files.some(({ path: file }) => file === "FocusNotes/NoteStore.swift"), true);
+    assert.deepEqual((await fs.readdir(output)).sort(), ["c4-analysis.md", "c4-model.json", "focusnotes-c4-explorer.html", "validation-report.json", "workspace.dsl"]);
+    assert.deepEqual(result.validation.errors, []);
+  }
 });

@@ -44,9 +44,9 @@ test("clusters source declarations by architectural responsibility instead of cr
       responsibilities.length && inputs.length && outputs.length && evidence.length >= 2 && evidence.length <= 18));
   }
   assert.ok(model.elements.some(({ type, name }) => type === "Component" && /프레젠테이션|Presentation/.test(name)));
-  assert.ok(model.elements.some(({ type, name }) => type === "Component" && /연결|Connectivity/.test(name)));
-  assert.ok(model.elements.some(({ type, name }) => type === "Component" && /박자 매처|Beat Matcher/.test(name)));
-  assert.ok(model.elements.some(({ type, name }) => type === "Component" && /리듬 코치|Rhythm Coach/.test(name)));
+  assert.ok(model.elements.some(({ type, name }) => type === "Component" && /메시징|Messaging/.test(name)));
+  assert.ok(model.elements.some(({ type, name }) => type === "Component" && /영속성|Persistence/.test(name)));
+  assert.ok(model.elements.some(({ type, name }) => type === "Component" && /센서|Sensor/.test(name)));
 });
 
 test("creates reverse communication only when opposite-direction send evidence exists", async () => {
@@ -61,4 +61,32 @@ test("creates reverse communication only when opposite-direction send evidence e
   assert.ok(crossRuntime.some(({ from }) => from === phone?.id));
   assert.ok(crossRuntime.some(({ from }) => from === watch?.id));
   assert.ok(crossRuntime.every(({ senderEvidence }) => senderEvidence?.length));
+});
+
+test("never pulls dependency evidence from another target by matching a symbol name", () => {
+  const runtimeEvidence = { file: "Example/DataStore.swift", line: 1, symbol: "DataStore", reason: "class declaration" };
+  const scan = {
+    project: { name: "Example" },
+    files: [{ path: "Example.xcodeproj/project.pbxproj", kind: "xcode-project" }],
+    targets: [
+      { id: "APP", name: "Example", productType: "com.apple.product-type.application", runtimeKind: "macos-app", isTest: false, evidence: { file: "Example.xcodeproj/project.pbxproj", reason: "target" } },
+      { id: "TEST", name: "ExampleTests", productType: "com.apple.product-type.bundle.unit-test", runtimeKind: "unknown-runtime", isTest: true, targetDependencyNames: [], evidence: { file: "Example.xcodeproj/project.pbxproj", reason: "test target" } },
+    ],
+    declarations: [
+      { kind: "class", name: "DataStore", conformances: [], attributes: [], targetNames: ["Example"], evidence: runtimeEvidence },
+      { kind: "class", name: "DataStoreTests", conformances: [], attributes: [], targetNames: ["ExampleTests"], evidence: { file: "ExampleTests/DataStoreTests.swift", line: 1, reason: "test declaration" } },
+    ],
+    imports: [{ name: "SwiftData", targetNames: ["Example"], evidence: { file: runtimeEvidence.file, line: 2, reason: "Swift import" } }],
+    dependencies: [{ kind: "initializer-call", fromSymbol: "DataStoreTests", toSymbol: "DataStore", targetNames: ["ExampleTests"], evidence: { file: "ExampleTests/DataStoreTests.swift", line: 4, reason: "test-only initializer" } }],
+    interfaces: [],
+    interactions: [],
+    artifacts: [],
+  };
+
+  const model = synthesizeC4Model(scan, { language: "en" });
+  const component = model.elements.find(({ type }) => type === "Component");
+
+  assert.ok(component);
+  assert.equal(component.evidence.some(({ file }) => file.includes("Tests")), false);
+  assert.equal(JSON.stringify(model.relationships).includes("DataStoreTests"), false);
 });

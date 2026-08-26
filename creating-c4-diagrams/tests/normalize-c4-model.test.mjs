@@ -309,6 +309,57 @@ test("validates hierarchy independently of element array order", () => {
   assert.deepEqual(validateC4Model(result.model), []);
 });
 
+test("repairs top-level parents and incompatible visual roles", () => {
+  const fixture = structuredClone(raw);
+  fixture.elements.find(({ id }) => id === "user").parentId = "system";
+  fixture.elements.find(({ id }) => id === "phone").visualRole = "person";
+
+  const result = normalizeC4Model(fixture, {});
+  const person = result.model.elements.find(({ id }) => id === "user");
+  const container = result.model.elements.find(({ id }) => id === "phone");
+
+  assert.equal("parentId" in person, false);
+  assert.equal(container.visualRole, "application-container");
+  assert.ok(result.repairs.some(({ code, elementId }) => code === "element-top-level-parent-removed" && elementId === "user"));
+  assert.ok(result.repairs.some(({ code, elementId }) => code === "element-visual-role-repaired" && elementId === "phone"));
+  assert.deepEqual(validateC4Model(result.model), []);
+});
+
+test("rejects canonical hierarchy, tag, visual-role, view abstraction, and layout mutations", () => {
+  const mutations = [
+    {
+      code: "element-parent-invalid",
+      mutate(model) { model.elements.find(({ id }) => id === "user").parentId = "system"; },
+    },
+    {
+      code: "element-tags-required",
+      mutate(model) { model.elements.find(({ id }) => id === "phone").tags = ["Element", "Container"]; },
+    },
+    {
+      code: "element-visual-role-invalid",
+      mutate(model) { model.elements.find(({ id }) => id === "flow").visualRole = "data-store"; },
+    },
+    {
+      code: "view-abstraction-invalid",
+      mutate(model) { model.views.find(({ level }) => level === 2).elementIds.push("flow"); },
+    },
+    {
+      code: "view-layout-configuration-invalid",
+      mutate(model) { model.views[0].layoutConfiguration = { direction: "Diagonal", rankSeparation: 0, nodeSeparation: -1, relationshipSeparation: Number.NaN }; },
+    },
+    {
+      code: "element-parent-invalid",
+      mutate(model) { model.elements.find(({ id }) => id === "phone").parentId = "user"; },
+    },
+  ];
+
+  for (const { code, mutate } of mutations) {
+    const model = normalizeC4Model(raw, {}).model;
+    mutate(model);
+    assert.ok(validateC4Model(model).some((item) => item.code === code), code);
+  }
+});
+
 test("writes normalized model and inspection JSON through the CLI", async () => {
   const directory = await fs.mkdtemp("/private/tmp/creating-c4-normalize-");
   const rawPath = path.join(directory, "raw.json");

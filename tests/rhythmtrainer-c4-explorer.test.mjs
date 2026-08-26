@@ -444,6 +444,30 @@ test("renders every relationship as a labelled one-way SVG arrow", () => {
   assert.doesNotMatch(html, /relationship-summary/);
 });
 
+test("the reusable shell returns cloned version 2 vertices without browser rerouting", () => {
+  const shellPath = fileURLToPath(new URL("../creating-c4-diagrams/assets/c4-explorer-shell.html", import.meta.url));
+  const shell = fs.readFileSync(shellPath, "utf8");
+  const source = shell.match(/<script[^>]*id=["']explorer-logic["'][^>]*type=["']text\/javascript["'][^>]*>([\s\S]*?)<\/script>/)?.[1]?.trim() ?? "";
+  assert.ok(source, "reusable explorer logic must exist");
+  const context = { window: {}, console };
+  vm.runInNewContext(source, context);
+
+  const vertices = [{ x: 10, y: 20 }, { x: 80, y: 20 }];
+  const points = context.window.C4Explorer.relationshipPolyline(new Map([
+    ["phone", { id: "phone", x: 0, y: 0, w: 20, h: 20 }],
+    ["watch", { id: "watch", x: 100, y: 0, w: 20, h: 20 }],
+  ]), {
+    from: "phone",
+    to: "watch",
+    geometryVersion: 2,
+    vertices,
+  });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(points)), vertices);
+  assert.notEqual(points, vertices);
+  assert.notEqual(points[0], vertices[0]);
+});
+
 test("keeps every opposing relationship pair on distinct paths and label positions", () => {
   const { api, model } = explorerRuntime();
   for (const view of Object.values(model.views)) {

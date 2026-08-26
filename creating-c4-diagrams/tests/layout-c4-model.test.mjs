@@ -6,6 +6,7 @@ import {
   LAYOUT_TOKENS,
   layoutC4Model,
   measureNode,
+  placeRelationshipLabel,
   rectanglesOverlap,
   routeRelationship,
   runLayoutCli,
@@ -45,6 +46,22 @@ function makeFixtureModel() {
 
 function geometryFor(view, elementId) {
   return view.nodes.find((node) => node.elementId === elementId);
+}
+
+function segmentTraversesRectangle(first, second, rectangle) {
+  if (first.x === second.x) {
+    return first.x > rectangle.x
+      && first.x < rectangle.x + rectangle.w
+      && Math.max(first.y, second.y) > rectangle.y
+      && Math.min(first.y, second.y) < rectangle.y + rectangle.h;
+  }
+  if (first.y === second.y) {
+    return first.y > rectangle.y
+      && first.y < rectangle.y + rectangle.h
+      && Math.max(first.x, second.x) > rectangle.x
+      && Math.min(first.x, second.x) < rectangle.x + rectangle.w;
+  }
+  return true;
 }
 
 test("aligns L1 semantic nodes on one baseline with generous gaps", () => {
@@ -156,6 +173,53 @@ test("separates parallel relationship rails by the configured distance", () => {
   assert.equal(longestHorizontalY(route(1)) - longestHorizontalY(route(0)), configuration.relationshipSeparation);
 });
 
+test("keeps blocked parallel relationship lanes on distinct paths", () => {
+  const source = { elementId: "source", x: 0, y: 0, w: 100, h: 100 };
+  const target = { elementId: "target", x: 400, y: 0, w: 100, h: 100 };
+  const blocker = { elementId: "blocker", x: 200, y: 70, w: 50, h: 40 };
+  const relationship = { id: "blocked-parallel", from: "source", to: "target" };
+  const configuration = { direction: "LeftRight", relationshipSeparation: 36 };
+  const route = (laneIndex) => routeRelationship({ relationship, source, target, nodes: [source, target, blocker], laneIndex, configuration });
+
+  assert.notDeepEqual(route(0).vertices, route(1).vertices);
+});
+
+test("validates fallback relationship vertices against unrelated nodes", () => {
+  const source = { elementId: "source", x: 0, y: 0, w: 100, h: 100 };
+  const target = { elementId: "target", x: 400, y: 0, w: 100, h: 100 };
+  const blocker = { elementId: "blocker", x: 40, y: 250, w: 20, h: 100 };
+  const placement = placeRelationshipLabel({
+    vertices: [{ x: 50, y: 100 }, { x: 50, y: 150 }, { x: 450, y: 150 }, { x: 450, y: 100 }],
+    bounds: { width: 1000, height: 50 },
+    nodes: [source, target, blocker],
+    clearance: { node: 28, label: 20, lane: 36 },
+  });
+
+  for (let index = 1; index < placement.vertices.length; index += 1) {
+    assert.equal(segmentTraversesRectangle(placement.vertices[index - 1], placement.vertices[index], blocker), false);
+  }
+});
+
+test("keeps relationship labels fully inside the top and left world edges", () => {
+  const source = { elementId: "source", x: 0, y: 100, w: 100, h: 100 };
+  const target = { elementId: "target", x: 500, y: 100, w: 100, h: 100 };
+  const placement = placeRelationshipLabel({
+    vertices: [{ x: 0, y: 150 }, { x: -50, y: 150 }, { x: -50, y: 0 }, { x: 650, y: 0 }, { x: 650, y: 150 }, { x: 600, y: 150 }],
+    bounds: { width: 180, height: 50 },
+    nodes: [source, target],
+    clearance: { node: 28, label: 20, lane: 36 },
+  });
+  const rectangle = {
+    x: placement.label.x - placement.label.width / 2,
+    y: placement.label.y - placement.label.height / 2,
+    w: placement.label.width,
+    h: placement.label.height,
+  };
+
+  assert.ok(rectangle.x >= 0);
+  assert.ok(rectangle.y >= 0);
+});
+
 test("places center-based relationship label rectangles clear of nodes and labels", () => {
   const model = layoutC4Model(normalizeC4Model(makeFixtureModel(), {}).model);
 
@@ -174,6 +238,8 @@ test("places center-based relationship label rectangles clear of nodes and label
     });
 
     for (const label of labelRectangles) {
+      assert.ok(label.x >= 0 && label.y >= 0);
+      assert.ok(label.x + label.w <= view.worldSize.width && label.y + label.h <= view.worldSize.height);
       const relationship = model.relationships.find(({ id }) => id === label.relationshipId);
       for (const node of view.nodes.filter(({ elementId }) => ![relationship.from, relationship.to].includes(elementId))) {
         assert.equal(rectanglesOverlap(label, node, LAYOUT_TOKENS.labelNodeClearance), false);

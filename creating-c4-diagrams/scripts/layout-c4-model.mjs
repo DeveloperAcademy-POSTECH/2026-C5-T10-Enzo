@@ -250,7 +250,7 @@ export function routeRelationship({ relationship, source, target, nodes, laneInd
   const separation = Math.max(1, Number(configuration?.relationshipSeparation) || LAYOUT_TOKENS.laneSeparation);
   const lane = Math.max(0, Number.isInteger(laneIndex) ? laneIndex : 0);
   const stubDistance = separation * 1.5;
-  const laneOffset = lane * separation;
+  const laneOffset = (lane + 1) * separation;
   const unrelatedNodes = nodes.filter(({ elementId }) => ![relationship.from, relationship.to].includes(elementId));
 
   for (const [sourcePort, targetPort] of candidatePortPairs(source, target, configuration)) {
@@ -263,10 +263,11 @@ export function routeRelationship({ relationship, source, target, nodes, laneInd
     const verticalRail = [sourceAnchor, sourceStub, { x: midX, y: sourceStub.y }, { x: midX, y: targetStub.y }, targetStub, targetAnchor];
     const horizontalRail = [sourceAnchor, sourceStub, { x: sourceStub.x, y: midY }, { x: targetStub.x, y: midY }, targetStub, targetAnchor];
     const horizontalPorts = [sourcePort, targetPort].every((port) => ["left", "right"].includes(port));
+    const verticalPorts = [sourcePort, targetPort].every((port) => ["top", "bottom"].includes(port));
+    const configuredHorizontal = ["LeftRight", "RightLeft"].includes(configuration?.direction);
+    const laneRail = horizontalPorts || (!verticalPorts && configuredHorizontal) ? horizontalRail : verticalRail;
     const candidates = [
-      ...(horizontalPorts ? [horizontalRail, verticalRail] : [verticalRail, horizontalRail]),
-      [sourceAnchor, sourceStub, { x: targetStub.x, y: sourceStub.y }, targetStub, targetAnchor],
-      [sourceAnchor, sourceStub, { x: sourceStub.x, y: targetStub.y }, targetStub, targetAnchor],
+      laneRail,
       perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, separation * (2 + lane), true),
       perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, separation * (2 + lane), false),
     ].map(simplifyVertices);
@@ -334,44 +335,38 @@ function endpointPort(point, node) {
   });
 }
 
-function fallbackLabelGeometry(vertices, bounds, occupiedRectangles, nodes, nodeClearance, labelClearance, laneSeparation) {
+function fallbackLabelGeometry(vertices, bounds, occupiedRectangles, nodes, nodeClearance, labelClearance, laneSeparation, fits) {
   const source = vertices[0];
   const target = vertices.at(-1);
   const sourceNode = nodes.find((node) => endpointPort(source, node));
   const targetNode = nodes.find((node) => endpointPort(target, node));
-  const sourcePort = sourceNode ? endpointPort(source, sourceNode) : "bottom";
-  const targetPort = targetNode ? endpointPort(target, targetNode) : "bottom";
-  const minX = Math.min(...nodes.map((node) => node.x));
-  const maxX = Math.max(...nodes.map((node) => node.x + node.w));
-  const maxY = Math.max(
-    ...nodes.map((node) => node.y + node.h),
-    ...occupiedRectangles.map((label) => label.y + label.h + labelClearance),
-  );
-  const margin = nodeClearance + bounds.height / 2 + laneSeparation * (occupiedRectangles.length + 1);
-  const bottom = maxY + margin;
-  const left = Math.max(0, minX - nodeClearance - laneSeparation);
-  const right = Math.max(maxX + nodeClearance + laneSeparation, left + bounds.width + nodeClearance * 2);
-  const sourceExit = {
-    left: { x: left, y: source.y }, right: { x: right, y: source.y }, top: { x: source.x, y: Math.max(0, Math.min(...nodes.map((node) => node.y)) - margin) }, bottom: { x: source.x, y: bottom },
-  }[sourcePort];
-  const targetExit = {
-    left: { x: left, y: target.y }, right: { x: right, y: target.y }, top: { x: target.x, y: Math.max(0, Math.min(...nodes.map((node) => node.y)) - margin) }, bottom: { x: target.x, y: bottom },
-  }[targetPort];
-  const outerBottom = bottom + bounds.height + laneSeparation;
-  const routedVertices = simplifyVertices([
-    source,
-    sourceExit,
-    { x: sourceExit.x, y: outerBottom },
-    { x: left, y: outerBottom },
-    { x: right, y: outerBottom },
-    { x: targetExit.x, y: outerBottom },
-    targetExit,
-    target,
-  ]);
-  return {
-    vertices: routedVertices,
-    label: { x: (left + right) / 2, y: outerBottom, width: bounds.width, height: bounds.height },
-  };
+  if (!sourceNode || !targetNode) throw new Error("Fallback label routing requires node boundary endpoints.");
+  const unrelatedNodes = nodes.filter((node) => ![sourceNode.elementId, targetNode.elementId].includes(node.elementId));
+  const laneDistance = nodeClearance
+    + Math.max(bounds.width, bounds.height) / 2
+    + (laneSeparation + labelClearance) * (occupiedRectangles.length + 2);
+
+  for (const [sourcePort, targetPort] of candidatePortPairs(sourceNode, targetNode, { direction: "LeftRight" })) {
+    const sourceAnchor = anchorFor(sourceNode, sourcePort);
+    const targetAnchor = anchorFor(targetNode, targetPort);
+    const candidates = [
+      perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, laneDistance, true),
+      perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, laneDistance, false),
+    ];
+    for (const routedVertices of candidates) {
+      if (!routeAvoidsNodes(routedVertices, unrelatedNodes)) continue;
+      const candidate = segmentLabelCandidates(routedVertices, bounds.width, bounds.height, nodeClearance).find(fits);
+      if (candidate) {
+        return {
+          sourcePort,
+          targetPort,
+          vertices: routedVertices,
+          label: { ...candidate, width: bounds.width, height: bounds.height },
+        };
+      }
+    }
+  }
+  throw new Error("Unable to add a collision-free outer lane for relationship label geometry.");
 }
 
 export function placeRelationshipLabel({ vertices, bounds, occupiedLabels = [], nodes = [], clearance = {} }) {
@@ -383,12 +378,14 @@ export function placeRelationshipLabel({ vertices, bounds, occupiedLabels = [], 
   const occupiedRectangles = occupiedLabels.map(labelRectangle);
   const fits = (candidate) => {
     const rectangle = labelRectangle({ ...candidate, width, height });
-    return nodes.every((node) => !rectanglesOverlap(rectangle, node, nodeClearance))
+    return rectangle.x >= 0
+      && rectangle.y >= 0
+      && nodes.every((node) => !rectanglesOverlap(rectangle, node, nodeClearance))
       && occupiedRectangles.every((label) => !rectanglesOverlap(rectangle, label, labelClearance));
   };
   const candidate = segmentLabelCandidates(vertices, width, height, nodeClearance).find(fits);
   if (candidate) return { vertices, label: { ...candidate, width, height } };
-  return fallbackLabelGeometry(vertices, { width, height }, occupiedRectangles, nodes, nodeClearance, labelClearance, laneSeparation);
+  return fallbackLabelGeometry(vertices, { width, height }, occupiedRectangles, nodes, nodeClearance, labelClearance, laneSeparation, fits);
 }
 
 function relationshipLayouts(model, view, nodes) {
@@ -421,8 +418,8 @@ function relationshipLayouts(model, view, nodes) {
     return {
       relationshipId,
       geometryVersion: 2,
-      sourcePort: route.sourcePort,
-      targetPort: route.targetPort,
+      sourcePort: placement.sourcePort ?? route.sourcePort,
+      targetPort: placement.targetPort ?? route.targetPort,
       vertices: placement.vertices,
       label: placement.label,
     };

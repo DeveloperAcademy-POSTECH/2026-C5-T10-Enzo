@@ -64,6 +64,21 @@ function segmentTraversesRectangle(first, second, rectangle) {
   return true;
 }
 
+function hasPositiveCollinearRetrace(vertices) {
+  const segments = vertices.slice(1).map((end, index) => ({ start: vertices[index], end }));
+  return segments.some((segment, index) => segments.slice(0, index).some((previous) => {
+    const horizontal = segment.start.y === segment.end.y && previous.start.y === previous.end.y;
+    if (horizontal && segment.start.y === previous.start.y) {
+      return Math.min(Math.max(segment.start.x, segment.end.x), Math.max(previous.start.x, previous.end.x))
+        > Math.max(Math.min(segment.start.x, segment.end.x), Math.min(previous.start.x, previous.end.x));
+    }
+    const vertical = segment.start.x === segment.end.x && previous.start.x === previous.end.x;
+    return vertical && segment.start.x === previous.start.x
+      && Math.min(Math.max(segment.start.y, segment.end.y), Math.max(previous.start.y, previous.end.y))
+        > Math.max(Math.min(segment.start.y, segment.end.y), Math.min(previous.start.y, previous.end.y));
+  }));
+}
+
 test("aligns L1 semantic nodes on one baseline with generous gaps", () => {
   const laidOut = layoutC4Model(normalizeC4Model(makeFixtureModel(), {}).model);
   const view = laidOut.views.find(({ level }) => level === 1);
@@ -198,6 +213,26 @@ test("validates fallback relationship vertices against unrelated nodes", () => {
   for (let index = 1; index < placement.vertices.length; index += 1) {
     assert.equal(segmentTraversesRectangle(placement.vertices[index - 1], placement.vertices[index], blocker), false);
   }
+});
+
+test("keeps fallback label routes free of positive-length collinear retraces", () => {
+  const source = { elementId: "source", x: 1516, y: 784, w: 380, h: 280 };
+  const target = { elementId: "target", x: 1516, y: 328, w: 380, h: 280 };
+  const placement = placeRelationshipLabel({
+    vertices: [
+      { x: 1706, y: 784 },
+      { x: 1706, y: 730 },
+      { x: 1814, y: 730 },
+      { x: 1814, y: 662 },
+      { x: 1706, y: 662 },
+      { x: 1706, y: 608 },
+    ],
+    bounds: { width: 520, height: 68 },
+    nodes: [source, target],
+    clearance: { node: 28, label: 20, lane: 36 },
+  });
+
+  assert.equal(hasPositiveCollinearRetrace(placement.vertices), false);
 });
 
 test("keeps relationship labels fully inside the top and left world edges", () => {

@@ -145,6 +145,26 @@ test("rejects a duplicated positive-length relationship segment", async () => {
   assert.ok(report.errors.some(({ code }) => code === "geometry-path-positive-retrace"));
 });
 
+test("rejects a partially overlapping positive-length relationship retrace", async () => {
+  const model = laidOutFixture();
+  const layout = layoutFor(model, 2, "uses-phone");
+  const source = layout.vertices[0];
+  const target = layout.vertices.at(-1);
+  const railX = source.x + 160;
+  layout.vertices = [
+    source,
+    { x: source.x + 100, y: source.y },
+    { x: source.x + 40, y: source.y },
+    { x: railX, y: source.y },
+    { x: railX, y: target.y },
+    target,
+  ];
+
+  const report = await validateC4Output({ model, html: validHtmlFor(model) });
+
+  assert.ok(report.errors.some(({ code }) => code === "geometry-path-positive-retrace"));
+});
+
 test("rejects a non-orthogonal relationship path", async () => {
   const model = laidOutFixture();
   const layout = layoutFor(model, 2, "uses-phone");
@@ -173,6 +193,28 @@ test("rejects a path endpoint detached from its declared port", async () => {
   assert.ok(report.errors.some(({ code }) => code === "geometry-path-invalid"));
 });
 
+test("rejects a declared port hint moved inside its node", async () => {
+  const model = laidOutFixture();
+  const view = model.views.find(({ level }) => level === 2);
+  const layout = layoutFor(model, 2, "uses-phone");
+  const sourceNode = view.nodes.find(({ elementId }) => elementId === "user");
+  sourceNode.portHints[layout.sourcePort].x -= 10;
+  layout.vertices[0].x -= 10;
+
+  const report = await validateC4Output({ model, html: validHtmlFor(model) });
+
+  assert.ok(report.errors.some(({ code }) => code === "geometry-path-invalid"));
+});
+
+test("rejects non-finite relationship path vertices", async () => {
+  const model = laidOutFixture();
+  layoutFor(model, 2, "uses-phone").vertices[1].x = Number.NaN;
+
+  const report = await validateC4Output({ model, html: validHtmlFor(model) });
+
+  assert.ok(report.errors.some(({ code }) => code === "geometry-path-invalid"));
+});
+
 test("rejects a relationship label outside the SVG world", async () => {
   const model = laidOutFixture();
   const view = model.views.find(({ level }) => level === 2);
@@ -182,6 +224,26 @@ test("rejects a relationship label outside the SVG world", async () => {
   const report = await validateC4Output({ model, html: validHtmlFor(model) });
 
   assert.ok(report.errors.some(({ code }) => code === "geometry-label-outside-world"));
+});
+
+test("rejects nonnumeric world bounds without numeric coercion", async () => {
+  const model = laidOutFixture();
+  model.views[0].worldSize.width = "Infinity";
+
+  const report = await validateC4Output({ model, html: validHtmlFor(model) });
+
+  assert.ok(report.errors.some(({ code }) => code === "geometry-world-invalid"));
+  assert.equal(report.checks.geometry, false);
+});
+
+test("rejects nonnumeric boundary bounds before containment", async () => {
+  const model = laidOutFixture();
+  model.views.find(({ level }) => level === 2).boundaries[0].w = "Infinity";
+
+  const report = await validateC4Output({ model, html: validHtmlFor(model) });
+
+  assert.ok(report.errors.some(({ code }) => code === "geometry-boundary-invalid"));
+  assert.equal(report.checks.geometry, false);
 });
 
 test("compares every projected view geometry field", async () => {

@@ -200,6 +200,26 @@ function routeAvoidsNodes(vertices, nodes) {
   return vertices.slice(1).every((point, index) => nodes.every((node) => !segmentIntersectsRectangle(vertices[index], point, node)));
 }
 
+function segmentsHavePositiveCollinearOverlap(first, second) {
+  const firstHorizontal = first.start.y === first.end.y;
+  const secondHorizontal = second.start.y === second.end.y;
+  if (firstHorizontal && secondHorizontal && first.start.y === second.start.y) {
+    return Math.min(Math.max(first.start.x, first.end.x), Math.max(second.start.x, second.end.x))
+      > Math.max(Math.min(first.start.x, first.end.x), Math.min(second.start.x, second.end.x));
+  }
+  const firstVertical = first.start.x === first.end.x;
+  const secondVertical = second.start.x === second.end.x;
+  return firstVertical && secondVertical && first.start.x === second.start.x
+    && Math.min(Math.max(first.start.y, first.end.y), Math.max(second.start.y, second.end.y))
+      > Math.max(Math.min(first.start.y, first.end.y), Math.min(second.start.y, second.end.y));
+}
+
+function routeAvoidsPositiveRetrace(vertices) {
+  const segments = vertices.slice(1).map((end, index) => ({ start: vertices[index], end }));
+  return segments.every((segment, index) =>
+    segments.slice(0, index).every((previous) => !segmentsHavePositiveCollinearOverlap(previous, segment)));
+}
+
 function perimeterVertices(source, target, sourcePort, targetPort, nodes, laneDistance, clockwise) {
   const left = Math.max(0, Math.min(...nodes.map((node) => node.x)) - laneDistance);
   const right = Math.max(...nodes.map((node) => node.x + node.w)) + laneDistance;
@@ -271,7 +291,7 @@ export function routeRelationship({ relationship, source, target, nodes, laneInd
       perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, separation * (2 + lane), true),
       perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, separation * (2 + lane), false),
     ].map(simplifyVertices);
-    const vertices = candidates.find((candidate) => routeAvoidsNodes(candidate, unrelatedNodes));
+    const vertices = candidates.find((candidate) => routeAvoidsNodes(candidate, unrelatedNodes) && routeAvoidsPositiveRetrace(candidate));
     if (vertices) return { sourcePort, targetPort, vertices };
   }
 
@@ -354,7 +374,7 @@ function fallbackLabelGeometry(vertices, bounds, occupiedRectangles, nodes, node
       perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, laneDistance, false),
     ];
     for (const routedVertices of candidates) {
-      if (!routeAvoidsNodes(routedVertices, unrelatedNodes)) continue;
+      if (!routeAvoidsNodes(routedVertices, unrelatedNodes) || !routeAvoidsPositiveRetrace(routedVertices)) continue;
       const candidate = segmentLabelCandidates(routedVertices, bounds.width, bounds.height, nodeClearance).find(fits);
       if (candidate) {
         return {

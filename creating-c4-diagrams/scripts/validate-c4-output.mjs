@@ -48,26 +48,58 @@ function segmentIntersectsRectangle(first, second, rectangle) {
   return false;
 }
 
-function positiveSegmentKey(first, second) {
-  if (first.x === second.x && first.y === second.y) return null;
-  const firstKey = `${first.x},${first.y}`;
-  const secondKey = `${second.x},${second.y}`;
-  return firstKey < secondKey ? `${firstKey}|${secondKey}` : `${secondKey}|${firstKey}`;
+function positiveSegmentsOverlap(first, second) {
+  const firstHorizontal = first.start.y === first.end.y;
+  const secondHorizontal = second.start.y === second.end.y;
+  if (firstHorizontal && secondHorizontal && first.start.y === second.start.y) {
+    const overlap = Math.min(Math.max(first.start.x, first.end.x), Math.max(second.start.x, second.end.x))
+      - Math.max(Math.min(first.start.x, first.end.x), Math.min(second.start.x, second.end.x));
+    return overlap > 0;
+  }
+  if (!firstHorizontal && !secondHorizontal && first.start.x === second.start.x) {
+    const overlap = Math.min(Math.max(first.start.y, first.end.y), Math.max(second.start.y, second.end.y))
+      - Math.max(Math.min(first.start.y, first.end.y), Math.min(second.start.y, second.end.y));
+    return overlap > 0;
+  }
+  return false;
 }
 
 const RELATIONSHIP_PORTS = new Set(["left", "right", "top", "bottom"]);
+const GEOMETRY_TOLERANCE = 1e-6;
+
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function portLiesOnNamedEdge(node, port, point) {
+  if (!point || ![node?.x, node?.y, node?.w, node?.h, point.x, point.y].every(finiteNumber)) return false;
+  if (port === "left" || port === "right") {
+    const edgeX = port === "left" ? node.x : node.x + node.w;
+    return Math.abs(point.x - edgeX) <= GEOMETRY_TOLERANCE
+      && point.y >= node.y - GEOMETRY_TOLERANCE
+      && point.y <= node.y + node.h + GEOMETRY_TOLERANCE;
+  }
+  const edgeY = port === "top" ? node.y : node.y + node.h;
+  return Math.abs(point.y - edgeY) <= GEOMETRY_TOLERANCE
+    && point.x >= node.x - GEOMETRY_TOLERANCE
+    && point.x <= node.x + node.w + GEOMETRY_TOLERANCE;
+}
 
 function portAnchor(node, port) {
   if (!node || !RELATIONSHIP_PORTS.has(port)) return null;
-  if (node.portHints?.[port]) return node.portHints[port];
-  if (port === "left") return { x: node.x, y: node.y + node.h / 2 };
-  if (port === "right") return { x: node.x + node.w, y: node.y + node.h / 2 };
-  if (port === "top") return { x: node.x + node.w / 2, y: node.y };
-  return { x: node.x + node.w / 2, y: node.y + node.h };
+  const hinted = node.portHints?.[port];
+  if (hinted) return portLiesOnNamedEdge(node, port, hinted) ? hinted : null;
+  const derived = port === "left" ? { x: node.x, y: node.y + node.h / 2 }
+    : port === "right" ? { x: node.x + node.w, y: node.y + node.h / 2 }
+      : port === "top" ? { x: node.x + node.w / 2, y: node.y }
+        : { x: node.x + node.w / 2, y: node.y + node.h };
+  return portLiesOnNamedEdge(node, port, derived) ? derived : null;
 }
 
 function samePoint(first, second) {
-  return first?.x === second?.x && first?.y === second?.y;
+  return [first?.x, first?.y, second?.x, second?.y].every(finiteNumber)
+    && Math.abs(first.x - second.x) <= GEOMETRY_TOLERANCE
+    && Math.abs(first.y - second.y) <= GEOMETRY_TOLERANCE;
 }
 
 function validLabel(label) {
@@ -122,14 +154,14 @@ export function inspectViewGeometry(model, view) {
     if (!pathIsValid) {
       errors.push(validationIssue("geometry-path-invalid", "Relationship paths must use version 2 finite, positive-length orthogonal geometry.", { viewId: view.id, relationshipId }));
     } else {
-      const seenSegments = new Set();
+      const seenSegments = [];
       for (let index = 1; index < vertices.length; index += 1) {
-        const key = positiveSegmentKey(vertices[index - 1], vertices[index]);
-        if (seenSegments.has(key)) {
+        const segment = { start: vertices[index - 1], end: vertices[index] };
+        if (seenSegments.some((seen) => positiveSegmentsOverlap(seen, segment))) {
           errors.push(validationIssue("geometry-path-positive-retrace", "Relationship paths must not repeat a positive-length segment.", { viewId: view.id, relationshipId }));
           break;
         }
-        seenSegments.add(key);
+        seenSegments.push(segment);
       }
 
       if (relationship) {
@@ -259,6 +291,19 @@ function stableGeometryJson(model) {
   return JSON.stringify(stableValue(geometryProjection(model)));
 }
 
+function validWorldSize(worldSize) {
+  return finiteNumber(worldSize?.width)
+    && finiteNumber(worldSize?.height)
+    && worldSize.width > 0
+    && worldSize.height > 0;
+}
+
+function validBoundaryBounds(boundary) {
+  return [boundary?.x, boundary?.y].every(finiteNumber)
+    && [boundary?.w, boundary?.h].every((value) => finiteNumber(value) && value > 0)
+    && (boundary.titleBand === undefined || finiteNumber(boundary.titleBand) && boundary.titleBand >= 0);
+}
+
 function geometryIssues(model) {
   const errors = [];
   const warnings = [];
@@ -266,7 +311,8 @@ function geometryIssues(model) {
 
   for (const view of model.views ?? []) {
     const nodes = view.nodes ?? [];
-    if (!(view.worldSize?.width > 0 && view.worldSize?.height > 0)) {
+    const worldIsValid = validWorldSize(view.worldSize);
+    if (!worldIsValid) {
       errors.push(validationIssue("geometry-world-invalid", "View world size must be positive.", { viewId: view.id }));
     }
     const nodeById = new Map(nodes.map((node) => [node.elementId, node]));
@@ -279,7 +325,7 @@ function geometryIssues(model) {
       if (![node.x, node.y, node.w, node.h].every(Number.isFinite) || node.w <= 0 || node.h <= 0) {
         errors.push(validationIssue("geometry-node-invalid", "Node geometry must be finite and positive.", { viewId: view.id, elementId }));
       }
-      if (node.x < 0 || node.y < 0 || node.x + node.w > view.worldSize.width || node.y + node.h > view.worldSize.height) {
+      if (worldIsValid && (node.x < 0 || node.y < 0 || node.x + node.w > view.worldSize.width || node.y + node.h > view.worldSize.height)) {
         errors.push(validationIssue("geometry-node-outside-world", "Node must remain inside the SVG world.", { viewId: view.id, elementId }));
       }
       if (node.textBox) {
@@ -299,6 +345,10 @@ function geometryIssues(model) {
       }
     }
     for (const boundary of view.boundaries ?? []) {
+      if (!validBoundaryBounds(boundary)) {
+        errors.push(validationIssue("geometry-boundary-invalid", "Boundary geometry must use finite coordinates and positive bounds.", { viewId: view.id, boundaryId: boundary.id }));
+        continue;
+      }
       const members = nodes.filter((node) => elements.get(node.elementId)?.parentId === boundary.scopeId);
       for (const node of members) {
         if (node.x < boundary.x || node.y < boundary.y + (boundary.titleBand ?? 0) || node.x + node.w > boundary.x + boundary.w || node.y + node.h > boundary.y + boundary.h) {

@@ -1,5 +1,4 @@
-const DSL_IDENTIFIER = /^[A-Za-z0-9_]+$/;
-const ENCODED_IDENTIFIER = /^_c4_([0-9a-f]+)$/;
+const ENCODED_IDENTIFIER = /^c4id_([0-9a-f]+)$/i;
 
 const TYPE_KEYWORDS = {
   Person: "person",
@@ -44,26 +43,54 @@ function sorted(items) {
   return [...(items ?? [])].sort(compareText);
 }
 
-function dslIdentifier(identifier) {
+export function dslIdentifier(identifier) {
   const value = String(identifier ?? "");
-  if (DSL_IDENTIFIER.test(value) && !value.startsWith("_c4_")) return value;
-  return `_c4_${Buffer.from(value, "utf8").toString("hex")}`;
+  return `c4id_${Buffer.from(value, "utf8").toString("hex")}`;
 }
 
-function canonicalIdentifier(identifier) {
+export function canonicalIdentifier(identifier) {
   const match = String(identifier ?? "").match(ENCODED_IDENTIFIER);
   if (!match || match[1].length % 2 !== 0) return String(identifier ?? "");
   return Buffer.from(match[1], "hex").toString("utf8");
 }
 
-function unquoteDsl(value) {
-  const token = String(value ?? "");
-  if (!token.startsWith('"') || !token.endsWith('"')) return token;
-  return token.slice(1, -1).replace(/\\([\\"])/g, "$1");
-}
+export function tokenizeStructurizrDsl(value) {
+  const source = String(value ?? "").trim();
+  const tokens = [];
+  let token = "";
+  let tokenStarted = false;
+  let quoted = false;
 
-function tokenizeDsl(value) {
-  return String(value ?? "").match(/"(?:\\.|[^"\\])*"|[^\s]+/g) ?? [];
+  const appendToken = () => {
+    if (tokenStarted) tokens.push(token);
+    token = "";
+    tokenStarted = false;
+  };
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '"') {
+      if (index > 0 && source[index - 1] === "\\") {
+        token += character;
+        tokenStarted = true;
+      } else if (quoted) {
+        appendToken();
+        quoted = false;
+      } else {
+        quoted = true;
+        tokenStarted = true;
+      }
+    } else if (/\s/.test(character) && !quoted) {
+      appendToken();
+    } else {
+      token += character;
+      tokenStarted = true;
+    }
+  }
+  appendToken();
+
+  // Mirrors Tokens.get(): only escaped quotes and \n sequences are decoded.
+  return tokens.map((item) => item.replaceAll('\\"', '"').replaceAll("\\n", "\n"));
 }
 
 function positiveInteger(value, fallback) {
@@ -73,7 +100,6 @@ function positiveInteger(value, fallback) {
 
 export function quoteDsl(value) {
   const escaped = String(value ?? "")
-    .replaceAll("\\", "\\\\")
     .replaceAll('"', '\\"')
     .replace(/\r\n|\r|\n/g, " ");
   return `"${escaped}"`;
@@ -86,6 +112,34 @@ export function relationshipSemanticKey({ from, to, description, technology = ""
     String(description ?? ""),
     String(technology ?? ""),
   ]);
+}
+
+export function c4SemanticProjection(model) {
+  const kind = VIEW_KEYWORDS;
+  return {
+    workspace: {
+      name: String(model?.project?.name ?? ""),
+      description: String(model?.project?.description ?? ""),
+    },
+    elements: (model?.elements ?? []).map((element) => ({
+      id: String(element.id ?? ""),
+      type: String(element.type ?? ""),
+      parentId: element.parentId ?? null,
+      name: String(element.name ?? ""),
+      description: String(element.description ?? ""),
+      technology: String(element.technology ?? ""),
+      tags: sorted(element.tags),
+    })).sort((first, second) => compareText(first.id, second.id)),
+    relationships: sorted((model?.relationships ?? []).map(relationshipSemanticKey)),
+    views: (model?.views ?? []).map((view) => ({
+      id: String(view.id ?? ""),
+      level: Number(view.level),
+      kind: kind[view.level] ?? "",
+      scopeId: String(view.scopeId ?? ""),
+      description: String(view.description ?? ""),
+      elementIds: sorted(view.elementIds),
+    })).sort((first, second) => compareText(first.id, second.id)),
+  };
 }
 
 function elementMetadata(element) {
@@ -135,7 +189,7 @@ export function exportStructurizrDsl(model) {
   const views = [...(model?.views ?? [])]
     .sort((first, second) => Number(first.level) - Number(second.level) || compareText(first.id, second.id))
     .flatMap((view) => [
-      indent(2, `${VIEW_KEYWORDS[view.level]} ${dslIdentifier(view.scopeId)} ${quoteDsl(view.id)} ${quoteDsl(view.description)} {`),
+      indent(2, `${VIEW_KEYWORDS[view.level]} ${dslIdentifier(view.scopeId)} ${dslIdentifier(view.id)} ${quoteDsl(view.description)} {`),
       ...sorted(view.elementIds).map((identifier) => indent(3, `include ${dslIdentifier(identifier)}`)),
       indent(3, autoLayoutStatement(view)),
       indent(2, "}"),
@@ -170,54 +224,95 @@ export function exportStructurizrDsl(model) {
 }
 
 export function extractDslIdentifiers(dsl) {
+  const workspace = { name: "", description: "" };
   const elements = [];
   const relationships = [];
   const views = [];
-  const viewMembers = {};
   let currentView = null;
+  let section = null;
+  const elementStack = [];
+
+  const canonicalType = Object.fromEntries(Object.entries(TYPE_KEYWORDS).map(([type, keyword]) => [keyword, type]));
+  const canonicalLevel = Object.fromEntries(Object.entries(VIEW_KEYWORDS).map(([level, keyword]) => [keyword, Number(level)]));
 
   for (const sourceLine of String(dsl ?? "").split(/\r?\n/)) {
     const line = sourceLine.trim();
     if (!line) continue;
+    const tokens = tokenizeStructurizrDsl(line);
 
-    const element = line.match(/^([A-Za-z0-9_]+)\s*=\s*(?:person|softwareSystem|container|component)\b/);
-    if (element) elements.push(canonicalIdentifier(element[1]));
-
-    const relationship = line.match(/^([A-Za-z0-9_]+)\s*->\s*([A-Za-z0-9_]+)(?:\s+(.*))?$/);
-    if (relationship) {
-      const metadata = tokenizeDsl(relationship[3]);
-      relationships.push(relationshipSemanticKey({
-        from: canonicalIdentifier(relationship[1]),
-        to: canonicalIdentifier(relationship[2]),
-        description: unquoteDsl(metadata[0]),
-        technology: unquoteDsl(metadata[1]),
-      }));
+    if (tokens[0] === "workspace") {
+      workspace.name = tokens[1] ?? "";
+      workspace.description = tokens[2] ?? "";
+      continue;
+    }
+    if (line === "model {") {
+      section = "model";
+      continue;
+    }
+    if (line === "views {") {
+      section = "views";
+      continue;
     }
 
-    const view = line.match(/^(?:systemContext|container|component)\s+[A-Za-z0-9_]+\s+(.+)\{$/);
-    if (view) {
-      const [key] = tokenizeDsl(view[1]);
-      currentView = unquoteDsl(key);
+    if (section === "model" && tokens[1] === "=" && canonicalType[tokens[2]]) {
+      const type = canonicalType[tokens[2]];
+      const hasTechnology = type === "Container" || type === "Component";
+      elements.push({
+        id: canonicalIdentifier(tokens[0]),
+        type,
+        parentId: elementStack.at(-1) ?? null,
+        name: tokens[3] ?? "",
+        description: tokens[4] ?? "",
+        technology: hasTechnology ? tokens[5] ?? "" : "",
+        tags: (tokens[hasTechnology ? 6 : 5] ?? "").split(",").filter(Boolean).sort(compareText),
+      });
+      if (line.endsWith("{")) elementStack.push(canonicalIdentifier(tokens[0]));
+      continue;
+    }
+
+    if (section === "model" && tokens[1] === "->") {
+      relationships.push(relationshipSemanticKey({
+        from: canonicalIdentifier(tokens[0]),
+        to: canonicalIdentifier(tokens[2]),
+        description: tokens[3] ?? "",
+        technology: tokens[4] ?? "",
+      }));
+      continue;
+    }
+
+    if (section === "views" && canonicalLevel[tokens[0]] && line.endsWith("{")) {
+      currentView = {
+        id: canonicalIdentifier(tokens[2]),
+        level: canonicalLevel[tokens[0]],
+        kind: tokens[0],
+        scopeId: canonicalIdentifier(tokens[1]),
+        description: tokens[3] ?? "",
+        elementIds: [],
+      };
       views.push(currentView);
-      viewMembers[currentView] = [];
       continue;
     }
 
     if (currentView) {
-      const include = line.match(/^include\s+([A-Za-z0-9_]+)$/);
-      if (include) {
-        viewMembers[currentView].push(canonicalIdentifier(include[1]));
+      if (tokens[0] === "include" && tokens.length === 2) {
+        currentView.elementIds.push(canonicalIdentifier(tokens[1]));
         continue;
       }
       if (line === "}") currentView = null;
+      continue;
+    }
+
+    if (section === "model" && line === "}") {
+      if (elementStack.length > 0) elementStack.pop();
+      else section = null;
     }
   }
 
-  for (const members of Object.values(viewMembers)) members.sort(compareText);
+  for (const view of views) view.elementIds.sort(compareText);
   return {
-    elements: sorted(elements),
+    workspace,
+    elements: [...elements].sort((first, second) => compareText(first.id, second.id)),
     relationships: sorted(relationships),
-    views: sorted(views),
-    viewMembers: Object.fromEntries(Object.entries(viewMembers).sort(([first], [second]) => compareText(first, second))),
+    views: [...views].sort((first, second) => compareText(first.id, second.id)),
   };
 }

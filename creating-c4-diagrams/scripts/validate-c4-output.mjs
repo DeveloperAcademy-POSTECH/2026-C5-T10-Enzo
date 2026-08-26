@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { extractDslIdentifiers, relationshipSemanticKey } from "./export-structurizr-dsl.mjs";
+import { c4SemanticProjection, extractDslIdentifiers } from "./export-structurizr-dsl.mjs";
 import { validateC4Model } from "./normalize-c4-model.mjs";
 import { rectanglesOverlap } from "./layout-c4-model.mjs";
 
@@ -292,24 +292,6 @@ function stableGeometryJson(model) {
   return JSON.stringify(stableValue(geometryProjection(model)));
 }
 
-function dslSemanticProjection(model) {
-  const sortText = (items) => [...(items ?? [])].sort((first, second) => {
-    const a = String(first ?? "");
-    const b = String(second ?? "");
-    return a < b ? -1 : a > b ? 1 : 0;
-  });
-  const views = sortText((model?.views ?? []).map(({ id }) => id));
-  return {
-    elements: sortText((model?.elements ?? []).map(({ id }) => id)),
-    relationships: sortText((model?.relationships ?? []).map(relationshipSemanticKey)),
-    views,
-    viewMembers: Object.fromEntries(views.map((viewId) => {
-      const view = (model?.views ?? []).find(({ id }) => id === viewId);
-      return [viewId, sortText(view?.elementIds)];
-    })),
-  };
-}
-
 function validWorldSize(worldSize) {
   return finiteNumber(worldSize?.width)
     && finiteNumber(worldSize?.height)
@@ -402,12 +384,12 @@ export async function validateC4Output({ model, html, workspaceDsl, repairs = []
   if (levels.some((level) => level === 4)) errors.push(validationIssue("view-level-4-forbidden", "L4 Code diagrams are outside this skill."));
 
   if (workspaceDsl !== undefined) {
-    const expected = dslSemanticProjection(model);
+    const expected = c4SemanticProjection(model);
     const actual = extractDslIdentifiers(workspaceDsl);
     if (JSON.stringify(actual) !== JSON.stringify(expected)) {
       errors.push(validationIssue(
         "workspace-dsl-semantic-mismatch",
-        "Structurizr DSL identifiers, directed relationship semantics, or view membership do not match the canonical model.",
+        "Structurizr DSL workspace, elements, directed relationships, or views do not match the canonical model.",
         { expected, actual },
       ));
     }

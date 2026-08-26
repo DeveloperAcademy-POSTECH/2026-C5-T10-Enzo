@@ -10,6 +10,30 @@ function normalizedString(value) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
 }
 
+function dslSafeString(value, repairs, details) {
+  const original = normalizedString(value);
+  const normalized = original
+    .replaceAll("\\n", "/n")
+    .replace(/\\$/, "/")
+    .replaceAll("${", "$ {");
+  if (normalized !== original) {
+    repairs.push({ code: "dsl-text-normalized", ...details, original, value: normalized });
+  }
+  return normalized;
+}
+
+function uniqueSemanticText(value, used) {
+  const base = value;
+  let candidate = base;
+  let suffix = 2;
+  while (used.has(candidate.toLowerCase())) {
+    candidate = `${base} (${suffix})`;
+    suffix += 1;
+  }
+  used.add(candidate.toLowerCase());
+  return candidate;
+}
+
 function slug(value) {
   const result = normalizedString(value)
     .normalize("NFKD")
@@ -188,6 +212,7 @@ export function validateC4Model(model) {
   const relationships = Array.isArray(model?.relationships) ? model.relationships : [];
   const views = Array.isArray(model?.views) ? model.views : [];
   const elementIds = new Set();
+  const topLevelNames = new Set();
   const byId = new Map(elements.map((element) => [element.id, element]));
 
   for (const element of elements) {
@@ -195,6 +220,11 @@ export function validateC4Model(model) {
     elementIds.add(element.id);
     if (!ELEMENT_TYPES.has(element.type)) issues.push(issue("element-type-invalid", "Unknown C4 element type.", { elementId: element.id }));
     if (!normalizedString(element.name)) issues.push(issue("element-name-required", "Element name is required.", { elementId: element.id }));
+    if (["Person", "Software System"].includes(element.type)) {
+      const nameKey = normalizedString(element.name).toLowerCase();
+      if (topLevelNames.has(nameKey)) issues.push(issue("element-name-duplicate-invalid", "Top-level Person and Software System names must be unique.", { elementId: element.id }));
+      topLevelNames.add(nameKey);
+    }
     if (!normalizedString(element.description)) issues.push(issue("element-description-required", "Element description is required.", { elementId: element.id }));
     if (["Container", "Component"].includes(element.type) && !normalizedString(element.technology)) issues.push(issue("element-technology-required", "Container and Component technology is required.", { elementId: element.id }));
     if (!CONFIDENCE_VALUES.has(element.confidence)) issues.push(issue("confidence-invalid", "Element confidence is invalid.", { elementId: element.id }));
@@ -204,6 +234,7 @@ export function validateC4Model(model) {
   }
 
   const relationshipIds = new Set();
+  const directedRelationshipDescriptions = new Set();
   for (const relationship of relationships) {
     if (!relationship.id || relationshipIds.has(relationship.id)) issues.push(issue("relationship-id-invalid", "Relationship IDs must be present and unique.", { relationshipId: relationship.id }));
     relationshipIds.add(relationship.id);
@@ -211,6 +242,9 @@ export function validateC4Model(model) {
     const to = byId.get(relationship.to);
     if (!from || !to) issues.push(issue("relationship-dangling", "Relationship endpoints must exist.", { relationshipId: relationship.id }));
     if (!normalizedString(relationship.description)) issues.push(issue("relationship-description-required", "Relationship description is required.", { relationshipId: relationship.id }));
+    const descriptionKey = [relationship.from, relationship.to, normalizedString(relationship.description).toLowerCase()].join("|");
+    if (directedRelationshipDescriptions.has(descriptionKey)) issues.push(issue("relationship-description-duplicate-invalid", "Relationship descriptions must be unique for each directed endpoint pair.", { relationshipId: relationship.id }));
+    directedRelationshipDescriptions.add(descriptionKey);
     if (!CONFIDENCE_VALUES.has(relationship.confidence)) issues.push(issue("confidence-invalid", "Relationship confidence is invalid.", { relationshipId: relationship.id }));
     if (!Array.isArray(relationship.evidence) || relationship.evidence.length === 0) issues.push(issue("evidence-required", "Relationship source evidence is required.", { relationshipId: relationship.id }));
     if (from?.type === "Container" && to?.type === "Container" && from.id !== to.id && !normalizedString(relationship.technology)) {
@@ -259,14 +293,15 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
       continue;
     }
     usedElementIds.add(id);
-    const description = normalizedString(source.description);
+    const description = dslSafeString(source.description, repairs, { field: "element.description", elementId: id });
+    const technology = dslSafeString(source.technology, repairs, { field: "element.technology", elementId: id });
     const element = {
       id,
       type,
-      name: normalizedString(source.name) || id,
+      name: dslSafeString(source.name, repairs, { field: "element.name", elementId: id }) || id,
       description: description || unknownDescription(language, type),
       ...(normalizedString(source.parentId) ? { parentId: normalizedString(source.parentId) } : {}),
-      ...(["Container", "Component"].includes(type) ? { technology: normalizedString(source.technology) || "Unknown" } : normalizedString(source.technology) ? { technology: normalizedString(source.technology) } : {}),
+      ...(["Container", "Component"].includes(type) ? { technology: technology || "Unknown" } : technology ? { technology } : {}),
       ...(Boolean(source.external) ? { external: true } : {}),
       responsibilities: normalizeStringList(source.responsibilities),
       inputs: normalizeIoEntries(source.inputs),
@@ -280,7 +315,12 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
       confidence: description && CONFIDENCE_VALUES.has(source.confidence) ? source.confidence : "review-required",
     };
     element.visualRole = normalizedString(source.visualRole) || defaultVisualRole({ ...source, ...element });
-    element.tags = [...new Set([...deriveElementTags(element), ...normalizeStringList(source.tags)])];
+    element.tags = [...new Set([
+      ...deriveElementTags(element),
+      ...(Array.isArray(source.tags)
+        ? source.tags.map((tag, index) => dslSafeString(tag, repairs, { field: "element.tags", elementId: id, index })).filter(Boolean)
+        : []),
+    ])];
     if (!description) {
       const code = `${type.toLowerCase().replace(/\s+/g, "-")}-description-defaulted`;
       repairs.push({ code, elementId: id });
@@ -310,9 +350,21 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
     }
     return true;
   });
+  const usedTopLevelNames = new Set();
+  for (const element of validElements) {
+    if (!["Person", "Software System"].includes(element.type)) continue;
+    const original = element.name;
+    element.name = uniqueSemanticText(original, usedTopLevelNames);
+    if (element.name !== original) {
+      const details = { elementId: element.id, original, value: element.name };
+      repairs.push({ code: "element-name-duplicate-repaired", ...details });
+      issues.push(issue("element-name-duplicate-repaired", "Duplicate top-level name was repaired for Structurizr compatibility.", details));
+    }
+  }
   const byId = new Map(validElements.map((element) => [element.id, element]));
   const usedRelationshipIds = new Set();
   const duplicateRelationships = new Set();
+  const directedRelationshipDescriptions = new Set();
   const relationships = [];
 
   for (const source of Array.isArray(raw.relationships) ? raw.relationships : []) {
@@ -322,9 +374,10 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
       repairs.push({ code: "relationship-dangling-removed", relationshipId: normalizedString(source.id), from, to });
       continue;
     }
-    const description = normalizedString(source.description);
-    const technology = normalizedString(source.technology);
-    const duplicateKey = [from, to, description.toLowerCase(), technology.toLowerCase()].join("|");
+    const description = dslSafeString(source.description, repairs, { field: "relationship.description", relationshipId: normalizedString(source.id) });
+    const technology = dslSafeString(source.technology, repairs, { field: "relationship.technology", relationshipId: normalizedString(source.id) });
+    const effectiveDescription = description || unknownDescription(language, "relationship");
+    const duplicateKey = [from, to, effectiveDescription.toLowerCase(), technology.toLowerCase()].join("|");
     if (duplicateRelationships.has(duplicateKey)) {
       repairs.push({ code: "relationship-duplicate-removed", relationshipId: normalizedString(source.id) });
       continue;
@@ -336,6 +389,15 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
       repairs.push({ code: "relationship-id-generated", relationshipId: id });
     }
     usedRelationshipIds.add(id);
+    const uniqueDescription = uniqueSemanticText(effectiveDescription, {
+      has: (candidate) => directedRelationshipDescriptions.has(`${from}|${to}|${candidate}`),
+      add: (candidate) => directedRelationshipDescriptions.add(`${from}|${to}|${candidate}`),
+    });
+    if (uniqueDescription !== effectiveDescription) {
+      const details = { relationshipId: id, from, to, original: effectiveDescription, value: uniqueDescription };
+      repairs.push({ code: "relationship-description-duplicate-repaired", ...details });
+      issues.push(issue("relationship-description-duplicate-repaired", "Duplicate directed relationship description was repaired for Structurizr compatibility.", details));
+    }
     const senderEvidence = normalizeEvidence(source.senderEvidence);
     const receiverEvidence = normalizeEvidence(source.receiverEvidence);
     const relationshipEvidence = normalizeEvidence([...(source.evidence ?? []), ...senderEvidence, ...receiverEvidence]);
@@ -343,7 +405,7 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
       id,
       from,
       to,
-      description: description || unknownDescription(language, "relationship"),
+      description: uniqueDescription,
       ...(technology ? { technology } : {}),
       ...(normalizedString(source.purpose) ? { purpose: normalizedString(source.purpose) } : {}),
       ...(normalizedString(source.payload) ? { payload: normalizedString(source.payload) } : {}),
@@ -366,8 +428,10 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
   const model = {
     version: "1.0.0",
     project: {
-      name: normalizedString(raw.project?.name) || normalizedString(scanResult.project?.name) || "Unknown Apple Project",
-      description: normalizedString(raw.project?.description) || unknownDescription(language, "project"),
+      name: dslSafeString(raw.project?.name, repairs, { field: "project.name" })
+        || dslSafeString(scanResult.project?.name, repairs, { field: "project.name" })
+        || "Unknown Apple Project",
+      description: dslSafeString(raw.project?.description, repairs, { field: "project.description" }) || unknownDescription(language, "project"),
       language,
     },
     elements: validElements,

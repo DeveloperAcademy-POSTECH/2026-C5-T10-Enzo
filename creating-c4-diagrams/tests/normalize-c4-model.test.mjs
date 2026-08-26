@@ -7,6 +7,7 @@ import {
   runNormalizeCli,
   validateC4Model,
 } from "../scripts/normalize-c4-model.mjs";
+import { c4SemanticProjection, exportStructurizrDsl, extractDslIdentifiers } from "../scripts/export-structurizr-dsl.mjs";
 
 const evidence = (file, line, reason) => ({ file, line, reason });
 
@@ -137,6 +138,63 @@ test("removes descendants of elements with invalid parents", () => {
   assert.equal(result.model.elements.some(({ id }) => id === "descendant"), false);
   assert.deepEqual(result.repairs.filter(({ code }) => code === "element-invalid-parent-removed").map(({ elementId }) => elementId), ["invalid-container", "descendant"]);
   assert.deepEqual(validateC4Model(result.model), []);
+});
+
+test("normalizes substitution and token-escape sequences before both JSON and DSL export", () => {
+  const unsafe = structuredClone(raw);
+  unsafe.project.name = "Tempo${BUILD_NAME}";
+  unsafe.elements[0].name = 'Learner "quoted" C:\\Temp';
+  unsafe.elements[0].description = String.raw`Reads C:\new and \${HOME}`;
+  unsafe.elements[0].tags = ["role${TAG}"];
+  unsafe.elements[2].technology = "SwiftUI\\";
+  unsafe.relationships[0].description = String.raw`Sends C:\notes via \${CHANNEL}`;
+
+  const result = normalizeC4Model(unsafe, {});
+  const dslSemantics = extractDslIdentifiers(exportStructurizrDsl(result.model));
+  const person = result.model.elements.find(({ id }) => id === "user");
+  const relationship = result.model.relationships.find(({ id }) => id === "uses-system");
+
+  assert.doesNotMatch(JSON.stringify(result.model), /\$\{|\\\\n/);
+  assert.deepEqual(dslSemantics, c4SemanticProjection(result.model));
+  assert.equal(dslSemantics.elements.find(({ id }) => id === "user").description, person.description);
+  assert.equal(dslSemantics.relationships.includes(JSON.stringify([relationship.from, relationship.to, relationship.description, relationship.technology ?? ""])), true);
+  assert.deepEqual(
+    result.repairs.filter(({ code }) => code === "dsl-text-normalized").map(({ field }) => field).sort(),
+    ["element.description", "element.tags", "element.technology", "project.name", "relationship.description"],
+  );
+});
+
+test("repairs duplicate top-level names and directed relationship descriptions deterministically", () => {
+  const duplicate = structuredClone(raw);
+  duplicate.elements.push({
+    id: "duplicate-name-system",
+    type: "Software System",
+    name: "learner",
+    description: "A distinct system",
+    evidence: [evidence("Duplicate.swift", 1, "Duplicate name fixture")],
+    confidence: "confirmed",
+  });
+  duplicate.relationships.push(
+    { id: "uses-system-different-tech", from: "user", to: "system", description: "Practises rhythm", technology: "HTTPS", evidence: [evidence("Duplicate.swift", 2, "Different technology")], confidence: "confirmed" },
+    { id: "uses-system-exact-copy", from: "user", to: "system", description: "Practises rhythm", evidence: [evidence("Duplicate.swift", 3, "Exact duplicate")], confidence: "confirmed" },
+  );
+
+  const first = normalizeC4Model(duplicate, {});
+  const second = normalizeC4Model(duplicate, {});
+  const topLevelNames = first.model.elements
+    .filter(({ type }) => type === "Person" || type === "Software System")
+    .map(({ name }) => name.toLowerCase());
+  const directedDescriptions = first.model.relationships
+    .map(({ from, to, description }) => `${from}|${to}|${description.toLowerCase()}`);
+
+  assert.equal(new Set(topLevelNames).size, topLevelNames.length);
+  assert.equal(new Set(directedDescriptions).size, directedDescriptions.length);
+  assert.ok(first.repairs.some(({ code }) => code === "element-name-duplicate-repaired"));
+  assert.ok(first.repairs.some(({ code }) => code === "relationship-description-duplicate-repaired"));
+  assert.ok(first.repairs.some(({ code }) => code === "relationship-duplicate-removed"));
+  assert.ok(first.issues.some(({ code }) => code === "element-name-duplicate-repaired"));
+  assert.ok(first.issues.some(({ code }) => code === "relationship-description-duplicate-repaired"));
+  assert.deepEqual(first, second);
 });
 
 test("validates hierarchy independently of element array order", () => {

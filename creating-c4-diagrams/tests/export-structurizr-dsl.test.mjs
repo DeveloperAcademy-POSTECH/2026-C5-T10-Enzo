@@ -61,11 +61,13 @@ function validHtmlFor(model) {
 
 function expectedSemantics(model) {
   const kind = { 1: "systemContext", 2: "container", 3: "component" };
+  const direction = { TopBottom: "tb", BottomTop: "bt", LeftRight: "lr", RightLeft: "rl" };
   return {
     workspace: {
       name: model.project.name,
       description: model.project.description,
     },
+    impliedRelationships: ["false"],
     elements: model.elements.map((element) => ({
       id: element.id,
       type: element.type,
@@ -85,6 +87,11 @@ function expectedSemantics(model) {
       scopeId: view.scopeId,
       description: view.description,
       elementIds: [...view.elementIds].sort(),
+      autoLayout: {
+        direction: direction[view.layoutConfiguration.direction],
+        rankSeparation: Math.round(view.layoutConfiguration.rankSeparation),
+        nodeSeparation: Math.round(view.layoutConfiguration.nodeSeparation),
+      },
     })).sort((first, second) => first.id < second.id ? -1 : first.id > second.id ? 1 : 0),
   };
 }
@@ -245,4 +252,38 @@ test("rejects DSL when a view kind or level differs from the canonical model", a
 test("rejects DSL when a view scope or description differs from the canonical model", async () => {
   await assertSemanticMutationRejected((model) => { model.views.find(({ level }) => level === 1).scopeId = "files"; });
   await assertSemanticMutationRejected((model) => { model.views.find(({ level }) => level === 1).description = "Changed description"; });
+});
+
+test("rejects a missing, changed, or duplicate implied-relationships directive", async () => {
+  const model = laidOutFixture();
+  const original = exportStructurizrDsl(model);
+  for (const workspaceDsl of [
+    original.replace("  !impliedRelationships false\n", ""),
+    original.replace("!impliedRelationships false", "!impliedRelationships true"),
+    original.replace("!impliedRelationships false", "!impliedRelationships false\n  !impliedRelationships false"),
+  ]) {
+    const report = await validateC4Output({ model, html: validHtmlFor(model), workspaceDsl });
+    assert.ok(report.errors.some(({ code }) => code === "workspace-dsl-semantic-mismatch"));
+  }
+});
+
+test("rejects DSL when autoLayout direction differs", async () => {
+  const model = laidOutFixture();
+  const workspaceDsl = exportStructurizrDsl(model).replace("autoLayout lr 176 280", "autoLayout tb 176 280");
+  const report = await validateC4Output({ model, html: validHtmlFor(model), workspaceDsl });
+  assert.ok(report.errors.some(({ code }) => code === "workspace-dsl-semantic-mismatch"));
+});
+
+test("rejects DSL when autoLayout rank separation differs", async () => {
+  const model = laidOutFixture();
+  const workspaceDsl = exportStructurizrDsl(model).replace("autoLayout lr 176 280", "autoLayout lr 177 280");
+  const report = await validateC4Output({ model, html: validHtmlFor(model), workspaceDsl });
+  assert.ok(report.errors.some(({ code }) => code === "workspace-dsl-semantic-mismatch"));
+});
+
+test("rejects DSL when autoLayout node separation differs", async () => {
+  const model = laidOutFixture();
+  const workspaceDsl = exportStructurizrDsl(model).replace("autoLayout lr 176 280", "autoLayout lr 176 281");
+  const report = await validateC4Output({ model, html: validHtmlFor(model), workspaceDsl });
+  assert.ok(report.errors.some(({ code }) => code === "workspace-dsl-semantic-mismatch"));
 });

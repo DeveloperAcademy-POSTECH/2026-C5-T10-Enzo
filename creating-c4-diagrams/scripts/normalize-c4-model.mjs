@@ -26,11 +26,11 @@ function uniqueSemanticText(value, used) {
   const base = value;
   let candidate = base;
   let suffix = 2;
-  while (used.has(candidate.toLowerCase())) {
+  while (used.has(candidate)) {
     candidate = `${base} (${suffix})`;
     suffix += 1;
   }
-  used.add(candidate.toLowerCase());
+  used.add(candidate);
   return candidate;
 }
 
@@ -74,7 +74,16 @@ function normalizeEvidence(items) {
       };
     })
     .filter(Boolean);
-  return [...new Map(normalized.map((item) => [[item.file, item.line ?? "", item.symbol ?? "", item.reason].join("|"), item])).values()];
+  return [...new Map(normalized.map((item) => [JSON.stringify([item.file, item.line ?? "", item.symbol ?? "", item.reason]), item])).values()];
+}
+
+function normalizeElementTag(value, repairs, elementId, index) {
+  const original = dslSafeString(value, repairs, { field: "element.tags", elementId, index });
+  const normalized = original.replaceAll(",", ";");
+  if (normalized !== original) {
+    repairs.push({ code: "element-tag-comma-normalized", elementId, index, original, value: normalized });
+  }
+  return normalized;
 }
 
 function normalizeStringList(items) {
@@ -221,7 +230,7 @@ export function validateC4Model(model) {
     if (!ELEMENT_TYPES.has(element.type)) issues.push(issue("element-type-invalid", "Unknown C4 element type.", { elementId: element.id }));
     if (!normalizedString(element.name)) issues.push(issue("element-name-required", "Element name is required.", { elementId: element.id }));
     if (["Person", "Software System"].includes(element.type)) {
-      const nameKey = normalizedString(element.name).toLowerCase();
+      const nameKey = normalizedString(element.name);
       if (topLevelNames.has(nameKey)) issues.push(issue("element-name-duplicate-invalid", "Top-level Person and Software System names must be unique.", { elementId: element.id }));
       topLevelNames.add(nameKey);
     }
@@ -242,7 +251,7 @@ export function validateC4Model(model) {
     const to = byId.get(relationship.to);
     if (!from || !to) issues.push(issue("relationship-dangling", "Relationship endpoints must exist.", { relationshipId: relationship.id }));
     if (!normalizedString(relationship.description)) issues.push(issue("relationship-description-required", "Relationship description is required.", { relationshipId: relationship.id }));
-    const descriptionKey = [relationship.from, relationship.to, normalizedString(relationship.description).toLowerCase()].join("|");
+    const descriptionKey = JSON.stringify([relationship.from, relationship.to, normalizedString(relationship.description)]);
     if (directedRelationshipDescriptions.has(descriptionKey)) issues.push(issue("relationship-description-duplicate-invalid", "Relationship descriptions must be unique for each directed endpoint pair.", { relationshipId: relationship.id }));
     directedRelationshipDescriptions.add(descriptionKey);
     if (!CONFIDENCE_VALUES.has(relationship.confidence)) issues.push(issue("confidence-invalid", "Relationship confidence is invalid.", { relationshipId: relationship.id }));
@@ -294,7 +303,13 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
     }
     usedElementIds.add(id);
     const description = dslSafeString(source.description, repairs, { field: "element.description", elementId: id });
-    const technology = dslSafeString(source.technology, repairs, { field: "element.technology", elementId: id });
+    const sourceTechnology = normalizedString(source.technology);
+    const technology = ["Container", "Component"].includes(type)
+      ? dslSafeString(source.technology, repairs, { field: "element.technology", elementId: id })
+      : "";
+    if (!["Container", "Component"].includes(type) && sourceTechnology) {
+      repairs.push({ code: "element-technology-removed", elementId: id, type, original: sourceTechnology });
+    }
     const element = {
       id,
       type,
@@ -318,7 +333,7 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
     element.tags = [...new Set([
       ...deriveElementTags(element),
       ...(Array.isArray(source.tags)
-        ? source.tags.map((tag, index) => dslSafeString(tag, repairs, { field: "element.tags", elementId: id, index })).filter(Boolean)
+        ? source.tags.map((tag, index) => normalizeElementTag(tag, repairs, id, index)).filter(Boolean)
         : []),
     ])];
     if (!description) {
@@ -363,7 +378,7 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
   }
   const byId = new Map(validElements.map((element) => [element.id, element]));
   const usedRelationshipIds = new Set();
-  const duplicateRelationships = new Set();
+  const duplicateRelationships = new Map();
   const directedRelationshipDescriptions = new Set();
   const relationships = [];
 
@@ -377,12 +392,22 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
     const description = dslSafeString(source.description, repairs, { field: "relationship.description", relationshipId: normalizedString(source.id) });
     const technology = dslSafeString(source.technology, repairs, { field: "relationship.technology", relationshipId: normalizedString(source.id) });
     const effectiveDescription = description || unknownDescription(language, "relationship");
-    const duplicateKey = [from, to, effectiveDescription.toLowerCase(), technology.toLowerCase()].join("|");
-    if (duplicateRelationships.has(duplicateKey)) {
-      repairs.push({ code: "relationship-duplicate-removed", relationshipId: normalizedString(source.id) });
+    const senderEvidence = normalizeEvidence(source.senderEvidence);
+    const receiverEvidence = normalizeEvidence(source.receiverEvidence);
+    const relationshipEvidence = normalizeEvidence([...(source.evidence ?? []), ...senderEvidence, ...receiverEvidence]);
+    const duplicateKey = JSON.stringify([from, to, effectiveDescription, technology]);
+    const duplicateSurvivor = duplicateRelationships.get(duplicateKey);
+    if (duplicateSurvivor) {
+      duplicateSurvivor.senderEvidence = normalizeEvidence([...duplicateSurvivor.senderEvidence, ...senderEvidence]);
+      duplicateSurvivor.receiverEvidence = normalizeEvidence([...duplicateSurvivor.receiverEvidence, ...receiverEvidence]);
+      duplicateSurvivor.evidence = normalizeEvidence([...duplicateSurvivor.evidence, ...relationshipEvidence]);
+      repairs.push({
+        code: "relationship-duplicate-removed",
+        relationshipId: normalizedString(source.id),
+        survivorRelationshipId: duplicateSurvivor.id,
+      });
       continue;
     }
-    duplicateRelationships.add(duplicateKey);
     let id = normalizedString(source.id);
     if (!id || usedRelationshipIds.has(id)) {
       id = uniqueId(`${from}-${to}-${description || "relationship"}`, usedRelationshipIds);
@@ -390,17 +415,14 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
     }
     usedRelationshipIds.add(id);
     const uniqueDescription = uniqueSemanticText(effectiveDescription, {
-      has: (candidate) => directedRelationshipDescriptions.has(`${from}|${to}|${candidate}`),
-      add: (candidate) => directedRelationshipDescriptions.add(`${from}|${to}|${candidate}`),
+      has: (candidate) => directedRelationshipDescriptions.has(JSON.stringify([from, to, candidate])),
+      add: (candidate) => directedRelationshipDescriptions.add(JSON.stringify([from, to, candidate])),
     });
     if (uniqueDescription !== effectiveDescription) {
       const details = { relationshipId: id, from, to, original: effectiveDescription, value: uniqueDescription };
       repairs.push({ code: "relationship-description-duplicate-repaired", ...details });
       issues.push(issue("relationship-description-duplicate-repaired", "Duplicate directed relationship description was repaired for Structurizr compatibility.", details));
     }
-    const senderEvidence = normalizeEvidence(source.senderEvidence);
-    const receiverEvidence = normalizeEvidence(source.receiverEvidence);
-    const relationshipEvidence = normalizeEvidence([...(source.evidence ?? []), ...senderEvidence, ...receiverEvidence]);
     const relationship = {
       id,
       from,
@@ -418,11 +440,16 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
       repairs.push({ code: "relationship-description-defaulted", relationshipId: id });
       issues.push(issue("relationship-description-defaulted", "Missing relationship description was defaulted.", { relationshipId: id }));
     }
-    if (relationship.evidence.length === 0) issues.push(issue("evidence-required", "Relationship has no source evidence.", { relationshipId: id }));
     if (byId.get(from).type === "Container" && byId.get(to).type === "Container" && !technology) {
       issues.push(issue("relationship-technology-required", "Inter-container relationships require technology or protocol.", { relationshipId: id }));
     }
     relationships.push(relationship);
+    duplicateRelationships.set(duplicateKey, relationship);
+  }
+  for (const relationship of relationships) {
+    if (relationship.evidence.length === 0) {
+      issues.push(issue("evidence-required", "Relationship has no source evidence.", { relationshipId: relationship.id }));
+    }
   }
 
   const model = {

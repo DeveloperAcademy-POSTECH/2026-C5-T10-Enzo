@@ -98,6 +98,15 @@ function positiveInteger(value, fallback) {
   return Number.isFinite(number) && number > 0 ? Math.round(number) : fallback;
 }
 
+function autoLayoutSemantic(view) {
+  const configuration = view?.layoutConfiguration ?? {};
+  return {
+    direction: DIRECTION_KEYWORDS[configuration.direction] ?? "lr",
+    rankSeparation: positiveInteger(configuration.rankSeparation, 176),
+    nodeSeparation: positiveInteger(configuration.nodeSeparation, 280),
+  };
+}
+
 export function quoteDsl(value) {
   const escaped = String(value ?? "")
     .replaceAll('"', '\\"')
@@ -121,6 +130,7 @@ export function c4SemanticProjection(model) {
       name: String(model?.project?.name ?? ""),
       description: String(model?.project?.description ?? ""),
     },
+    impliedRelationships: ["false"],
     elements: (model?.elements ?? []).map((element) => ({
       id: String(element.id ?? ""),
       type: String(element.type ?? ""),
@@ -138,6 +148,7 @@ export function c4SemanticProjection(model) {
       scopeId: String(view.scopeId ?? ""),
       description: String(view.description ?? ""),
       elementIds: sorted(view.elementIds),
+      autoLayout: autoLayoutSemantic(view),
     })).sort((first, second) => compareText(first.id, second.id)),
   };
 }
@@ -151,10 +162,7 @@ function elementMetadata(element) {
 }
 
 function autoLayoutStatement(view) {
-  const configuration = view.layoutConfiguration ?? {};
-  const direction = DIRECTION_KEYWORDS[configuration.direction] ?? "lr";
-  const rankSeparation = positiveInteger(configuration.rankSeparation, 176);
-  const nodeSeparation = positiveInteger(configuration.nodeSeparation, 280);
+  const { direction, rankSeparation, nodeSeparation } = autoLayoutSemantic(view);
   return `autoLayout ${direction} ${rankSeparation} ${nodeSeparation}`;
 }
 
@@ -225,6 +233,7 @@ export function exportStructurizrDsl(model) {
 
 export function extractDslIdentifiers(dsl) {
   const workspace = { name: "", description: "" };
+  const impliedRelationships = [];
   const elements = [];
   const relationships = [];
   const views = [];
@@ -243,6 +252,10 @@ export function extractDslIdentifiers(dsl) {
     if (tokens[0] === "workspace") {
       workspace.name = tokens[1] ?? "";
       workspace.description = tokens[2] ?? "";
+      continue;
+    }
+    if (tokens[0] === "!impliedRelationships") {
+      impliedRelationships.push(tokens[1] ?? "");
       continue;
     }
     if (line === "model {") {
@@ -288,6 +301,7 @@ export function extractDslIdentifiers(dsl) {
         scopeId: canonicalIdentifier(tokens[1]),
         description: tokens[3] ?? "",
         elementIds: [],
+        autoLayout: null,
       };
       views.push(currentView);
       continue;
@@ -296,6 +310,14 @@ export function extractDslIdentifiers(dsl) {
     if (currentView) {
       if (tokens[0] === "include" && tokens.length === 2) {
         currentView.elementIds.push(canonicalIdentifier(tokens[1]));
+        continue;
+      }
+      if (tokens[0] === "autoLayout") {
+        currentView.autoLayout = {
+          direction: tokens[1] ?? "",
+          rankSeparation: Number(tokens[2]),
+          nodeSeparation: Number(tokens[3]),
+        };
         continue;
       }
       if (line === "}") currentView = null;
@@ -311,6 +333,7 @@ export function extractDslIdentifiers(dsl) {
   for (const view of views) view.elementIds.sort(compareText);
   return {
     workspace,
+    impliedRelationships,
     elements: [...elements].sort((first, second) => compareText(first.id, second.id)),
     relationships: sorted(relationships),
     views: [...views].sort((first, second) => compareText(first.id, second.id)),

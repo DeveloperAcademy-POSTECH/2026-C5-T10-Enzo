@@ -167,34 +167,137 @@ test("normalizes substitution and token-escape sequences before both JSON and DS
 test("repairs duplicate top-level names and directed relationship descriptions deterministically", () => {
   const duplicate = structuredClone(raw);
   duplicate.elements.push({
-    id: "duplicate-name-system",
+    id: "case-variant-name-system",
     type: "Software System",
     name: "learner",
     description: "A distinct system",
     evidence: [evidence("Duplicate.swift", 1, "Duplicate name fixture")],
     confidence: "confirmed",
+  }, {
+    id: "duplicate-name-system",
+    type: "Software System",
+    name: "Learner",
+    description: "An exactly duplicate name",
+    evidence: [evidence("Duplicate.swift", 2, "Exact duplicate name fixture")],
+    confidence: "confirmed",
   });
   duplicate.relationships.push(
-    { id: "uses-system-different-tech", from: "user", to: "system", description: "Practises rhythm", technology: "HTTPS", evidence: [evidence("Duplicate.swift", 2, "Different technology")], confidence: "confirmed" },
-    { id: "uses-system-exact-copy", from: "user", to: "system", description: "Practises rhythm", evidence: [evidence("Duplicate.swift", 3, "Exact duplicate")], confidence: "confirmed" },
+    { id: "uses-system-case-variant", from: "user", to: "system", description: "practises rhythm", technology: "HTTPS", evidence: [evidence("Duplicate.swift", 3, "Case variant")], confidence: "confirmed" },
+    { id: "uses-system-different-tech", from: "user", to: "system", description: "Practises rhythm", technology: "HTTPS", evidence: [evidence("Duplicate.swift", 4, "Different technology")], confidence: "confirmed" },
   );
 
   const first = normalizeC4Model(duplicate, {});
   const second = normalizeC4Model(duplicate, {});
   const topLevelNames = first.model.elements
     .filter(({ type }) => type === "Person" || type === "Software System")
-    .map(({ name }) => name.toLowerCase());
+    .map(({ name }) => name);
   const directedDescriptions = first.model.relationships
-    .map(({ from, to, description }) => `${from}|${to}|${description.toLowerCase()}`);
+    .map(({ from, to, description }) => JSON.stringify([from, to, description]));
 
   assert.equal(new Set(topLevelNames).size, topLevelNames.length);
   assert.equal(new Set(directedDescriptions).size, directedDescriptions.length);
+  assert.ok(first.model.elements.some(({ name }) => name === "learner"));
+  assert.ok(first.model.relationships.some(({ description }) => description === "practises rhythm"));
   assert.ok(first.repairs.some(({ code }) => code === "element-name-duplicate-repaired"));
   assert.ok(first.repairs.some(({ code }) => code === "relationship-description-duplicate-repaired"));
-  assert.ok(first.repairs.some(({ code }) => code === "relationship-duplicate-removed"));
   assert.ok(first.issues.some(({ code }) => code === "element-name-duplicate-repaired"));
   assert.ok(first.issues.some(({ code }) => code === "relationship-description-duplicate-repaired"));
   assert.deepEqual(first, second);
+});
+
+test("keeps exact relationship case variants distinct", () => {
+  const fixture = structuredClone(raw);
+  fixture.relationships.push({
+    id: "case-variant",
+    from: "user",
+    to: "system",
+    description: "practises rhythm",
+    evidence: [evidence("Case.swift", 1, "Case variant")],
+    confidence: "confirmed",
+  });
+
+  const result = normalizeC4Model(fixture, {});
+
+  assert.ok(result.model.relationships.some(({ id }) => id === "uses-system"));
+  assert.ok(result.model.relationships.some(({ id }) => id === "case-variant"));
+  assert.equal(result.repairs.some(({ code, relationshipId }) => code === "relationship-duplicate-removed" && relationshipId === "case-variant"), false);
+});
+
+test("keeps pipe-containing relationship tuples collision-free", () => {
+  const fixture = structuredClone(raw);
+  fixture.relationships.push(
+    { id: "pipe-description", from: "user", to: "system", description: "a|b", technology: "c", evidence: [evidence("Pipe.swift", 1, "Description pipe")], confidence: "confirmed" },
+    { id: "pipe-technology", from: "user", to: "system", description: "a", technology: "b|c", evidence: [evidence("Pipe.swift", 2, "Technology pipe")], confidence: "confirmed" },
+  );
+
+  const result = normalizeC4Model(fixture, {});
+
+  assert.ok(result.model.relationships.some(({ id }) => id === "pipe-description"));
+  assert.ok(result.model.relationships.some(({ id }) => id === "pipe-technology"));
+});
+
+test("merges all evidence channels when a true exact relationship duplicate collapses", () => {
+  const fixture = structuredClone(raw);
+  fixture.relationships.find(({ id }) => id === "uses-system").evidence = [];
+  fixture.relationships.push({
+    id: "uses-system-exact-copy",
+    from: "user",
+    to: "system",
+    description: "Practises rhythm",
+    senderEvidence: [evidence("Duplicate.swift", 10, "Sender duplicate evidence")],
+    receiverEvidence: [evidence("Duplicate.swift", 20, "Receiver duplicate evidence")],
+    evidence: [evidence("Duplicate.swift", 30, "General duplicate evidence")],
+    confidence: "confirmed",
+  });
+
+  const result = normalizeC4Model(fixture, {});
+  const survivor = result.model.relationships.find(({ id }) => id === "uses-system");
+
+  assert.equal(result.model.relationships.some(({ id }) => id === "uses-system-exact-copy"), false);
+  assert.deepEqual(survivor.senderEvidence, [evidence("Duplicate.swift", 10, "Sender duplicate evidence")]);
+  assert.deepEqual(survivor.receiverEvidence, [evidence("Duplicate.swift", 20, "Receiver duplicate evidence")]);
+  assert.deepEqual(survivor.evidence, [
+    evidence("Duplicate.swift", 30, "General duplicate evidence"),
+    evidence("Duplicate.swift", 10, "Sender duplicate evidence"),
+    evidence("Duplicate.swift", 20, "Receiver duplicate evidence"),
+  ]);
+  assert.ok(result.repairs.some(({ code, relationshipId, survivorRelationshipId }) =>
+    code === "relationship-duplicate-removed"
+    && relationshipId === "uses-system-exact-copy"
+    && survivorRelationshipId === "uses-system"));
+  assert.equal(result.issues.some(({ code, relationshipId }) => code === "evidence-required" && relationshipId === "uses-system"), false);
+});
+
+test("removes Person and Software System technology before JSON and DSL parity", () => {
+  const fixture = structuredClone(raw);
+  fixture.elements[0].technology = "Human";
+  fixture.elements[1].technology = "Swift";
+
+  const result = normalizeC4Model(fixture, {});
+
+  assert.equal("technology" in result.model.elements.find(({ id }) => id === "user"), false);
+  assert.equal("technology" in result.model.elements.find(({ id }) => id === "system"), false);
+  assert.equal(result.model.elements.find(({ id }) => id === "phone").technology, "SwiftUI");
+  assert.deepEqual(extractDslIdentifiers(exportStructurizrDsl(result.model)), c4SemanticProjection(result.model));
+  assert.deepEqual(
+    result.repairs.filter(({ code }) => code === "element-technology-removed").map(({ elementId }) => elementId),
+    ["user", "system"],
+  );
+});
+
+test("normalizes comma-bearing user tags before JSON and DSL parity", () => {
+  const fixture = structuredClone(raw);
+  fixture.elements[0].tags = ["practice,coach"];
+
+  const result = normalizeC4Model(fixture, {});
+  const person = result.model.elements.find(({ id }) => id === "user");
+
+  assert.deepEqual(person.tags, ["Element", "Person", "person", "practice;coach"]);
+  assert.deepEqual(extractDslIdentifiers(exportStructurizrDsl(result.model)), c4SemanticProjection(result.model));
+  assert.deepEqual(
+    result.repairs.filter(({ code }) => code === "element-tag-comma-normalized"),
+    [{ code: "element-tag-comma-normalized", elementId: "user", index: 0, original: "practice,coach", value: "practice;coach" }],
+  );
 });
 
 test("validates hierarchy independently of element array order", () => {

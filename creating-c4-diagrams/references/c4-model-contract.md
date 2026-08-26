@@ -2,6 +2,8 @@
 
 Read this reference when producing or inspecting `raw-c4-model.json` and `c4-model.json`.
 
+Normative sources: use the official [C4 diagram definitions](https://c4model.com/diagrams), the [Structurizr DSL language reference](https://docs.structurizr.com/dsl/language), and the [Structurizr reference implementation](https://github.com/structurizr/structurizr). This skill intentionally stops at C4 Level 3 even though the broader C4 model also defines a Code level.
+
 ## One model, three abstraction levels
 
 The output contains one canonical hierarchy. Views reference canonical IDs; they never copy elements into separate per-view models.

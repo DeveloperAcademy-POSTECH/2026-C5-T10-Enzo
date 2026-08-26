@@ -233,6 +233,42 @@ test("routes through an open gutter when every straight perimeter exit is blocke
   assert.equal(hasPositiveCollinearRetrace(route.vertices), false);
 });
 
+test("keeps dense blocked same-direction relationships on distinct outer gutters", () => {
+  const source = { elementId: "source", x: 856, y: 784, w: 380, h: 280 };
+  const target = { elementId: "target", x: 2908, y: 192, w: 400, h: 360 };
+  const blockers = [
+    { elementId: "left", x: 144, y: 668, w: 360, h: 440 },
+    { elementId: "above", x: 856, y: 328, w: 380, h: 280 },
+    { elementId: "upper-middle-left", x: 1516, y: 328, w: 380, h: 280 },
+    { elementId: "upper-middle", x: 2176, y: 328, w: 380, h: 280 },
+    { elementId: "right", x: 1516, y: 784, w: 380, h: 280 },
+    { elementId: "far-right", x: 2176, y: 784, w: 380, h: 280 },
+    { elementId: "below", x: 856, y: 1240, w: 380, h: 280 },
+    { elementId: "below-middle", x: 1516, y: 1240, w: 380, h: 280 },
+    { elementId: "below-target", x: 2908, y: 728, w: 400, h: 340 },
+    { elementId: "far-below-target", x: 2908, y: 1244, w: 400, h: 340 },
+  ];
+  const nodes = [source, target, ...blockers];
+  const routes = [7, 8, 9].map((laneIndex) => routeRelationship({
+    relationship: { id: `gutter-route-${laneIndex}`, from: "source", to: "target" },
+    source,
+    target,
+    nodes,
+    laneIndex,
+    configuration: { direction: "LeftRight", relationshipSeparation: 36 },
+  }));
+
+  assert.equal(new Set(routes.map(({ vertices }) => JSON.stringify(vertices))).size, routes.length);
+  for (const route of routes) {
+    assert.equal(hasPositiveCollinearRetrace(route.vertices), false);
+    for (let index = 1; index < route.vertices.length; index += 1) {
+      for (const blocker of blockers) {
+        assert.equal(segmentTraversesRectangle(route.vertices[index - 1], route.vertices[index], blocker), false);
+      }
+    }
+  }
+});
+
 test("validates fallback relationship vertices against unrelated nodes", () => {
   const source = { elementId: "source", x: 0, y: 0, w: 100, h: 100 };
   const target = { elementId: "target", x: 400, y: 0, w: 100, h: 100 };

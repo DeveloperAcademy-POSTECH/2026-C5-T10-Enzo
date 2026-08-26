@@ -251,16 +251,17 @@ function perimeterVertices(source, target, sourcePort, targetPort, nodes, laneDi
 }
 
 function gutterPerimeterVertices(source, target, sourceStub, targetStub, nodes, laneDistance) {
-  const left = Math.max(0, Math.min(...nodes.map((node) => node.x)) - laneDistance);
+  const left = Math.min(...nodes.map((node) => node.x)) - laneDistance;
   const right = Math.max(...nodes.map((node) => node.x + node.w)) + laneDistance;
-  const top = Math.max(0, Math.min(...nodes.map((node) => node.y)) - laneDistance);
+  const top = Math.min(...nodes.map((node) => node.y)) - laneDistance;
   const bottom = Math.max(...nodes.map((node) => node.y + node.h)) + laneDistance;
-  return [
-    [source, sourceStub, { x: sourceStub.x, y: top }, { x: targetStub.x, y: top }, targetStub, target],
+  const candidates = [
     [source, sourceStub, { x: sourceStub.x, y: bottom }, { x: targetStub.x, y: bottom }, targetStub, target],
-    [source, sourceStub, { x: left, y: sourceStub.y }, { x: left, y: targetStub.y }, targetStub, target],
     [source, sourceStub, { x: right, y: sourceStub.y }, { x: right, y: targetStub.y }, targetStub, target],
-  ].map(simplifyVertices);
+  ];
+  if (top >= 0) candidates.unshift([source, sourceStub, { x: sourceStub.x, y: top }, { x: targetStub.x, y: top }, targetStub, target]);
+  if (left >= 0) candidates.push([source, sourceStub, { x: left, y: sourceStub.y }, { x: left, y: targetStub.y }, targetStub, target]);
+  return candidates.map(simplifyVertices);
 }
 
 function candidatePortPairs(source, target, configuration) {

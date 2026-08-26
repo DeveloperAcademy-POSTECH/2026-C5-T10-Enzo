@@ -115,6 +115,13 @@ function exactGeometryView(view) {
     layout?.geometryVersion !== undefined || layout?.vertices !== undefined || layout?.label !== undefined);
 }
 
+function identicalVertices(first, second) {
+  return Array.isArray(first)
+    && Array.isArray(second)
+    && first.length === second.length
+    && first.every((point, index) => samePoint(point, second[index]));
+}
+
 function stateDetails(state) {
   return state.selectedNodeId ? { state: state.name, selectedNodeId: state.selectedNodeId } : { state: state.name };
 }
@@ -183,6 +190,24 @@ export function inspectViewGeometry(model, view) {
       errors.push(validationIssue("geometry-label-invalid", "Relationship labels must have finite center coordinates and positive bounds.", { viewId: view.id, relationshipId }));
     } else {
       validLayouts.push(layout);
+    }
+  }
+
+  for (let first = 0; first < layouts.length; first += 1) {
+    for (let second = first + 1; second < layouts.length; second += 1) {
+      const firstRelationship = relationshipById.get(layouts[first]?.relationshipId);
+      const secondRelationship = relationshipById.get(layouts[second]?.relationshipId);
+      if (firstRelationship
+        && secondRelationship
+        && firstRelationship.from === secondRelationship.from
+        && firstRelationship.to === secondRelationship.to
+        && identicalVertices(layouts[first]?.vertices, layouts[second]?.vertices)) {
+        errors.push(validationIssue(
+          "geometry-path-lane-collision",
+          "Distinct same-direction relationships must not use an identical path lane.",
+          { viewId: view.id, relationshipIds: [layouts[first].relationshipId, layouts[second].relationshipId] },
+        ));
+      }
     }
   }
 
@@ -383,10 +408,12 @@ export async function validateC4Output({ model, html, workspaceDsl, repairs = []
   if (!levels.includes(3)) errors.push(validationIssue("view-level-3-required", "At least one Component view is required."));
   if (levels.some((level) => level === 4)) errors.push(validationIssue("view-level-4-forbidden", "L4 Code diagrams are outside this skill."));
 
+  let dslParity = false;
   if (workspaceDsl !== undefined) {
     const expected = c4SemanticProjection(model);
     const actual = extractDslIdentifiers(workspaceDsl);
-    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    dslParity = JSON.stringify(actual) === JSON.stringify(expected);
+    if (!dslParity) {
       errors.push(validationIssue(
         "workspace-dsl-semantic-mismatch",
         "Structurizr DSL workspace, elements, directed relationships, or views do not match the canonical model.",
@@ -460,6 +487,7 @@ export async function validateC4Output({ model, html, workspaceDsl, repairs = []
       offline: externalUrls.length === 0 && !hasFetch && !hasModuleRuntime,
       runtime: controlsPresent && progressiveRelationships && Boolean(embeddedModel),
       accessibility,
+      dslParity,
       level4Absent: !levels.includes(4),
     },
   };
@@ -475,15 +503,23 @@ export async function writeValidationReport(outputPath, report) {
 }
 
 export async function runValidateCli(args = process.argv.slice(2), io = console) {
-  const [modelPath, htmlPath, reportPath] = args;
-  if (!modelPath || !htmlPath || !reportPath) {
-    io.error("Usage: validate-c4-output.mjs <model-json> <explorer-html> <validation-report-json>");
+  const [modelPath, htmlPath, reportPath, workspaceDslPath] = args;
+  if (!modelPath || !htmlPath || !reportPath || !workspaceDslPath) {
+    io.error("Usage: validate-c4-output.mjs <model-json> <explorer-html> <validation-report-json> <workspace-dsl>");
     return 2;
   }
   try {
-    const model = JSON.parse(await fs.readFile(modelPath, "utf8"));
-    const html = await fs.readFile(htmlPath, "utf8");
-    const report = await validateC4Output({ model, html });
+    const [modelText, html, workspaceDsl, existingReportText] = await Promise.all([
+      fs.readFile(modelPath, "utf8"),
+      fs.readFile(htmlPath, "utf8"),
+      fs.readFile(workspaceDslPath, "utf8"),
+      fs.readFile(reportPath, "utf8").catch((error) => error.code === "ENOENT" ? null : Promise.reject(error)),
+    ]);
+    const model = JSON.parse(modelText);
+    const existingReport = existingReportText ? JSON.parse(existingReportText) : {};
+    const report = await validateC4Output({ model, html, workspaceDsl, repairs: existingReport.repairs });
+    const warnings = [...(existingReport.warnings ?? []), ...report.warnings];
+    report.warnings = [...new Map(warnings.map((item) => [JSON.stringify(item), item])).values()];
     await writeValidationReport(reportPath, report);
     return report.errors.length ? 1 : 0;
   } catch (error) {

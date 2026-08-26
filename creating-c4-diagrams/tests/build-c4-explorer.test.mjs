@@ -420,6 +420,26 @@ test("build CLI writes all five contracted artifacts", async () => {
   assert.deepEqual(fs.readdirSync(output).sort(), ["atlas-c4-explorer.html", "c4-analysis.md", "c4-model.json", "validation-report.json", "workspace.dsl"]);
 });
 
+test("build CLI leaves five final artifacts and logs workspace DSL when validation fails", async () => {
+  const directory = fs.mkdtempSync("/private/tmp/creating-c4-build-cli-error-");
+  const input = path.join(directory, "model-input.json");
+  const analysis = path.join(directory, "analysis-input.md");
+  const output = path.join(directory, "output");
+  const model = canonicalFixture();
+  model.views.push({ id: "forbidden-code", level: 4, scopeId: "flow", elementIds: [], relationshipIds: [], nodes: [], boundaries: [], worldSize: { width: 1, height: 1 } });
+  fs.writeFileSync(input, JSON.stringify(model));
+  fs.writeFileSync(analysis, "# Evidence\n");
+  const messages = [];
+
+  assert.equal(await runBuildCli([input, analysis, output], { log: (message) => messages.push(message), error() {} }), 1);
+  assert.deepEqual(fs.readdirSync(output).sort(), ["atlas-c4-explorer.html", "c4-analysis.md", "c4-model.json", "validation-report.json", "workspace.dsl"]);
+  assert.equal(fs.readdirSync(output).some((name) => name.endsWith(".tmp")), false);
+  const logged = JSON.parse(messages.at(-1));
+  assert.equal(logged.workspaceDsl, path.join(output, "workspace.dsl"));
+  assert.equal(logged.validation, path.join(output, "validation-report.json"));
+  assert.ok(JSON.parse(fs.readFileSync(logged.validation, "utf8")).errors.some(({ code }) => code === "view-level-4-forbidden"));
+});
+
 test("rejects explorer shells with zero or multiple model placeholders", async () => {
   const directory = fs.mkdtempSync("/private/tmp/creating-c4-shell-mutation-");
   const noPlaceholder = path.join(directory, "no-placeholder.html");

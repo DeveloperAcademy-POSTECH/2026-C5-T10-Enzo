@@ -1,10 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { exportStructurizrDsl } from "../scripts/export-structurizr-dsl.mjs";
 import { layoutC4Model } from "../scripts/layout-c4-model.mjs";
 import { normalizeC4Model } from "../scripts/normalize-c4-model.mjs";
 import * as validator from "../scripts/validate-c4-output.mjs";
 
-const { validateC4Output } = validator;
+const { runValidateCli, validateC4Output } = validator;
 
 const evidence = [{ file: "Fixture.swift", line: 1, reason: "Fixture evidence" }];
 
@@ -122,6 +126,65 @@ test("rejects overlapping labels in full and directly connected focus states", a
   assert.ok(inspection.errors.some(({ code, state }) => code === "geometry-label-label-overlap" && state === "full"));
   assert.ok(inspection.errors.some(({ code, state, selectedNodeId }) =>
     code === "geometry-label-label-overlap" && state === "focus" && selectedNodeId === "phone"));
+});
+
+test("rejects identical lanes for distinct same-direction relationships", async () => {
+  const model = laidOutFixture();
+  const relationship = model.relationships.find(({ id }) => id === "uses-phone");
+  model.relationships.push({
+    ...structuredClone(relationship),
+    id: "uses-phone-again",
+    description: "Reviews the map on the desktop",
+  });
+  const view = model.views.find(({ level }) => level === 2);
+  const layout = layoutFor(model, 2, "uses-phone");
+  view.relationshipIds.push("uses-phone-again");
+  view.relationshipLayouts.push({ ...structuredClone(layout), relationshipId: "uses-phone-again" });
+
+  const report = await validateC4Output({ model, html: validHtmlFor(model) });
+
+  assert.ok(report.errors.some(({ code }) => code === "geometry-path-lane-collision"));
+});
+
+test("validation CLI requires and rejects a semantically corrupted workspace DSL", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "creating-c4-validate-cli-"));
+  const model = laidOutFixture();
+  const modelPath = path.join(directory, "c4-model.json");
+  const htmlPath = path.join(directory, "explorer.html");
+  const reportPath = path.join(directory, "validation-report.json");
+  const dslPath = path.join(directory, "workspace.dsl");
+  await fs.writeFile(modelPath, JSON.stringify(model));
+  await fs.writeFile(htmlPath, validHtmlFor(model));
+  await fs.writeFile(dslPath, exportStructurizrDsl(model).replace(/softwareSystem/, "container"));
+  const errors = [];
+
+  assert.equal(await runValidateCli([modelPath, htmlPath, reportPath], { error: (message) => errors.push(message) }), 2);
+  assert.match(errors.at(-1), /workspace-dsl/i);
+  assert.equal(await runValidateCli([modelPath, htmlPath, reportPath, dslPath], { error() {} }), 1);
+  const report = JSON.parse(await fs.readFile(reportPath, "utf8"));
+  assert.equal(report.checks.dslParity, false);
+  assert.ok(report.errors.some(({ code }) => code === "workspace-dsl-semantic-mismatch"));
+});
+
+test("validation CLI preserves authoritative repairs and warnings during revalidation", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "creating-c4-validate-repairs-"));
+  const model = laidOutFixture();
+  const modelPath = path.join(directory, "c4-model.json");
+  const htmlPath = path.join(directory, "explorer.html");
+  const reportPath = path.join(directory, "validation-report.json");
+  const dslPath = path.join(directory, "workspace.dsl");
+  const repair = { code: "relationship-duplicate-merged", message: "Merged duplicate evidence." };
+  const sourceWarning = { code: "source-parse-warning", message: "One source file was partially parsed." };
+  await fs.writeFile(modelPath, JSON.stringify(model));
+  await fs.writeFile(htmlPath, validHtmlFor(model));
+  await fs.writeFile(dslPath, exportStructurizrDsl(model));
+  await fs.writeFile(reportPath, JSON.stringify({ repairs: [repair], warnings: [sourceWarning] }));
+
+  assert.equal(await runValidateCli([modelPath, htmlPath, reportPath, dslPath], { error() {} }), 0);
+  const report = JSON.parse(await fs.readFile(reportPath, "utf8"));
+  assert.deepEqual(report.repairs, [repair]);
+  assert.ok(report.warnings.some(({ code }) => code === sourceWarning.code));
+  assert.equal(report.checks.dslParity, true);
 });
 
 test("rejects a zero-length relationship segment", async () => {

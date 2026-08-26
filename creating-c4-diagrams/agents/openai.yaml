@@ -1,0 +1,7 @@
+interface:
+  display_name: "C4 모델 다이어그램 만들기"
+  short_description: "Xcode 프로젝트를 대화형 C4 다이어그램으로 변환"
+  brand_color: "#0A6EA8"
+  default_prompt: "Use $creating-c4-diagrams to analyze this Xcode project and create an interactive C4 L1-L3 explorer."
+policy:
+  allow_implicit_invocation: true

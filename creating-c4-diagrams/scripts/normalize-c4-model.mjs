@@ -291,12 +291,20 @@ export function normalizeC4Model(rawModel = {}, scanResult = {}) {
   }
 
   const initialById = new Map(elements.map((element) => [element.id, element]));
+  const parentValidity = new Map();
+  function hasValidParent(element) {
+    if (parentValidity.has(element.id)) return parentValidity.get(element.id);
+    const parent = initialById.get(element.parentId);
+    const valid = element.type === "Container"
+      ? parent?.type === "Software System" && hasValidParent(parent)
+      : element.type === "Component"
+        ? parent?.type === "Container" && hasValidParent(parent)
+        : true;
+    parentValidity.set(element.id, valid);
+    return valid;
+  }
   const validElements = elements.filter((element) => {
-    if (element.type === "Container" && initialById.get(element.parentId)?.type !== "Software System") {
-      repairs.push({ code: "element-invalid-parent-removed", elementId: element.id });
-      return false;
-    }
-    if (element.type === "Component" && initialById.get(element.parentId)?.type !== "Container") {
+    if (!hasValidParent(element)) {
       repairs.push({ code: "element-invalid-parent-removed", elementId: element.id });
       return false;
     }

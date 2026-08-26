@@ -125,6 +125,20 @@ test("removes Components outside a Container and flags inter-container relations
   assert.ok(result.issues.some(({ code }) => code === "relationship-technology-required"));
 });
 
+test("removes descendants of elements with invalid parents", () => {
+  const broken = structuredClone(raw);
+  broken.elements.push(
+    { id: "invalid-container", parentId: "missing-system", type: "Container", name: "Invalid Container", description: "Invalid parent", technology: "Swift" },
+    { id: "descendant", parentId: "invalid-container", type: "Component", name: "Descendant", description: "Invalid ancestor", technology: "Swift" },
+  );
+  const result = normalizeC4Model(broken, {});
+
+  assert.equal(result.model.elements.some(({ id }) => id === "invalid-container"), false);
+  assert.equal(result.model.elements.some(({ id }) => id === "descendant"), false);
+  assert.deepEqual(result.repairs.filter(({ code }) => code === "element-invalid-parent-removed").map(({ elementId }) => elementId), ["invalid-container", "descendant"]);
+  assert.deepEqual(validateC4Model(result.model), []);
+});
+
 test("validates hierarchy independently of element array order", () => {
   const reordered = structuredClone(raw);
   reordered.elements.reverse();

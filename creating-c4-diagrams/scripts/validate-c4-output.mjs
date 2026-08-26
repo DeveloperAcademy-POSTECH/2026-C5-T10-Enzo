@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { extractDslIdentifiers, relationshipSemanticKey } from "./export-structurizr-dsl.mjs";
 import { validateC4Model } from "./normalize-c4-model.mjs";
 import { rectanglesOverlap } from "./layout-c4-model.mjs";
 
@@ -291,6 +292,24 @@ function stableGeometryJson(model) {
   return JSON.stringify(stableValue(geometryProjection(model)));
 }
 
+function dslSemanticProjection(model) {
+  const sortText = (items) => [...(items ?? [])].sort((first, second) => {
+    const a = String(first ?? "");
+    const b = String(second ?? "");
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
+  const views = sortText((model?.views ?? []).map(({ id }) => id));
+  return {
+    elements: sortText((model?.elements ?? []).map(({ id }) => id)),
+    relationships: sortText((model?.relationships ?? []).map(relationshipSemanticKey)),
+    views,
+    viewMembers: Object.fromEntries(views.map((viewId) => {
+      const view = (model?.views ?? []).find(({ id }) => id === viewId);
+      return [viewId, sortText(view?.elementIds)];
+    })),
+  };
+}
+
 function validWorldSize(worldSize) {
   return finiteNumber(worldSize?.width)
     && finiteNumber(worldSize?.height)
@@ -367,7 +386,7 @@ function geometryIssues(model) {
   return { errors, warnings };
 }
 
-export async function validateC4Output({ model, html, repairs = [] }) {
+export async function validateC4Output({ model, html, workspaceDsl, repairs = [] }) {
   const errors = [];
   const warnings = [];
   const modelIssues = validateC4Model(model);
@@ -381,6 +400,18 @@ export async function validateC4Output({ model, html, repairs = [] }) {
   if (!levels.includes(2)) errors.push(validationIssue("view-level-2-required", "One Container view is required."));
   if (!levels.includes(3)) errors.push(validationIssue("view-level-3-required", "At least one Component view is required."));
   if (levels.some((level) => level === 4)) errors.push(validationIssue("view-level-4-forbidden", "L4 Code diagrams are outside this skill."));
+
+  if (workspaceDsl !== undefined) {
+    const expected = dslSemanticProjection(model);
+    const actual = extractDslIdentifiers(workspaceDsl);
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      errors.push(validationIssue(
+        "workspace-dsl-semantic-mismatch",
+        "Structurizr DSL identifiers, directed relationship semantics, or view membership do not match the canonical model.",
+        { expected, actual },
+      ));
+    }
+  }
 
   const geometry = geometryIssues(model);
   errors.push(...geometry.errors);

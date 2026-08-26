@@ -199,6 +199,40 @@ test("keeps blocked parallel relationship lanes on distinct paths", () => {
   assert.notDeepEqual(route(0).vertices, route(1).vertices);
 });
 
+test("routes through an open gutter when every straight perimeter exit is blocked", () => {
+  const source = { elementId: "source", x: 856, y: 784, w: 380, h: 280 };
+  const target = { elementId: "target", x: 2908, y: 192, w: 400, h: 360 };
+  const blockers = [
+    { elementId: "left", x: 144, y: 668, w: 360, h: 440 },
+    { elementId: "above", x: 856, y: 328, w: 380, h: 280 },
+    { elementId: "upper-middle-left", x: 1516, y: 328, w: 380, h: 280 },
+    { elementId: "upper-middle", x: 2176, y: 328, w: 380, h: 280 },
+    { elementId: "right", x: 1516, y: 784, w: 380, h: 280 },
+    { elementId: "far-right", x: 2176, y: 784, w: 380, h: 280 },
+    { elementId: "below", x: 856, y: 1240, w: 380, h: 280 },
+    { elementId: "below-middle", x: 1516, y: 1240, w: 380, h: 280 },
+    { elementId: "below-target", x: 2908, y: 728, w: 400, h: 340 },
+    { elementId: "far-below-target", x: 2908, y: 1244, w: 400, h: 340 },
+  ];
+  const relationship = { id: "gutter-route", from: "source", to: "target" };
+  const route = routeRelationship({
+    relationship,
+    source,
+    target,
+    nodes: [source, target, ...blockers],
+    laneIndex: 7,
+    configuration: { direction: "LeftRight", relationshipSeparation: 36 },
+  });
+
+  assert.ok(route.vertices.length >= 4);
+  for (let index = 1; index < route.vertices.length; index += 1) {
+    for (const blocker of blockers) {
+      assert.equal(segmentTraversesRectangle(route.vertices[index - 1], route.vertices[index], blocker), false);
+    }
+  }
+  assert.equal(hasPositiveCollinearRetrace(route.vertices), false);
+});
+
 test("validates fallback relationship vertices against unrelated nodes", () => {
   const source = { elementId: "source", x: 0, y: 0, w: 100, h: 100 };
   const target = { elementId: "target", x: 400, y: 0, w: 100, h: 100 };
@@ -213,6 +247,57 @@ test("validates fallback relationship vertices against unrelated nodes", () => {
   for (let index = 1; index < placement.vertices.length; index += 1) {
     assert.equal(segmentTraversesRectangle(placement.vertices[index - 1], placement.vertices[index], blocker), false);
   }
+});
+
+test("moves a blocked relationship label into an open outer gutter", () => {
+  const source = { elementId: "source", x: 856, y: 784, w: 380, h: 280 };
+  const target = { elementId: "target", x: 2908, y: 192, w: 400, h: 360 };
+  const blockers = [
+    { elementId: "left", x: 144, y: 668, w: 360, h: 440 },
+    { elementId: "above", x: 856, y: 328, w: 380, h: 280 },
+    { elementId: "upper-middle-left", x: 1516, y: 328, w: 380, h: 280 },
+    { elementId: "upper-middle", x: 2176, y: 328, w: 380, h: 280 },
+    { elementId: "right", x: 1516, y: 784, w: 380, h: 280 },
+    { elementId: "far-right", x: 2176, y: 784, w: 380, h: 280 },
+    { elementId: "below", x: 856, y: 1240, w: 380, h: 280 },
+    { elementId: "below-middle", x: 1516, y: 1240, w: 380, h: 280 },
+    { elementId: "below-target", x: 2908, y: 728, w: 400, h: 340 },
+    { elementId: "far-below-target", x: 2908, y: 1244, w: 400, h: 340 },
+  ];
+  const occupiedLabels = [
+    { x: 1290, y: 62, width: 461, height: 68 },
+    { x: 2854, y: 62, width: 387, height: 68 },
+  ];
+  const placement = placeRelationshipLabel({
+    vertices: [
+      { x: 1236, y: 924 },
+      { x: 1290, y: 924 },
+      { x: 1290, y: 0 },
+      { x: 2854, y: 0 },
+      { x: 2854, y: 372 },
+      { x: 2908, y: 372 },
+    ],
+    bounds: { width: 387, height: 68 },
+    occupiedLabels,
+    nodes: [source, target, ...blockers],
+    clearance: { node: 28, label: 20, lane: 36 },
+  });
+  const labelRectangle = {
+    x: placement.label.x - placement.label.width / 2,
+    y: placement.label.y - placement.label.height / 2,
+    w: placement.label.width,
+    h: placement.label.height,
+  };
+
+  assert.ok(labelRectangle.x >= 0 && labelRectangle.y >= 0);
+  for (const node of [source, target, ...blockers]) {
+    assert.equal(rectanglesOverlap(labelRectangle, node, LAYOUT_TOKENS.labelNodeClearance), false);
+  }
+  for (const occupied of occupiedLabels) {
+    const rectangle = { x: occupied.x - occupied.width / 2, y: occupied.y - occupied.height / 2, w: occupied.width, h: occupied.height };
+    assert.equal(rectanglesOverlap(labelRectangle, rectangle, LAYOUT_TOKENS.labelLabelClearance), false);
+  }
+  assert.equal(hasPositiveCollinearRetrace(placement.vertices), false);
 });
 
 test("keeps fallback label routes free of positive-length collinear retraces", () => {

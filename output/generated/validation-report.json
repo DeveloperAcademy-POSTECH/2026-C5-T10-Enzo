@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-08-26T15:08:40.559Z",
+  "errors": [],
+  "warnings": [],
+  "repairs": [],
+  "checks": {
+    "model": true,
+    "views": true,
+    "geometry": true,
+    "offline": true,
+    "runtime": true,
+    "accessibility": true,
+    "level4Absent": true
+  }
+}

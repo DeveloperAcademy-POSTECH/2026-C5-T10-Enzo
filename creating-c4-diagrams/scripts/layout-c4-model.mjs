@@ -250,6 +250,19 @@ function perimeterVertices(source, target, sourcePort, targetPort, nodes, laneDi
   return simplifyVertices(points);
 }
 
+function gutterPerimeterVertices(source, target, sourceStub, targetStub, nodes, laneDistance) {
+  const left = Math.max(0, Math.min(...nodes.map((node) => node.x)) - laneDistance);
+  const right = Math.max(...nodes.map((node) => node.x + node.w)) + laneDistance;
+  const top = Math.max(0, Math.min(...nodes.map((node) => node.y)) - laneDistance);
+  const bottom = Math.max(...nodes.map((node) => node.y + node.h)) + laneDistance;
+  return [
+    [source, sourceStub, { x: sourceStub.x, y: top }, { x: targetStub.x, y: top }, targetStub, target],
+    [source, sourceStub, { x: sourceStub.x, y: bottom }, { x: targetStub.x, y: bottom }, targetStub, target],
+    [source, sourceStub, { x: left, y: sourceStub.y }, { x: left, y: targetStub.y }, targetStub, target],
+    [source, sourceStub, { x: right, y: sourceStub.y }, { x: right, y: targetStub.y }, targetStub, target],
+  ].map(simplifyVertices);
+}
+
 function candidatePortPairs(source, target, configuration) {
   const dx = target.x + target.w / 2 - (source.x + source.w / 2);
   const dy = target.y + target.h / 2 - (source.y + source.h / 2);
@@ -290,6 +303,14 @@ export function routeRelationship({ relationship, source, target, nodes, laneInd
       laneRail,
       perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, separation * (2 + lane), true),
       perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, separation * (2 + lane), false),
+      ...gutterPerimeterVertices(
+        sourceAnchor,
+        targetAnchor,
+        sourceStub,
+        targetStub,
+        nodes,
+        separation * (2 + lane),
+      ),
     ].map(simplifyVertices);
     const vertices = candidates.find((candidate) => routeAvoidsNodes(candidate, unrelatedNodes) && routeAvoidsPositiveRetrace(candidate));
     if (vertices) return { sourcePort, targetPort, vertices };
@@ -369,9 +390,12 @@ function fallbackLabelGeometry(vertices, bounds, occupiedRectangles, nodes, node
   for (const [sourcePort, targetPort] of candidatePortPairs(sourceNode, targetNode, { direction: "LeftRight" })) {
     const sourceAnchor = anchorFor(sourceNode, sourcePort);
     const targetAnchor = anchorFor(targetNode, targetPort);
+    const sourceStub = shifted(sourceAnchor, PORT_VECTORS[sourcePort], laneSeparation * 1.5);
+    const targetStub = shifted(targetAnchor, PORT_VECTORS[targetPort], laneSeparation * 1.5);
     const candidates = [
       perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, laneDistance, true),
       perimeterVertices(sourceAnchor, targetAnchor, sourcePort, targetPort, nodes, laneDistance, false),
+      ...gutterPerimeterVertices(sourceAnchor, targetAnchor, sourceStub, targetStub, nodes, laneDistance),
     ];
     for (const routedVertices of candidates) {
       if (!routeAvoidsNodes(routedVertices, unrelatedNodes) || !routeAvoidsPositiveRetrace(routedVertices)) continue;

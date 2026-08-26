@@ -60,6 +60,16 @@ type C4Relationship = {
   evidence: Evidence[];
   confidence: Confidence;
 };
+type Point = { x: number; y: number };
+type RelationshipLabelGeometry = Point & { width: number; height: number };
+type C4RelationshipLayout = {
+  relationshipId: string;
+  geometryVersion: 2;
+  sourcePort: "left" | "right" | "top" | "bottom";
+  targetPort: "left" | "right" | "top" | "bottom";
+  vertices: Point[];
+  label: RelationshipLabelGeometry;
+};
 type C4View = {
   id: string;
   level: 1 | 2 | 3;
@@ -74,8 +84,11 @@ type C4View = {
     nodeSeparation: number;
     relationshipSeparation: number;
   };
+  relationshipLayouts?: C4RelationshipLayout[];
 };
 ```
+
+`relationshipLayouts` is absent from the raw and normalized model and required in the final laid-out model. Its entries correspond one-for-one and in stable order with `relationshipIds`. The renderer treats `geometryVersion: 2` ports, vertices, and label bounds as final; see [layout and notation rules](layout-and-notation.md) for routing and collision requirements.
 
 ## Required element fields
 
@@ -114,8 +127,6 @@ Default visual roles:
 | `review-required` | The model needs the item but evidence is weak or ambiguous |
 
 Confidence affects inspection metadata and reporting, never the C4 type or visual shape.
-
-## View inclusion
 
 ## View configuration
 

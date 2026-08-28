@@ -2,7 +2,7 @@
 
 RhythmTrainer의 iPhone·Apple Watch 아키텍처를 큰 맥락에서 컴포넌트 책임까지 단계적으로 탐색하는 C4 다이어그램입니다.
 
-[Live Demo](https://rhythmtrainer-c4-explorer.thyang78940.chatgpt.site) · [Standalone HTML](./rhythmtrainer-c4-explorer.html) · [Tests](./tests/rhythmtrainer-c4-explorer.test.mjs)
+[Live Demo](https://rhythmtrainer-c4-explorer.thyang78940.chatgpt.site) · [학습 포스터 PDF](./docs/c5-learning-poster.pdf) · [Standalone HTML](./rhythmtrainer-c4-explorer.html) · [Tests](./tests/rhythmtrainer-c4-explorer.test.mjs)
 
 ![RhythmTrainer C4 Level 1 System Context](./docs/images/c4-l1-system-context.png)
 
@@ -14,6 +14,12 @@ RhythmTrainer의 iPhone·Apple Watch 아키텍처를 큰 맥락에서 컴포넌�
 - **L2 — Container Diagram:** iPhone 앱과 Watch 앱의 책임, 통신 경로, 사용 기술을 보여줍니다.
 - **L3 — Component Diagram:** 각 앱 내부 컴포넌트의 역할과 실제 코드 근거를 보여줍니다.
 - **L4 — Code:** 이 탐색기의 범위에서 의도적으로 제외했습니다.
+
+## 학습 포스터
+
+사용자 관찰에서 출발해 C4 모델을 학습하고, AI와 협업하며 더 나은 판단 기준을 만들어 간 과정을 한 장의 포스터로 정리했습니다.
+
+[C5 Learning Poster PDF 열기](./docs/c5-learning-poster.pdf)
 
 ## C4 탐색 흐름
 
@@ -112,11 +118,13 @@ node --test tests/rhythmtrainer-c4-explorer.test.mjs
 │   └── c4-node-shape-style-reference.png
 ├── creating-c4-diagrams/
 │   └── assets/c4-explorer-shell.html
-├── docs/images/
-│   ├── c4-l1-system-context.png
-│   ├── c4-l2-container-selected.png
-│   ├── c4-l3-iphone-components.png
-│   └── c4-l3-watch-components.png
+├── docs/
+│   ├── c5-learning-poster.pdf
+│   └── images/
+│       ├── c4-l1-system-context.png
+│       ├── c4-l2-container-selected.png
+│       ├── c4-l3-iphone-components.png
+│       └── c4-l3-watch-components.png
 └── tests/
     └── rhythmtrainer-c4-explorer.test.mjs
 ```

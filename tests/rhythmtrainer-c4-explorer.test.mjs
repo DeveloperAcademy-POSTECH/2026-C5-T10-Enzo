@@ -172,7 +172,6 @@ test("exports navigation helpers and reports dangling relationships as recoverab
   const dangling = api.validateModel(broken);
   assert.equal(dangling.valid, true);
   assert.match(dangling.errors.join("\n"), /missing-target/);
-  assert.match(api.buildInspectorMarkup(broken, api.createWorkspaceState()), /missing-target/);
   const badDescription = structuredClone(model);
   delete badDescription.views.context.nodes[0].description;
   assert.equal(api.validateModel(badDescription).valid, false);
@@ -181,15 +180,15 @@ test("exports navigation helpers and reports dangling relationships as recoverab
   assert.equal(api.validateModel(badRole).valid, false);
 });
 
-test("builds every Inspector tab for every node even when optional lists are absent", () => {
+test("builds one direct Inspector overview for every node even when optional lists are absent", () => {
   const { api, model } = explorerRuntime();
   for (const [viewId, view] of Object.entries(model.views)) {
     for (const node of view.nodes) {
-      for (const inspectorTab of ["overview", "flow", "evidence", "model"]) {
-        assert.doesNotThrow(() => api.buildInspectorMarkup(model, {
-          ...api.createWorkspaceState(), currentView: viewId, selectedNode: node.id, inspectorTab
-        }), `${viewId}:${node.id}:${inspectorTab}`);
-      }
+      const markup = api.buildInspectorMarkup(model, {
+        ...api.createWorkspaceState(), currentView: viewId, selectedNode: node.id
+      });
+      assert.match(markup, /class="inspector-overview"/, `${viewId}:${node.id} shows its overview`);
+      assert.doesNotMatch(markup, /role="tab"|data-inspector-tab|inspector-tabpanel/, `${viewId}:${node.id} has no dead tab controls`);
     }
   }
 });
@@ -221,7 +220,6 @@ test("starts as a diagram-first workspace and reduces panel state independently"
     leftPanelOpen: true,
     rightPanelOpen: false,
     leftTab: "views",
-    inspectorTab: "overview",
     tool: "select",
     relationshipMode: "focus",
     viewports: {}
@@ -256,6 +254,39 @@ test("keeps persistent panel controls in the top toolbar", () => {
   assert.match(toolbar, /aria-label="인스펙터 열기"/);
   assert.doesNotMatch(toolbar, /id="left-panel"/);
   assert.doesNotMatch(toolbar, /id="right-inspector"/);
+  assert.equal([...toolbar.matchAll(/data-panel-toggle=/g)].length, 2, "each panel keeps one persistent toolbar affordance");
+  assert.doesNotMatch(html, /id="left-panel-toggle"|id="right-panel-toggle"/);
+});
+
+test("gives the open left panel a local close control while reserving the toolbar control for reopening", () => {
+  const leftPanel = html.match(/<aside id="left-panel"[\s\S]*?<\/aside>/)?.[0] ?? "";
+  const heading = leftPanel.match(/<div class="panel-heading">[\s\S]*?<\/div>/)?.[0] ?? "";
+  assert.match(heading, /id="left-panel-close"/);
+  assert.match(heading, /data-panel-toggle="left"/);
+  assert.match(heading, /aria-controls="left-panel"/);
+  assert.match(heading, /aria-label="왼쪽 패널 닫기"/);
+  assert.match(html, /\.workspace-shell\[data-left-open="true"\]\s+#toolbar-left-panel-toggle\s*\{[^}]*visibility:\s*hidden/s);
+  assert.match(html, /\.workspace-shell\[data-left-open="false"\]\s+#toolbar-left-panel-toggle\s*\{[^}]*visibility:\s*visible/s);
+  assert.match(html, /querySelectorAll\("\[data-panel-toggle\]"\)/);
+});
+
+test("moves focus between the local close control and the persistent reopen control", () => {
+  const focused = [];
+  const controls = new Map([
+    ["left-panel-close", { focus: () => focused.push("local-close") }],
+    ["toolbar-left-panel-toggle", { focus: () => focused.push("toolbar-reopen") }]
+  ]);
+  const document = {
+    getElementById: (id) => controls.get(id) ?? null,
+    querySelector: () => null
+  };
+  const window = { requestAnimationFrame: (callback) => callback() };
+  const { api } = explorerRuntime({ document, window, CSS: { escape: (value) => value } });
+
+  api.restoreWorkspaceFocus({ type: "toggle-left-panel" }, { leftPanelOpen: false });
+  api.restoreWorkspaceFocus({ type: "toggle-left-panel" }, { leftPanelOpen: true });
+
+  assert.deepEqual(focused, ["local-close", "toolbar-reopen"]);
 });
 
 test("reopens each workspace panel independently after closing it", () => {
@@ -397,6 +428,12 @@ test("aligns the System Context arrows on one shared horizontal connection lane"
     laneYs.push(points[0].y);
   }
   assert.equal(new Set(laneYs).size, 1, "all System Context arrows share the same baseline");
+});
+
+test("aligns every L1 semantic container on one bottom baseline", () => {
+  const { model } = explorerRuntime();
+  const bottoms = model.views.context.nodes.map((node) => node.y + node.h);
+  assert.ok(bottoms.every((bottom) => Math.abs(bottom - bottoms[0]) < 0.01), `L1 bottoms share one baseline: ${bottoms.join(", ")}`);
 });
 
 test("lays out multi-line node text sections without overlapping baselines", () => {
@@ -557,6 +594,62 @@ test("progressively reveals dense L3 relationships around the selected container
   const controls = api.buildLayersMarkup(view, allState);
   assert.match(controls, /data-relationship-mode="focus"/);
   assert.match(controls, /data-relationship-mode="all"[^>]*aria-pressed="true"/);
+});
+
+test("progressively reveals L2 container relationships around the selected element", () => {
+  const { api, model } = explorerRuntime();
+  const view = model.views.containers;
+  const idleState = { ...api.createWorkspaceState(), currentView: view.id };
+
+  const idleItems = api.getRelationshipRenderItems(view, idleState);
+  assert.ok(idleItems.every((item) => item.presentation === "ambient" && item.labelVisible === false));
+
+  const selectedState = api.reduceWorkspace(model, idleState, { type: "select-node", nodeId: "iphone-app" });
+  const directlyConnected = new Set(view.relationships
+    .filter((relationship) => [relationship.from, relationship.to].includes("iphone-app"))
+    .map((relationship) => relationship.id));
+  for (const item of api.getRelationshipRenderItems(view, selectedState)) {
+    assert.equal(item.presentation, directlyConnected.has(item.relationship.id) ? "emphasized" : "muted");
+    assert.equal(item.labelVisible, directlyConnected.has(item.relationship.id));
+  }
+
+  const controls = api.buildLayersMarkup(view, selectedState);
+  assert.match(controls, /data-relationship-mode="focus"[^>]*aria-pressed="true"/);
+  assert.match(controls, /data-relationship-mode="all"/);
+
+  const clearedState = api.reduceWorkspace(model, selectedState, { type: "clear-selection" });
+  assert.ok(api.getRelationshipRenderItems(view, clearedState)
+    .every((item) => item.presentation === "ambient" && item.labelVisible === false));
+});
+
+test("aligns the L2 interaction row and separates container relationships into compact lanes", () => {
+  const { api, model } = explorerRuntime();
+  const view = model.views.containers;
+  const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+  const primaryCenters = ["learner", "iphone-app", "watch-app"].map((id) => {
+    const node = nodes.get(id);
+    return node.y + node.h / 2;
+  });
+  assert.ok(primaryCenters.every((center) => Math.abs(center - primaryCenters[0]) < 0.01), "primary L2 elements share one visual centerline");
+
+  const fileStore = nodes.get("file-store");
+  const phone = nodes.get("iphone-app");
+  assert.equal(fileStore.x + fileStore.w / 2, phone.x + phone.w / 2, "the supporting storage row aligns with its iPhone consumer");
+
+  const phoneWatchPaths = [];
+  for (const relationship of view.relationships) {
+    assert.ok(["horizontal", "vertical"].includes(relationship.routeLane?.axis), `${relationship.id} declares a route axis`);
+    assert.equal(relationship.waypoints, undefined, `${relationship.id} removes its distant manual detour`);
+    const points = api.relationshipPolyline(nodes, relationship);
+    assert.ok(points.length >= 2, `${relationship.id} produces a route`);
+    assert.ok(points.every((point) => point.x >= 0 && point.x <= view.worldSize.width && point.y >= 0 && point.y <= view.worldSize.height), `${relationship.id} stays inside the L2 canvas`);
+    if (new Set([relationship.from, relationship.to]).size === 2
+      && [relationship.from, relationship.to].every((id) => ["iphone-app", "watch-app"].includes(id))) {
+      assert.equal(points[0].y, points.at(-1).y, `${relationship.id} uses matched horizontal ports`);
+      phoneWatchPaths.push(JSON.stringify(points));
+    }
+  }
+  assert.equal(new Set(phoneWatchPaths).size, phoneWatchPaths.length, "parallel iPhone/Watch relationships remain visually distinct");
 });
 
 test("renders relationship hierarchy as quiet structure and explicit foreground", () => {
@@ -740,7 +833,7 @@ test("balances L3 canvases around aligned component rows and consistent arrow po
 
 test("places selected relationship labels near their container without collisions", () => {
   const { api, model } = explorerRuntime();
-  for (const [viewId, nodeId] of [["iphone-components", "app-flow"], ["watch-components", "watch-ui"]]) {
+  for (const [viewId, nodeId] of [["containers", "iphone-app"], ["iphone-components", "app-flow"], ["watch-components", "watch-ui"]]) {
     const view = model.views[viewId];
     const state = { ...api.createWorkspaceState(), currentView: viewId, selectedNode: nodeId };
     const node = view.nodes.find(({ id }) => id === nodeId);
@@ -774,11 +867,11 @@ test("keeps every relationship label clear of nodes and neighboring labels", () 
   for (const view of Object.values(model.views)) {
     const nodes = new Map(view.nodes.map((node) => [node.id, node]));
     const state = { ...api.createWorkspaceState(), currentView: view.id, relationshipMode: "all" };
-    const renderItems = view.level === 3
+    const renderItems = view.level >= 2
       ? api.getRelationshipRenderItems(view, state)
       : view.relationships.map((relationship) => ({ relationship, labelPoint: api.relationshipLabelPoint(api.relationshipPolyline(nodes, relationship), relationship.labelPosition) }));
-    const nodeClearance = view.level === 3 ? 20 : 32;
-    const labelClearance = view.level === 3 ? 20 : 40;
+    const nodeClearance = view.level >= 2 ? 20 : 32;
+    const labelClearance = view.level >= 2 ? 20 : 40;
     const labels = renderItems.map((item) => {
       const { width, height } = api.getRelationshipLabelLayout(item.relationship);
       return {
@@ -832,6 +925,24 @@ test("sizes inline relationship labels from wrapped technology as well as descri
   const owningView = Object.values(model.views).find((view) => view.relationships.includes(securityScoped));
   const owningNodes = new Map(owningView.nodes.map((node) => [node.id, node]));
   assert.match(api.buildRelationshipMarkup(owningNodes, securityScoped), /relationship-technology/);
+});
+
+test("places relationship technology above its description", () => {
+  const { api, model } = explorerRuntime();
+  const view = model.views.containers;
+  const relationship = view.relationships.find(({ id }) => id === "container-learner-to-phone");
+  const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+  assert.ok(relationship, "the learner-to-iPhone relationship is modeled");
+
+  const markup = api.buildRelationshipMarkup(nodes, relationship);
+  const technologyIndex = markup.indexOf('class="relationship-technology"');
+  const descriptionIndex = markup.indexOf('class="relationship-description"');
+
+  assert.ok(technologyIndex >= 0, "the relationship includes its technology");
+  assert.ok(descriptionIndex >= 0, "the relationship includes its description");
+  assert.ok(technologyIndex < descriptionIndex, "technology is rendered before the description");
+  assert.match(markup, /\[iPhone UI\]/);
+  assert.match(markup, /곡을 선택하고 연습 흐름을 조작합니다/);
 });
 
 test("reserves every C4 boundary title band above its member nodes", () => {
@@ -1104,17 +1215,37 @@ test("clamps, pans, zooms around the pointer, and fits the SVG world", () => {
   assert.deepEqual(JSON.parse(JSON.stringify(overScaled)), { x: -2760, y: 160, scale: 2 });
 });
 
-test("reserves Space for a focused C4 node but enables temporary Hand on the canvas", () => {
+test("reserves Space exclusively for temporary Hand outside editable fields", () => {
   const { api } = explorerRuntime();
   const focusedNode = {
     tagName: "g",
     closest: (selector) => selector.includes("[data-node-id]") ? {} : null
   };
   const canvas = { tagName: "DIV", closest: () => null };
+  const button = { tagName: "BUTTON", closest: (selector) => selector.includes("button") ? {} : null };
 
-  assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, focusedNode), false);
+  assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, focusedNode), true);
   assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, canvas), true);
+  assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, button), true);
   assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, { tagName: "INPUT", closest: () => null }), false);
+  assert.equal(api.shouldUseTemporaryHand({ code: "Space" }, { tagName: "DIV", isContentEditable: true, closest: () => null }), false);
+
+  assert.equal(api.shouldSuppressCanvasActivation(true, false), true, "holding Space blocks element activation");
+  assert.equal(api.shouldSuppressCanvasActivation(false, true), true, "the click produced by a completed pan is discarded");
+  assert.equal(api.shouldSuppressCanvasActivation(false, false), false);
+});
+
+test("keeps canvas toolbar controls operable while Hand is active", () => {
+  const { api } = explorerRuntime();
+  const canvas = { closest: () => null };
+  const canvasTool = { closest: (selector) => selector === "#canvas-tools" ? {} : null };
+
+  assert.equal(typeof api.shouldStartCanvasPan, "function");
+  assert.equal(api.shouldStartCanvasPan(canvasTool, "hand", false, 0), false, "toolbar input never starts a pan");
+  assert.equal(api.shouldStartCanvasPan(canvas, "hand", false, 0), true, "Hand pans the canvas");
+  assert.equal(api.shouldStartCanvasPan(canvas, "select", true, 0), true, "Space temporarily pans the canvas");
+  assert.equal(api.shouldStartCanvasPan(canvas, "select", false, 1), true, "the middle button pans the canvas");
+  assert.equal(api.shouldStartCanvasPan(canvas, "select", false, 0), false, "Select keeps primary canvas clicks available");
 });
 
 test("returns progressive disclosure to its quiet map from an empty canvas click", () => {
@@ -1178,6 +1309,31 @@ test("synchronizes SVG coordinates to the expanded canvas after panel motion", (
   assert.equal(attributes.get("viewBox"), "0 0 1440 900");
 });
 
+test("preserves diagram screen coordinates while either side panel changes the canvas frame", () => {
+  const { api } = explorerRuntime();
+  const viewport = { x: 180, y: 96, scale: 0.8 };
+
+  const leftOpened = api.preserveViewportScreenPosition(
+    viewport,
+    { left: 0, top: 0, width: 1440, height: 900 },
+    { left: 336, top: 0, width: 1104, height: 900 }
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(leftOpened)), { x: -156, y: 96, scale: 0.8 });
+  assert.equal(0 + viewport.x, 336 + leftOpened.x, "opening the left panel keeps the diagram at the same screen x");
+
+  const rightOpened = api.preserveViewportScreenPosition(
+    viewport,
+    { left: 0, top: 0, width: 1440, height: 900 },
+    { left: 0, top: 0, width: 1040, height: 900 }
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(rightOpened)), viewport, "right-side width changes do not recenter the diagram");
+});
+
+test("anchors the dotted canvas grid to the stable workspace coordinate system", () => {
+  assert.match(html, /\.workspace-shell\s*\{[^}]*background-image:\s*radial-gradient/s);
+  assert.doesNotMatch(html, /\.canvas-region\s*\{[^}]*background-image:\s*radial-gradient/s);
+});
+
 test("renders Views and Layers as synchronized read-only navigation", () => {
   const { api, model } = explorerRuntime();
   const state = api.createWorkspaceState();
@@ -1191,7 +1347,8 @@ test("renders Views and Layers as synchronized read-only navigation", () => {
   const layers = api.buildLayersMarkup(model.views.context, state);
   assert.match(layers, /리듬을 연습하는 사용자/);
   assert.match(layers, /엇박 리듬 훈련 시스템/);
-  assert.match(layers, /Relationships/);
+  assert.match(layers, /관계/);
+  assert.doesNotMatch(layers, /Relationship visibility|Boundaries|Elements|Relationships/);
 });
 
 test("opens the Inspector on selection and drills only on an explicit open action", () => {
@@ -1201,12 +1358,8 @@ test("opens the Inspector on selection and drills only on an explicit open actio
   assert.equal(state.currentView, "context");
   assert.equal(state.rightPanelOpen, true);
   const overview = api.buildInspectorMarkup(model, state);
-  assert.match(overview, /Open L2/);
+  assert.match(overview, /L2 열기/);
   assert.match(overview, /README\.md/);
-
-  const flow = api.buildInspectorMarkup(model, { ...state, inspectorTab: "flow" });
-  assert.match(flow, /리듬을 연습하는 사용자/);
-  assert.match(flow, /엇박 리듬 훈련 시스템/);
 
   state = api.openDrilldown(model, state, "rhythm-system");
   assert.equal(state.currentView, "containers");
@@ -1217,19 +1370,16 @@ test("opens the Inspector on selection and drills only on an explicit open actio
   assert.equal(terminal.currentView, "iphone-components");
 });
 
-test("keeps Model provenance and validation available before any node is selected", () => {
+test("shows direct Inspector guidance before any node is selected", () => {
   const { api, model } = explorerRuntime();
-  const state = { ...api.createWorkspaceState(), rightPanelOpen: true, inspectorTab: "model" };
+  const state = { ...api.createWorkspaceState(), rightPanelOpen: true };
   const markup = api.buildInspectorMarkup(model, state);
 
-  assert.match(markup, /System Context/);
-  assert.match(markup, /엇박 리듬 훈련 시스템/);
-  assert.match(markup, new RegExp(model.meta.analyzedCommit));
-  assert.match(markup, new RegExp(model.meta.sourceRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(markup, /검증 경고 없음/);
+  assert.match(markup, /요소를 선택해 책임과 구현 상태를 확인하세요/);
+  assert.doesNotMatch(markup, /role="tab"|data-inspector-tab|inspector-tabpanel/);
 });
 
-test("links Views Layers and Inspector tabs to unique accessible tab panels", () => {
+test("links Views and Layers to unique accessible tab panels without Inspector tabs", () => {
   const { api, model } = explorerRuntime();
   const state = api.createWorkspaceState();
   const left = api.buildLeftPanelMarkup(model, state);
@@ -1245,29 +1395,17 @@ test("links Views Layers and Inspector tabs to unique accessible tab panels", ()
   const leftLayersPanel = left.match(/<div id="left-tabpanel-layers"[^>]*>/)?.[0] ?? "";
   assert.doesNotMatch(leftViewsPanel, /hidden/);
   assert.match(leftLayersPanel, /hidden/);
-
-  for (const tab of ["overview", "flow", "evidence", "model"]) {
-    assert.match(inspector, new RegExp(`id="inspector-tab-${tab}"[^>]*role="tab"[^>]*aria-controls="inspector-tabpanel-${tab}"[^>]*aria-selected="${tab === "overview"}"[^>]*tabindex="${tab === "overview" ? "0" : "-1"}"`));
-    assert.match(inspector, new RegExp(`id="inspector-tabpanel-${tab}"[^>]*role="tabpanel"[^>]*aria-labelledby="inspector-tab-${tab}"`));
-  }
-  const inspectorOverviewPanel = inspector.match(/<div id="inspector-tabpanel-overview"[^>]*>/)?.[0] ?? "";
-  const inspectorModelPanel = inspector.match(/<div id="inspector-tabpanel-model"[^>]*>/)?.[0] ?? "";
-  assert.doesNotMatch(inspectorOverviewPanel, /hidden/);
-  assert.match(inspectorModelPanel, /hidden/);
+  assert.doesNotMatch(inspector, /role="tab"|role="tabpanel"|data-inspector-tab/);
 });
 
-test("calculates wrapped keyboard navigation for left and Inspector tablists", () => {
+test("calculates wrapped keyboard navigation for the left tablist", () => {
   const { api } = explorerRuntime();
 
   assert.equal(api.getNextTabIndex(2, 0, "ArrowLeft"), 1, "left tabs wrap from first to last");
   assert.equal(api.getNextTabIndex(2, 1, "ArrowRight"), 0, "left tabs wrap from last to first");
   assert.equal(api.getNextTabIndex(2, 1, "Home"), 0);
   assert.equal(api.getNextTabIndex(2, 0, "End"), 1);
-  assert.equal(api.getNextTabIndex(4, 2, "ArrowRight"), 3, "Inspector advances to the next tab");
-  assert.equal(api.getNextTabIndex(4, 0, "ArrowLeft"), 3, "Inspector wraps backwards");
-  assert.equal(api.getNextTabIndex(4, 1, "Home"), 0);
-  assert.equal(api.getNextTabIndex(4, 1, "End"), 3);
-  assert.equal(api.getNextTabIndex(4, 1, "Enter"), null, "unhandled keys retain native behavior");
+  assert.equal(api.getNextTabIndex(2, 1, "Enter"), null, "unhandled keys retain native behavior");
 });
 
 test("declares desktop workspace accessibility and user preference fallbacks", () => {
@@ -1278,17 +1416,23 @@ test("declares desktop workspace accessibility and user preference fallbacks", (
   assert.match(html, /@media \(prefers-reduced-transparency: reduce\)/);
   assert.match(html, /@media \(prefers-contrast: more\)/);
   assert.match(html, /:focus-visible/);
-  assert.match(html, /@media \(max-width: 1199px\)/);
+  assert.match(html, /@media \(max-width: 1599px\)/);
   assert.match(html, /@media \(max-width: 799px\)/);
+});
+
+test("reserves readable desktop widths for both architecture side panels", () => {
+  assert.match(html, /--sidebar-left:\s*21rem/);
+  assert.match(html, /--sidebar-right:\s*25rem/);
+  assert.match(html, /@media \(max-width: 1599px\)[\s\S]*?\.side-panel\s*\{[^}]*width:\s*min\(25rem,\s*92vw\)/);
 });
 
 test("keeps one overlay panel open at compact desktop widths", () => {
   const { api } = explorerRuntime();
   const state = { ...api.createWorkspaceState(), leftPanelOpen: true, rightPanelOpen: true };
-  const compact = api.normalizePanelsForWidth(state, 1024, "right");
+  const compact = api.normalizePanelsForWidth(state, 1440, "right");
   assert.equal(compact.leftPanelOpen, false);
   assert.equal(compact.rightPanelOpen, true);
-  const desktop = api.normalizePanelsForWidth(state, 1440, "right");
+  const desktop = api.normalizePanelsForWidth(state, 1700, "right");
   assert.equal(desktop.leftPanelOpen, true);
   assert.equal(desktop.rightPanelOpen, true);
 });
@@ -1334,9 +1478,14 @@ test("animates desktop C4 panels through their own edges while reclaiming canvas
   assert.match(html, /\.workspace-shell\[data-right-open="true"\]\s+\.right-inspector\s*\{[^}]*transform:\s*translateX\(0\);\s*opacity:\s*1/s);
 });
 
+test("moves the left panel reopen control to the canvas left edge", () => {
+  assert.match(html, /\.workspace-shell\[data-left-open="false"\]\s+#toolbar-left-panel-toggle\s*\{[^}]*position:\s*absolute[^}]*left:\s*\.625rem/s);
+  assert.match(html, /\.workspace-shell\[data-left-open="false"\]\s+\.top-toolbar\s*\{[^}]*left:\s*0[^}]*padding-left:\s*3\.625rem/s);
+});
+
 test("keeps mobile side-sheet panel controls at a 44px touch target", () => {
   const mobileRules = html.match(/@media \(max-width: 799px\) \{([\s\S]*?)\n    \}/)?.[1] ?? "";
-  assert.match(mobileRules, /\.panel-toggle(?:,\s*\.toolbar-action,\s*\.canvas-tool)?\s*\{[^}]*min-width:\s*2\.75rem;[^}]*min-height:\s*2\.75rem/s);
+  assert.match(mobileRules, /\.toolbar-action,\s*\.canvas-tool\s*\{[^}]*min-width:\s*2\.75rem;[^}]*min-height:\s*2\.75rem/s);
 });
 
 test("stacks compact canvas chrome so the toolbar and legend cannot overlap", () => {
@@ -1359,6 +1508,165 @@ test("strengthens C4 geometry and labels in increased contrast mode", () => {
   for (const selector of [".relationship-path", ".arrow-marker", ".relationship-label-surface", ".c4-boundary rect", ".diagram-node .node-surface"]) {
     assert.match(contrastRules, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+});
+
+test("gives only drillable C4 containers an obvious one-click level footer", () => {
+  const { api, model } = explorerRuntime();
+  const drillable = model.views.context.nodes.find(({ id }) => id === "rhythm-system");
+  const levelThree = model.views.containers.nodes.find(({ id }) => id === "iphone-app");
+  const staticNode = model.views.containers.nodes.find(({ id }) => id === "file-store");
+
+  const drillableMarkup = api.buildSvgNodeMarkup(drillable, false);
+  assert.match(drillableMarkup, /class="diagram-node[^\"]*is-drilldown/);
+  assert.match(drillableMarkup, /data-drilldown-level="2"/);
+  assert.match(drillableMarkup, /aria-label="[^"]*L2 컨테이너 열기 가능"/);
+  assert.match(drillableMarkup, /class="node-open node-open-footer"[^>]*role="button"[^>]*tabindex="0"[^>]*aria-label="L2 컨테이너 열기"/);
+  assert.match(drillableMarkup, />L2 컨테이너 열기<\/text>/);
+  const [, footerWidth, footerHeight] = drillableMarkup.match(/class="node-open-surface"[^>]*width="([\d.]+)"[^>]*height="([\d.]+)"/) ?? [];
+  assert.ok(Number(footerWidth) >= drillable.w * 0.6, "the footer reads as a full action region instead of a small badge");
+  assert.ok(Number(footerHeight) >= 30, "the footer has a comfortably visible hit target");
+  assert.equal(api.isDrilldownActivationKey("Enter"), true);
+  assert.equal(api.isDrilldownActivationKey(" "), true);
+  assert.equal(api.isDrilldownActivationKey("Escape"), false);
+
+  const levelThreeMarkup = api.buildSvgNodeMarkup(levelThree, false);
+  assert.match(levelThreeMarkup, /aria-label="L3 컴포넌트 열기"/);
+  assert.match(levelThreeMarkup, />L3 컴포넌트 열기<\/text>/);
+
+  const staticMarkup = api.buildSvgNodeMarkup(staticNode, false);
+  assert.doesNotMatch(staticMarkup, /is-drilldown|data-drilldown-level|node-open-surface|열기 가능/);
+});
+
+test("pins every drilldown footer to the same content-relative position", () => {
+  const { api, model } = explorerRuntime();
+  assert.equal(typeof api.getDrilldownFooterGeometry, "function");
+
+  const semanticRoles = new Set(["person", "softwareSystem", "dataStore"]);
+  const drillableNodes = Object.values(model.views)
+    .flatMap((view) => view.nodes)
+    .filter((node) => node.drilldown);
+
+  assert.ok(drillableNodes.length > 1, "the invariant covers more than one drilldown node");
+  for (const node of drillableNodes) {
+    const layout = api.getSvgTextLayout(node);
+    const footer = api.getDrilldownFooterGeometry(node, layout);
+    const scale = node.textScale ?? 1;
+    const host = semanticRoles.has(node.visualRole)
+      ? api.getSemanticCardGeometry(node).content
+      : { x: 0, y: 0, width: node.w, height: node.h };
+
+    assert.equal(footer.x, layout.bounds.x, `${node.id}: align to the text column`);
+    assert.equal(footer.width, layout.bounds.width, `${node.id}: match the text column width`);
+    assert.ok(Math.abs(host.y + host.height - footer.y - footer.height - 16 * scale) < 0.001,
+      `${node.id}: keep the shared 16px content-bottom inset`);
+    assert.ok(footer.y >= host.y, `${node.id}: stay inside the content area`);
+    assert.ok(footer.y + footer.height <= host.y + host.height,
+      `${node.id}: never protrude below the content area`);
+  }
+});
+
+test("keeps the refined side panels while restoring the prior canvas presentation", () => {
+  const { api, model } = explorerRuntime();
+  const views = api.buildViewsMarkup(model, api.createWorkspaceState());
+  assert.match(views, /class="view-row"/);
+  assert.match(views, /class="view-level"[^>]*>L1</);
+
+  const selectedState = { ...api.createWorkspaceState(), selectedNode: "learner" };
+  assert.deepEqual(JSON.parse(JSON.stringify(api.getInspectorHeader(model, selectedState))), {
+    eyebrow: "선택한 요소",
+    title: "리듬을 연습하는 사용자"
+  });
+  const inspector = api.buildInspectorMarkup(model, selectedState);
+  assert.match(inspector, /리듬을 연습하는 사용자/);
+  assert.doesNotMatch(inspector, /role="tab"|data-inspector-tab|inspector-tabpanel/);
+
+  const node = model.views.containers.nodes.find(({ id }) => id === "iphone-app");
+  const nodeMarkup = api.buildSvgNodeMarkup(node, false);
+  assert.match(nodeMarkup, new RegExp(node.name));
+  assert.match(nodeMarkup, new RegExp(node.description.split(" ")[0]));
+  assert.match(nodeMarkup, /class="node-copy"/);
+
+  const stylesheet = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
+  assert.doesNotMatch(stylesheet, /data-node-detail="shape"/);
+  assert.doesNotMatch(stylesheet, /data-semantic-zoom="map"/);
+  assert.doesNotMatch(stylesheet, /@media \(prefers-color-scheme: dark\)/);
+
+  const view = model.views["iphone-components"];
+  const nodes = new Map(view.nodes.map((node) => [node.id, node]));
+  const relationship = view.relationships.find(({ id }) => id === "iphone-flow-audio");
+  const markup = api.buildRelationshipMarkup(nodes, relationship, {
+    presentation: "emphasized",
+    labelVisible: true
+  });
+  assert.match(markup, /class="relationship-label"[^>]*aria-hidden="false"/);
+  assert.doesNotMatch(markup, /label-focused|label-overview|label-context|label-hidden/);
+});
+
+test("keeps primary chrome integrated and reserves floating material for canvas tools", () => {
+  const styleSource = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join("\n");
+  const desktopStyles = styleSource.split("@media (max-width: 1599px)")[0];
+  const lastDeclarations = (selector) => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return [...desktopStyles.matchAll(new RegExp(`^\\s*${escaped}\\s*\\{([^}]*)\\}`, "gm"))].at(-1)?.[1] ?? "";
+  };
+
+  assert.match(lastDeclarations(".top-toolbar"), /inset:\s*0 0 auto/);
+  assert.match(lastDeclarations(".top-toolbar"), /border-radius:\s*0/);
+  assert.match(lastDeclarations(".top-toolbar"), /box-shadow:\s*none/);
+  assert.match(lastDeclarations(".toolbar-action"), /background:\s*transparent/);
+  assert.match(lastDeclarations(".canvas-tools"), /box-shadow:\s*var\(--elevation-floating\)/);
+  assert.match(lastDeclarations(".canvas-legend"), /background:\s*transparent/);
+  assert.match(lastDeclarations(".canvas-legend"), /backdrop-filter:\s*none/);
+});
+
+test("keeps selected utility controls visually stronger than hover feedback", () => {
+  const styleSource = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
+  const hoverIndex = styleSource.lastIndexOf(".back-button:not(:disabled):hover, .toolbar-action:hover, .canvas-tool:hover");
+  const selectedIndex = styleSource.lastIndexOf('.toolbar-action[aria-expanded="true"], .canvas-tool[aria-pressed="true"]');
+
+  assert.ok(hoverIndex >= 0, "utility controls provide hover feedback");
+  assert.ok(selectedIndex > hoverIndex, "selected state wins the CSS cascade when the pointer also hovers");
+});
+
+test("keeps persistent chrome text at WCAG AA contrast", () => {
+  const root = html.match(/:root\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+  const token = (name) => root.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, "i"))?.[1];
+  const luminance = (hex) => {
+    const channels = hex.match(/[0-9a-f]{2}/gi).map((value) => Number.parseInt(value, 16) / 255);
+    const linear = channels.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  };
+  const contrast = (foreground, background) => {
+    const a = luminance(foreground);
+    const b = luminance(background);
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  };
+
+  assert.ok(contrast(token("ink"), token("surface-panel")) >= 4.5, "primary panel text passes AA");
+  assert.ok(contrast(token("muted"), token("surface-panel")) >= 4.5, "secondary panel text passes AA");
+  assert.ok(contrast(token("blue-deep"), token("blue-soft")) >= 4.5, "active utility text passes AA");
+});
+
+test("groups inspector information into flat utility sections", () => {
+  const { api, model } = explorerRuntime();
+  const state = { ...api.createWorkspaceState(), selectedNode: "rhythm-system" };
+  const markup = api.buildInspectorMarkup(model, state);
+
+  assert.match(markup, /class="inspector-section inspector-summary"/);
+  assert.match(markup, /class="inspector-meta"/);
+  assert.match(markup, /class="inspector-section inspector-state"/);
+  assert.match(markup, /class="inspector-section inspector-evidence"/);
+  assert.match(markup, /class="inspector-drilldown"/);
+});
+
+test("renders drilldown controls as integrated container footer rows", () => {
+  const { api, model } = explorerRuntime();
+  const node = model.views.context.nodes.find(({ id }) => id === "rhythm-system");
+  const markup = api.buildSvgNodeMarkup(node, false);
+
+  assert.match(markup, /class="node-open node-open-footer"[^>]*data-variant="integrated"/);
+  assert.match(markup, /class="node-open-divider"/);
+  assert.match(markup, /class="node-open-surface"/);
 });
 
 export { architectureModel, explorerRuntime, html, scriptBody };

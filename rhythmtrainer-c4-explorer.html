@@ -8,29 +8,42 @@
   <style>
     :root {
       color-scheme: light;
-      --page: #f3f6f9;
-      --surface: #ffffff;
-      --surface-soft: #f8fafc;
-      --ink: #152535;
-      --muted: #5d6b78;
-      --line: #cfd8e2;
-      --line-strong: #7f91a3;
-      --blue: #16669a;
-      --blue-deep: #0f4f7b;
-      --blue-soft: #e8f3fb;
+      --page: #edf1f4;
+      --surface: #f9fafb;
+      --surface-soft: #f2f4f6;
+      --ink: #1d2935;
+      --muted: #65717d;
+      --line: #d5dbe1;
+      --line-strong: #8996a3;
+      --blue: #1c6998;
+      --blue-deep: #155277;
+      --blue-soft: #e9f1f6;
       --person: #123f67;
       --external: #6f7c87;
       --gap: #a45a08;
       --gap-soft: #fff4df;
-      --focus: #ff8a1e;
-      --space-1: .5rem;
-      --space-2: .75rem;
-      --space-3: 1rem;
-      --space-4: 1.5rem;
-      --space-5: 2rem;
-      --space-6: 3rem;
-      --shadow: 0 20px 60px rgba(32, 56, 78, 0.1);
-      --canvas-background: #f3f6f9;
+      --focus: #0a84ff;
+      --space-1: .25rem;
+      --space-2: .5rem;
+      --space-3: .75rem;
+      --space-4: 1rem;
+      --space-5: 1.25rem;
+      --space-6: 1.5rem;
+      --sidebar-left: 21rem;
+      --sidebar-right: 25rem;
+      --radius-control: .375rem;
+      --radius-floating: .625rem;
+      --radius-panel: 0;
+      --surface-solid: #f9fafb;
+      --surface-panel: #f4f6f8;
+      --surface-chrome: rgba(247, 249, 250, .96);
+      --surface-floating: rgba(250, 251, 252, .94);
+      --canvas-background: #eef2f5;
+      --canvas-grid: #d3dae1;
+      --accent: var(--blue);
+      --elevation-toolbar: none;
+      --elevation-floating: 0 10px 28px rgba(41, 53, 64, .13), 0 1px 2px rgba(41, 53, 64, .08);
+      --shadow: var(--elevation-floating);
     }
 
     * { box-sizing: border-box; }
@@ -40,11 +53,11 @@
       width: 100%;
       height: 100%;
       display: grid;
-      grid-template-columns: var(--left-column, 17.5rem) minmax(0, 1fr) var(--right-column, 0rem);
+      grid-template-columns: var(--left-column, var(--sidebar-left)) minmax(0, 1fr) var(--right-column, 0rem);
       background: var(--canvas-background);
     }
     .workspace-shell[data-left-open="false"] { --left-column: 0rem; }
-    .workspace-shell[data-right-open="true"] { --right-column: 21rem; }
+    .workspace-shell[data-right-open="true"] { --right-column: var(--sidebar-right); }
     .canvas-region { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
     .diagram-viewport { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
     .diagram-viewport[data-panning="true"] { cursor: grabbing; }
@@ -63,7 +76,6 @@
     .panel-heading, .inspector-toolbar { padding: 1.25rem; }
     .panel-heading { border-bottom: 1px solid var(--line); }
     .panel-title { margin: .2rem 0 .85rem; font-size: 1.05rem; }
-    .panel-toggle { border: 1px solid var(--line); border-radius: .45rem; padding: .4rem .6rem; background: var(--surface-soft); color: var(--ink); cursor: pointer; }
     .panel-tabs { display: flex; gap: .25rem; padding: .75rem 1rem 0; }
     .panel-tab { border: 0; border-bottom: 2px solid transparent; padding: .45rem .55rem; background: transparent; color: var(--muted); cursor: pointer; }
     .panel-tab[aria-selected="true"] { border-bottom-color: var(--blue); color: var(--blue-deep); font-weight: 700; }
@@ -79,16 +91,13 @@
     .relationship-mode-control { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
     .relationship-mode-control button { min-width: 0; align-content: start; }
     .relationship-mode-control button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--blue-deep); }
-    .inspector-tabs { display: flex; gap: .35rem; flex-wrap: wrap; margin: 1rem 1rem .75rem; }
-    .inspector-tabs button { padding: .38rem .55rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); color: var(--muted); text-transform: capitalize; }
-    .inspector-tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
-    .inspector-tabpanel { display: grid; gap: .75rem; padding: 0 1rem 1rem; }
-    .inspector-tabpanel h2, .inspector-tabpanel h3, .inspector-tabpanel p { margin: 0; }
-    .inspector-tabpanel section { display: grid; gap: .35rem; }
+    .inspector-overview { display: grid; gap: .75rem; padding: 1rem; }
+    .inspector-overview h2, .inspector-overview h3, .inspector-overview p { margin: 0; }
+    .inspector-overview section { display: grid; gap: .35rem; }
     .flow-item { display: grid; gap: .25rem; padding: .65rem; border: 1px solid var(--line); border-radius: .55rem; }
     .overview-evidence { display: grid; gap: .35rem; }
     .panel-note { margin: 1rem; color: var(--muted); font-size: .78rem; line-height: 1.55; }
-    .top-toolbar { position: relative; z-index: 3; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: .85rem; align-items: center; min-height: 4.5rem; padding: .75rem 1rem; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(16px); }
+    .top-toolbar { position: relative; z-index: 3; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: .85rem; align-items: center; min-height: 4.5rem; padding: .75rem 1rem; border-bottom: 1px solid var(--line); background: var(--surface-chrome); box-shadow: var(--elevation-toolbar); backdrop-filter: blur(16px); }
     .toolbar-context { min-width: 0; }
     .toolbar-context .view-kicker, .toolbar-context .view-title, .toolbar-context .view-description { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .toolbar-context .view-kicker { margin: 0; }
@@ -97,14 +106,17 @@
     .toolbar-actions { display: flex; gap: .35rem; }
     .toolbar-action { width: 2.25rem; height: 2.25rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); color: var(--ink); cursor: pointer; }
     .toolbar-action[aria-expanded="true"] { border-color: var(--blue); background: var(--blue-soft); color: var(--blue-deep); }
-    .canvas-tools { position: absolute; z-index: 4; right: 1rem; bottom: 1rem; display: flex; gap: .35rem; padding: .3rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--surface); box-shadow: var(--shadow); }
+    .canvas-tools { position: absolute; z-index: 4; right: 1rem; bottom: 1rem; display: flex; gap: .35rem; padding: .3rem; border: 1px solid var(--line); border-radius: var(--radius-floating); background: var(--surface-floating); box-shadow: var(--elevation-floating); }
     .canvas-tool { width: 2rem; height: 2rem; border: 0; border-radius: .35rem; background: transparent; color: var(--ink); cursor: pointer; }
     .canvas-tool[aria-pressed="true"] { background: var(--blue-soft); color: var(--blue-deep); }
     .canvas-zoom-value { display: inline-grid; min-width: 3.2rem; place-items: center; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; }
-    .canvas-legend { position: absolute; z-index: 3; left: 1rem; bottom: 1rem; display: flex; gap: .75rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: .55rem; background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--muted); font-size: .7rem; }
+    .canvas-legend { position: absolute; z-index: 3; left: 1rem; bottom: 1rem; display: flex; gap: .75rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: var(--radius-floating); background: var(--surface-chrome); box-shadow: none; color: var(--muted); font-size: .7rem; }
     .canvas-legend span { display: inline-flex; gap: .3rem; align-items: center; }
     .canvas-legend .legend-swatch { display: inline-block; width: .65rem; height: .65rem; border-radius: .15rem; }
-    .inspector-toolbar { display: flex; justify-content: space-between; gap: .5rem; align-items: start; border-bottom: 1px solid var(--line); }
+    .inspector-toolbar { display: block; border-bottom: 1px solid var(--line); }
+    .inspector-context { min-width: 0; }
+    .inspector-eyebrow { margin: 0; color: var(--muted); font-size: .68rem; font-weight: 700; letter-spacing: .04em; }
+    .inspector-title { margin: .25rem 0 0; overflow: hidden; color: var(--ink); font-size: .98rem; line-height: 1.35; letter-spacing: -.012em; text-overflow: ellipsis; white-space: nowrap; }
     #inspector-content { height: calc(100% - 5.25rem); overflow: auto; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .fallback-summary { position: fixed; inset: 0; z-index: 100; overflow: auto; padding: 2rem; background: var(--surface); color: var(--ink); }
@@ -123,67 +135,8 @@
     button { font: inherit; }
     button:not(:disabled) { -webkit-tap-highlight-color: transparent; }
     button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .app-icon { width: 1.125rem; height: 1.125rem; display: block; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 
-    .app-shell { min-height: 100vh; }
-
-    .topbar {
-      display: grid;
-      grid-template-columns: minmax(250px, 1fr) auto;
-      gap: var(--space-5);
-      align-items: end;
-      padding: 40px clamp(32px, 5vw, 72px) 32px;
-      color: #fff;
-      background: linear-gradient(115deg, #0e3658, #12628f 66%, #1a739f);
-    }
-
-    .eyebrow {
-      margin: 0 0 var(--space-1);
-      color: #b9dff3;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.13em;
-      text-transform: uppercase;
-    }
-
-    .brand-title { margin: 0; font-size: clamp(28px, 3vw, 40px); line-height: 1.08; letter-spacing: -0.035em; }
-    .brand-copy { margin: var(--space-2) 0 0; max-width: 760px; color: #d8ecf7; font-size: 15px; line-height: 1.7; }
-
-    .level-nav { display: flex; gap: var(--space-1); align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-    .level-step {
-      min-width: 88px;
-      min-height: 50px;
-      padding: 11px 14px;
-      border: 1px solid rgba(255,255,255,.28);
-      border-radius: 12px;
-      background: rgba(255,255,255,.08);
-      color: #dceef7;
-      text-align: left;
-      transition: transform 100ms ease-out, background-color 160ms ease, border-color 160ms ease;
-    }
-    .level-step strong, .level-step span { display: block; }
-    .level-step strong { font-size: 12px; }
-    .level-step span { margin-top: 2px; font-size: 11px; opacity: .78; }
-    .level-step[aria-current="step"] { border-color: #fff; background: #fff; color: var(--blue-deep); box-shadow: 0 8px 24px rgba(4, 31, 52, .16); }
-    .level-step:disabled { opacity: .46; cursor: not-allowed; }
-    .level-step:not(:disabled):active { transform: scale(.97); transition-duration: 80ms; }
-
-    .workspace { width: min(100%, 1680px); margin: 0 auto; padding: 32px clamp(24px, 3vw, 48px) 56px; }
-    .toolbar {
-      position: sticky;
-      top: 8px;
-      z-index: 5;
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-      min-height: 52px;
-      padding: 8px 12px;
-      border: 1px solid rgba(207, 216, 226, .78);
-      border-radius: 14px;
-      background: rgba(243, 246, 249, .82);
-      box-shadow: 0 10px 32px rgba(32, 56, 78, .08);
-      backdrop-filter: blur(20px) saturate(160%);
-      -webkit-backdrop-filter: blur(20px) saturate(160%);
-    }
     .back-button {
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -209,34 +162,9 @@
     .crumb[aria-current="page"] { color: var(--ink); font-weight: 700; cursor: default; }
     .crumb-separator { color: var(--line-strong); }
 
-    .view-intro {
-      display: flex;
-      justify-content: space-between;
-      gap: var(--space-5);
-      align-items: end;
-      margin: 28px 0;
-    }
     .view-kicker { margin: 0 0 var(--space-1); color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     .view-title { margin: 0; font-size: clamp(28px, 2.7vw, 40px); line-height: 1.12; letter-spacing: -.035em; }
     .view-description { margin: var(--space-2) 0 0; max-width: 840px; color: var(--muted); font-size: 16px; line-height: 1.7; }
-    .scope-chip { flex: 0 0 auto; border-left: 3px solid var(--blue); padding: 7px 0 7px 14px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .scope-chip strong { display: block; margin-top: 2px; color: var(--ink); }
-
-    .explorer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 320px); gap: 28px; align-items: start; }
-    .diagram-panel, .evidence-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
-    .diagram-panel { padding: 24px; min-width: 0; }
-
-    .diagram-stage {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 1020 / 640;
-      min-height: 540px;
-      overflow: hidden;
-      border-radius: 16px;
-      background-color: var(--surface-soft);
-      background-image: radial-gradient(circle, #d8e0e8 1px, transparent 1px);
-      background-size: 20px 20px;
-    }
 
     .c4-boundary rect { fill: rgba(22, 102, 154, .045); stroke: var(--blue-deep); stroke-width: 2; stroke-dasharray: 12 8; }
     .c4-boundary text { fill: var(--blue-deep); font-size: 16px; font-weight: 750; }
@@ -254,12 +182,24 @@
     .diagram-node .node-name { fill: #fff; font-size: var(--node-name-size, 16px); font-weight: 750; letter-spacing: -.01em; }
     .diagram-node .node-meta { fill: rgba(255,255,255,.86); font-size: var(--node-meta-size, 10px); }
     .diagram-node .node-description { fill: rgba(255,255,255,.94); font-size: var(--node-description-size, 12px); }
-    .diagram-node .node-open text, .diagram-node .node-status { fill: #fff; font-size: var(--node-affordance-size, 10px); font-weight: 800; }
+    .diagram-node .node-open { cursor: pointer; outline: none; pointer-events: all; }
+    .diagram-node .node-open-surface { fill: rgba(255,255,255,.1); stroke: none; transition: fill 120ms ease-out; }
+    .diagram-node .node-open-divider { stroke: rgba(255,255,255,.42); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .diagram-node .node-open text { fill: rgba(255,255,255,.96); font-size: var(--node-affordance-size, 11px); font-weight: 750; }
+    .diagram-node .node-open-chevron { font-size: calc(var(--node-affordance-size, 11px) + 2px); }
+    .diagram-node .node-status { fill: #fff; font-size: var(--node-affordance-size, 11px); font-weight: 800; }
     .diagram-node.role-person .node-name, .diagram-node.role-softwareSystem .node-name, .diagram-node.role-dataStore .node-name { fill: #12324a; }
     .diagram-node.role-person .node-meta, .diagram-node.role-softwareSystem .node-meta, .diagram-node.role-dataStore .node-meta { fill: #496477; }
     .diagram-node.role-person .node-description, .diagram-node.role-softwareSystem .node-description, .diagram-node.role-dataStore .node-description { fill: #29485f; }
+    .diagram-node.role-person .node-open-surface, .diagram-node.role-softwareSystem .node-open-surface, .diagram-node.role-dataStore .node-open-surface { fill: rgba(28,105,152,.045); }
+    .diagram-node.role-person .node-open-divider, .diagram-node.role-softwareSystem .node-open-divider, .diagram-node.role-dataStore .node-open-divider { stroke: color-mix(in srgb, var(--blue) 30%, var(--line)); }
     .diagram-node.role-person .node-open text, .diagram-node.role-softwareSystem .node-open text, .diagram-node.role-dataStore .node-open text { fill: var(--blue-deep); }
     .diagram-node.status-gap .node-name, .diagram-node.status-gap .node-meta, .diagram-node.status-gap .node-description, .diagram-node.status-gap .node-open text, .diagram-node.status-gap .node-status { fill: #6e3a04; }
+    .diagram-node.is-drilldown { cursor: pointer; }
+    .diagram-node.is-drilldown:hover .node-surface, .diagram-node.is-drilldown:hover .semantic-person-head { stroke: var(--blue-deep); stroke-width: 3; }
+    .diagram-node.is-drilldown:hover .node-open-surface, .diagram-node .node-open:focus-visible .node-open-surface { fill: rgba(255,255,255,.18); }
+    .diagram-node.role-person.is-drilldown:hover .node-open-surface, .diagram-node.role-softwareSystem.is-drilldown:hover .node-open-surface, .diagram-node.role-dataStore.is-drilldown:hover .node-open-surface, .diagram-node.role-person .node-open:focus-visible .node-open-surface, .diagram-node.role-softwareSystem .node-open:focus-visible .node-open-surface, .diagram-node.role-dataStore .node-open:focus-visible .node-open-surface { fill: color-mix(in srgb, var(--blue) 11%, white); }
+    .diagram-node .node-open:active .node-open-surface { fill: rgba(255,255,255,.24); }
     .diagram-node[aria-pressed="true"] .node-surface, .diagram-node[aria-pressed="true"] .semantic-person-head, .diagram-node:focus-visible .node-surface, .diagram-node:focus-visible .semantic-person-head { stroke: var(--focus); stroke-width: 4; }
 
     .relationship { opacity: 1; transition: opacity 180ms ease-out; }
@@ -278,14 +218,11 @@
     .relationship-technology { fill: var(--muted); font-size: 10px; font-weight: 550; }
     .relationship.status-gap .relationship-description, .relationship.status-gap .relationship-technology { fill: #6e3a04; }
 
-    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-    .legend-item { display: inline-flex; gap: 6px; align-items: center; }
     .legend-swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--blue); }
     .legend-swatch.person { background: var(--person); }
     .legend-swatch.external { background: var(--external); }
     .legend-swatch.gap { border: 2px dashed var(--gap); background: var(--gap-soft); }
 
-    .evidence-panel { position: sticky; top: 24px; overflow: hidden; }
     .evidence-head { padding: 24px 26px; color: #fff; background: var(--blue-deep); }
     .evidence-kicker { margin: 0; color: #bfe1f2; font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
     .evidence-title { margin: 8px 0 0; font-size: 22px; line-height: 1.18; letter-spacing: -.02em; }
@@ -300,108 +237,24 @@
     .status-note { margin: 18px 0 0; padding: 12px 14px; border-left: 3px solid var(--gap); background: var(--gap-soft); color: #6e3a04; font-size: 12px; line-height: 1.6; }
     .evidence-empty { padding: 30px 26px 36px; color: var(--muted); font-size: 15px; line-height: 1.75; }
 
-    .provenance {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 32px;
-      align-items: start;
-      padding: 30px clamp(32px, 5vw, 72px) 36px;
-      border-top: 1px solid #294861;
-      background: #102d43;
-      color: #c5d8e4;
-      font-size: 12px;
-      line-height: 1.6;
-    }
-    .provenance p { margin: 0; }
-    .provenance code { color: #edf8ff; overflow-wrap: anywhere; }
-    .provenance strong { color: #fff; }
-
-    @media (max-width: 980px) {
-      .topbar { grid-template-columns: 1fr; align-items: start; }
-      .level-nav { justify-content: flex-start; }
-      .explorer-grid { grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); }
-      .diagram-stage { min-height: 460px; }
-    }
-
-    @media (max-width: 760px) {
-      .topbar { padding: 28px 20px 24px; gap: 22px; }
-      .brand-title { font-size: clamp(27px, 8vw, 34px); }
-      .brand-copy { margin-top: 10px; font-size: 14px; line-height: 1.72; }
-      .level-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: 8px; }
-      .level-step { min-width: 0; min-height: 54px; padding: 10px 8px; }
-      .workspace { padding: 20px 16px 40px; }
-      .toolbar { top: 6px; align-items: flex-start; gap: 10px; padding: 8px 10px; }
-      .back-button { min-height: 40px; padding-inline: 12px; }
-      .breadcrumb { gap: 4px; font-size: 12px; line-height: 1.5; }
-      .view-intro { display: block; margin: 24px 0; }
-      .view-title { font-size: clamp(27px, 8vw, 34px); }
-      .view-description { margin-top: 10px; font-size: 15px; line-height: 1.75; }
-      .scope-chip { margin-top: 20px; padding-block: 8px; }
-      .explorer-grid { grid-template-columns: 1fr; gap: 24px; }
-      .diagram-panel { padding: 16px; border-radius: 16px; }
-      .diagram-stage { min-height: 0; aspect-ratio: auto; overflow: visible; background-size: 16px 16px; }
-      .legend { gap: 12px; font-size: 11px; }
-      .evidence-panel { position: static; }
-      .evidence-head { padding: 24px 22px; }
-      .evidence-body { padding: 24px 22px 30px; }
-      .evidence-empty { padding: 28px 22px 34px; }
-      .provenance { grid-template-columns: 1fr; padding: 28px 20px 32px; gap: 20px; }
-    }
-
-    @media (prefers-reduced-transparency: reduce) {
-      .toolbar { background: var(--page); backdrop-filter: none; -webkit-backdrop-filter: none; }
-    }
-
-    @media (prefers-contrast: more) {
-      .toolbar, .diagram-panel, .evidence-panel { border-color: var(--ink); box-shadow: none; }
-      .relationship-path { stroke: CanvasText; stroke-width: 3; }
-      .arrow-marker, .arrow-marker-gap { fill: CanvasText; }
-      .relationship-label-surface { fill: Canvas; stroke: CanvasText; stroke-width: 2; }
-      .relationship-description, .relationship-technology { fill: CanvasText; font-weight: 800; }
-      .relationship.is-ambient { opacity: .42; }
-      .relationship.is-muted { opacity: .18; }
-      .c4-boundary rect { fill: Canvas; stroke: CanvasText; stroke-width: 3; }
-      .diagram-node .node-surface, .diagram-node .semantic-person-head { stroke: CanvasText; stroke-width: 3; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
-      .relationship, .relationship-label { transition: none !important; }
-    }
-
-    /* Diagram-first workspace polish: calm structural chrome, with the canvas in charge. */
-    :root {
-      --sidebar-left: 17.5rem;
-      --sidebar-right: 21rem;
-      --chrome-radius: .875rem;
-      --space-1: .25rem;
-      --space-2: .5rem;
-      --space-3: .75rem;
-      --space-4: 1rem;
-      --space-6: 1.5rem;
-      --surface-solid: #ffffff;
-      --canvas-background: #f5f7fa;
-      --accent: var(--blue);
-      --shadow: 0 12px 28px rgba(31, 47, 61, .10);
-    }
-
+    /* Diagram-first workspace: canvas-first hierarchy with restrained macOS chrome. */
     body { min-width: 320px; font: 100%/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--canvas-background); }
     button, [role="button"] { font: inherit; }
     button:not(:disabled), [role="button"] { -webkit-tap-highlight-color: transparent; }
     button:focus-visible, [role="button"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-    button:not(:disabled):active, .canvas-tool:active, .toolbar-action:active, .panel-toggle:active { transform: scale(.97); transition-duration: 80ms; }
+    button:not(:disabled):active, .canvas-tool:active, .toolbar-action:active { transform: scale(.97); transition-duration: 80ms; }
 
     .workspace-shell {
       grid-template-columns: var(--left-column, var(--sidebar-left)) minmax(0, 1fr) var(--right-column, 0rem);
-      background: var(--canvas-background);
+      background-color: var(--canvas-background);
+      background-image: radial-gradient(circle, var(--canvas-grid) 1px, transparent 1.15px);
+      background-size: 20px 20px;
       transition: grid-template-columns 220ms cubic-bezier(.2, .8, .2, 1);
     }
     .workspace-shell[data-left-open="false"] { --left-column: 0rem; }
     .workspace-shell[data-right-open="true"] { --right-column: var(--sidebar-right); }
     .canvas-region {
-      background-color: var(--canvas-background);
-      background-image: radial-gradient(circle, #d4dce5 1px, transparent 1.15px);
-      background-size: 20px 20px;
+      background: transparent;
     }
     .diagram-viewport { user-select: none; }
     .diagram-viewport[data-panning="true"] { cursor: grabbing; }
@@ -413,7 +266,8 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
-      background: color-mix(in srgb, var(--surface-solid) 94%, #edf2f7);
+      border-radius: var(--radius-panel);
+      background: var(--surface-panel);
       box-shadow: none;
       transition: transform 220ms cubic-bezier(.2, .8, .2, 1), opacity 180ms ease, visibility 0s linear 220ms;
     }
@@ -445,49 +299,103 @@
       visibility: visible;
       transition-delay: 0s;
     }
-    .panel-heading, .inspector-toolbar { padding: var(--space-6); }
+    .panel-heading, .inspector-toolbar { padding: 1rem 1.125rem .875rem; }
     .panel-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-3); align-items: center; }
-    .panel-heading .eyebrow { grid-column: 1; margin: 0; color: var(--blue); font-size: .67rem; letter-spacing: .11em; }
-    .panel-title { grid-column: 1; margin: var(--space-1) 0 0; font-size: 1rem; letter-spacing: -.01em; }
-    .panel-heading .panel-toggle { grid-column: 2; grid-row: 1 / span 2; }
-    .panel-toggle, .toolbar-action, .canvas-tool { min-width: 2.25rem; min-height: 2.25rem; border-radius: .625rem; transition: transform 100ms ease-out, background-color 140ms ease, border-color 140ms ease, opacity 160ms ease; }
-    .panel-toggle { padding: .45rem .65rem; background: color-mix(in srgb, var(--surface-solid) 92%, #e8eef5); }
-    .panel-tabs { padding: var(--space-3) var(--space-4) 0; }
-    .panel-tab { padding: .55rem .6rem; }
+    .panel-heading .eyebrow { grid-column: 1; margin: 0; color: var(--muted); font-size: .7rem; font-weight: 600; letter-spacing: .01em; text-transform: none; }
+    .panel-title { grid-column: 1; margin: .15rem 0 0; font-size: .94rem; font-weight: 650; letter-spacing: -.012em; }
+    .panel-close-button { grid-column: 2; grid-row: 1 / span 2; align-self: center; display: inline-grid; place-items: center; min-width: 2.25rem; min-height: 2.25rem; padding: 0; border: 1px solid transparent; border-radius: var(--radius-control); background: transparent; color: var(--ink); cursor: pointer; transition: background-color 140ms ease, border-color 140ms ease; }
+    .panel-close-button:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+    .toolbar-action, .canvas-tool { min-width: 2.25rem; min-height: 2.25rem; border-radius: var(--radius-control); transition: transform 100ms ease-out, background-color 140ms ease, border-color 140ms ease, opacity 160ms ease; }
+    .panel-tabs { gap: 1rem; padding: 0 1.125rem; border-bottom: 1px solid color-mix(in srgb, var(--line) 84%, transparent); }
+    .panel-tab { margin-bottom: -1px; padding: .625rem .125rem .55rem; font-size: .78rem; }
     .panel-content { min-height: 0; overflow: auto; padding: var(--space-4); }
-    .view-list button, .layer-groups button { padding: .7rem .75rem; border-radius: .625rem; background: color-mix(in srgb, var(--surface-solid) 78%, transparent); }
+    .view-list { gap: var(--space-1); }
+    .view-list .view-row { position: relative; grid-template-columns: 2rem minmax(0, 1fr); column-gap: .625rem; align-items: center; padding: .55rem .625rem; border-color: transparent; border-radius: var(--radius-control); background: transparent; }
+    .view-list .view-row::before { content: ""; position: absolute; inset: .45rem auto .45rem 0; width: 2px; border-radius: 2px; background: transparent; }
+    .view-list .view-row:hover { background: color-mix(in srgb, var(--blue) 6%, transparent); }
+    .view-list .view-row[aria-current="page"] { border-color: transparent; background: color-mix(in srgb, var(--blue) 9%, var(--surface-panel)); }
+    .view-list .view-row[aria-current="page"]::before { background: var(--accent); }
+    .view-level { grid-row: 1 / span 2; display: inline-grid; place-items: center; width: 2rem; height: 1.5rem; border-radius: .25rem; background: color-mix(in srgb, var(--line) 38%, transparent); color: var(--muted); font-size: .68rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .view-row[aria-current="page"] .view-level { background: var(--blue-deep); color: #fff; }
+    .view-copy { min-width: 0; display: grid; gap: .1rem; }
+    .view-copy strong, .view-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .layer-groups { gap: 0; }
+    .layer-groups section { gap: .35rem; padding: .8rem 0; }
+    .layer-groups section + section { border-top: 1px solid color-mix(in srgb, var(--line) 78%, transparent); }
+    .layer-groups h3 { padding: 0 .5rem; color: var(--muted); font-size: .69rem; font-weight: 650; letter-spacing: .015em; }
+    .layer-groups ul { gap: .1rem; padding: 0; list-style: none; }
+    .layer-groups li { gap: .1rem; padding: .4rem .5rem; border-radius: var(--radius-control); color: var(--ink); font-size: .78rem; line-height: 1.35; }
+    .layer-groups li:has(> button) { padding: 0; }
+    .layer-groups button { padding: .5rem; border-color: transparent; border-radius: var(--radius-control); background: transparent; font-size: .78rem; }
+    .layer-groups button:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+    .relationship-mode-control { gap: 2px; padding: 2px; border-radius: .5rem; background: color-mix(in srgb, var(--line) 45%, transparent); }
+    .relationship-mode-control button { border: 0; border-radius: .375rem; background: transparent; }
+    .relationship-mode-control button[aria-pressed="true"] { background: var(--surface-solid); box-shadow: 0 1px 2px rgba(35,47,58,.1); }
     .panel-note { margin: auto var(--space-4) var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--line); }
     #inspector-content { height: auto; min-height: 0; flex: 1; overflow: auto; }
 
+    .inspector-toolbar { border-bottom-color: color-mix(in srgb, var(--line) 84%, transparent); }
+    .inspector-eyebrow { color: var(--muted); font-size: .68rem; font-weight: 600; letter-spacing: .01em; }
+    .inspector-title { margin-top: .15rem; font-size: .94rem; font-weight: 650; }
+    .inspector-overview { display: block; padding: 0; }
+    .inspector-section { display: grid; gap: .45rem; padding: 1rem 1.125rem; border-bottom: 1px solid color-mix(in srgb, var(--line) 78%, transparent); }
+    .inspector-section h3 { margin: 0; color: var(--muted); font-size: .69rem; font-weight: 650; letter-spacing: .015em; }
+    .inspector-meta { color: var(--muted); font-size: .72rem; line-height: 1.4; }
+    .inspector-description { color: var(--ink); font-size: .82rem; line-height: 1.58; }
+    .inspector-state-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); color: var(--ink); font-size: .78rem; }
+    .overview-evidence { gap: .25rem; }
+    .overview-evidence code { display: block; padding: .35rem 0 .35rem .65rem; border-left: 2px solid var(--line); color: color-mix(in srgb, var(--ink) 80%, var(--muted)); font: 500 .69rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    .inspector-drilldown { display: flex; width: calc(100% - 2.25rem); min-height: 2.5rem; margin: 1rem 1.125rem; padding: .55rem .75rem; align-items: center; justify-content: space-between; border: 1px solid color-mix(in srgb, var(--blue) 36%, var(--line)); border-radius: var(--radius-control); background: color-mix(in srgb, var(--blue) 7%, var(--surface-panel)); color: var(--blue-deep); font-size: .78rem; font-weight: 650; cursor: pointer; }
+    .inspector-drilldown:hover { background: color-mix(in srgb, var(--blue) 11%, var(--surface-panel)); }
+
     .top-toolbar {
       position: absolute;
-      inset: var(--space-4) var(--space-4) auto;
-      min-height: 3.75rem;
-      padding: .55rem .65rem;
+      inset: 0 0 auto;
+      min-height: 3.25rem;
+      padding: .375rem .625rem;
       overflow: hidden;
-      border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
-      border-radius: var(--chrome-radius);
-      background: color-mix(in srgb, var(--surface-solid) 86%, transparent);
-      box-shadow: 0 8px 22px rgba(32, 49, 63, .08);
-      backdrop-filter: blur(18px) saturate(145%);
-      -webkit-backdrop-filter: blur(18px) saturate(145%);
+      border: 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+      border-radius: 0;
+      background: var(--surface-chrome);
+      box-shadow: none;
+      backdrop-filter: blur(16px) saturate(120%);
+      -webkit-backdrop-filter: blur(16px) saturate(120%);
     }
-    .back-button { min-width: 2.5rem; min-height: 2.5rem; border-radius: .625rem; padding: .45rem .7rem; }
-    .toolbar-context .view-kicker { color: var(--blue); font-size: .67rem; font-weight: 750; letter-spacing: .08em; }
-    .toolbar-context .view-title { font-size: .95rem; line-height: 1.2; }
+    .back-button { display: inline-flex; align-items: center; gap: .35rem; min-width: 2.5rem; min-height: 2.25rem; border-color: transparent; border-radius: var(--radius-control); padding: .4rem .55rem; background: transparent; }
+    .back-button:not(:disabled):hover, .toolbar-action:hover, .canvas-tool:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+    .toolbar-action[aria-expanded="true"], .canvas-tool[aria-pressed="true"] { border-color: color-mix(in srgb, var(--blue) 38%, var(--line)); background: var(--blue-soft); color: var(--blue-deep); }
+    .toolbar-context .view-kicker { color: var(--muted); font-size: .66rem; font-weight: 600; letter-spacing: .01em; text-transform: none; }
+    .toolbar-context .view-title { font-size: .88rem; font-weight: 650; line-height: 1.2; }
     .toolbar-context .view-description { display: none; }
-    .breadcrumb { gap: .2rem; font-size: .78rem; }
+    .breadcrumb { gap: .15rem; color: var(--muted); font-size: .74rem; }
     .crumb { padding: .3rem .4rem; }
     .toolbar-actions { gap: var(--space-2); }
-    .toolbar-action { width: 2.5rem; height: 2.5rem; background: color-mix(in srgb, var(--surface-solid) 94%, transparent); }
+    .toolbar-action { width: 2.25rem; height: 2.25rem; border-color: transparent; background: transparent; }
+    .workspace-shell[data-left-open="true"] #toolbar-left-panel-toggle { visibility: hidden; }
+    .workspace-shell[data-left-open="false"] .top-toolbar { left: 0; padding-left: 3.625rem; overflow: visible; }
+    .workspace-shell[data-left-open="false"] #toolbar-left-panel-toggle {
+      position: absolute;
+      top: .375rem;
+      left: .625rem;
+      z-index: 6;
+      visibility: visible;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: var(--radius-control);
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
     .canvas-tools {
       right: var(--space-4);
       bottom: var(--space-4);
       gap: var(--space-1);
       padding: var(--space-2);
-      border-radius: var(--chrome-radius);
-      background: color-mix(in srgb, var(--surface-solid) 84%, transparent);
-      box-shadow: var(--shadow);
+      border-radius: var(--radius-floating);
+      background: var(--surface-floating);
+      box-shadow: var(--elevation-floating);
       backdrop-filter: blur(18px) saturate(145%);
       -webkit-backdrop-filter: blur(18px) saturate(145%);
     }
@@ -496,39 +404,48 @@
     .canvas-legend {
       left: var(--space-4);
       bottom: var(--space-4);
-      padding: .5rem .65rem;
-      border-radius: var(--chrome-radius);
-      background: color-mix(in srgb, var(--surface-solid) 84%, transparent);
-      backdrop-filter: blur(18px) saturate(145%);
-      -webkit-backdrop-filter: blur(18px) saturate(145%);
+      padding: .35rem .25rem;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
 
-    @media (max-width: 1199px) {
+    @media (max-width: 1599px) {
       .workspace-shell { grid-template-columns: minmax(0, 1fr); }
       .side-panel {
         position: fixed;
         top: 0;
         bottom: 0;
         z-index: 20;
-        width: min(22rem, 88vw);
-        box-shadow: 0 16px 40px rgba(26, 42, 55, .18);
+        width: min(25rem, 92vw);
+        box-shadow: var(--elevation-floating);
         opacity: 0;
         pointer-events: none;
         visibility: hidden;
       }
       .left-panel { left: 0; transform: translateX(-100%); }
       .right-inspector { right: 0; transform: translateX(100%); }
-      .top-toolbar { inset-inline: var(--space-4); }
+      .top-toolbar { inset-inline: 0; }
     }
 
     @media (max-width: 799px) {
       .side-panel { width: min(20rem, calc(100vw - 2rem)); }
-      .top-toolbar { inset-inline: .75rem; top: .75rem; gap: .4rem; min-height: 2.75rem; }
-      .back-button { width: 2.75rem; min-width: 2.75rem; height: 2.75rem; overflow: hidden; padding: 0; font-size: 0; }
-      .back-button::before { content: "←"; font-size: 1.1rem; }
+      .top-toolbar { inset-inline: 0; top: 0; gap: .4rem; min-height: 3.25rem; }
+      .workspace-shell[data-left-open="false"] .top-toolbar { left: 0; padding-left: 3.625rem; }
+      .workspace-shell[data-left-open="false"] #toolbar-left-panel-toggle {
+        left: .625rem;
+        width: 2.75rem;
+        height: 2.75rem;
+      }
+      .back-button { width: 2.75rem; min-width: 2.75rem; height: 2.75rem; justify-content: center; overflow: hidden; padding: 0; }
+      .back-button .back-label { display: none; }
       .toolbar-context { display: none; }
       .breadcrumb { min-width: 0; overflow: hidden; flex-wrap: nowrap; white-space: nowrap; }
-      .panel-toggle, .toolbar-action, .canvas-tool { min-width: 2.75rem; min-height: 2.75rem; }
+      .toolbar-action, .canvas-tool { min-width: 2.75rem; min-height: 2.75rem; }
+      .panel-close-button { min-width: 2.75rem; min-height: 2.75rem; }
       .canvas-tools { right: .75rem; bottom: .75rem; max-width: calc(100vw - 1.5rem); min-height: 2.75rem; flex-wrap: wrap; justify-content: flex-end; }
       .canvas-legend { left: .75rem; bottom: 4.5rem; max-width: calc(100vw - 1.5rem); flex-wrap: wrap; overflow: hidden; }
     }
@@ -546,7 +463,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .side-panel, .panel-toggle, .toolbar-action, .canvas-tool { transition: opacity 120ms linear !important; transform: none !important; }
+      .side-panel, .toolbar-action, .canvas-tool { transition: opacity 120ms linear !important; transform: none !important; }
     }
     @media (prefers-reduced-transparency: reduce) {
       .side-panel, .top-toolbar, .canvas-tools, .canvas-legend { background: var(--surface-solid); backdrop-filter: none; -webkit-backdrop-filter: none; }
@@ -572,7 +489,7 @@
       <div class="panel-heading">
         <p class="eyebrow">RhythmTrainer</p>
         <h1 class="panel-title">아키텍처 탐색</h1>
-        <button id="left-panel-toggle" class="panel-toggle" type="button" aria-controls="left-panel" aria-expanded="true" aria-label="왼쪽 패널 닫기">패널 닫기</button>
+        <button id="left-panel-close" class="panel-close-button" type="button" data-panel-toggle="left" aria-controls="left-panel" aria-label="왼쪽 패널 닫기"><svg class="app-icon" data-icon="sidebar-left" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="15" height="14" rx="2"/><path d="M7 3v14"/></svg></button>
       </div>
       <div id="left-panel-content" class="panel-content"></div>
       <p class="panel-note">노드를 선택해 책임과 연결 근거를 확인하고, 드릴다운으로 다음 C4 수준을 탐색하세요.</p>
@@ -580,7 +497,7 @@
 
     <section class="canvas-region" aria-label="C4 다이어그램 작업공간">
       <header id="top-toolbar" class="top-toolbar">
-        <button id="back-button" class="back-button" type="button" aria-label="상위 수준">← 상위 수준</button>
+        <button id="back-button" class="back-button" type="button" aria-label="상위 수준"><svg class="app-icon" data-icon="chevron-left" viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 4.5-5.5 5.5 5.5 5.5"/></svg><span class="back-label">상위 수준</span></button>
         <div class="toolbar-context">
           <p id="view-kicker" class="view-kicker"></p>
           <h2 id="view-title" class="view-title"></h2>
@@ -588,8 +505,8 @@
         </div>
         <nav id="breadcrumb" class="breadcrumb" aria-label="현재 아키텍처 위치"></nav>
         <div class="toolbar-actions" aria-label="패널 열기 및 닫기">
-          <button id="toolbar-left-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="left" aria-controls="left-panel" aria-expanded="true" aria-label="왼쪽 패널 닫기">☰</button>
-          <button id="toolbar-right-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="right" aria-controls="right-inspector" aria-expanded="false" aria-label="인스펙터 열기">▣</button>
+          <button id="toolbar-left-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="left" aria-controls="left-panel" aria-expanded="true" aria-label="왼쪽 패널 닫기"><svg class="app-icon" data-icon="sidebar-left" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="15" height="14" rx="2"/><path d="M7 3v14"/></svg></button>
+          <button id="toolbar-right-panel-toggle" class="toolbar-action" type="button" data-panel-toggle="right" aria-controls="right-inspector" aria-expanded="false" aria-label="인스펙터 열기"><svg class="app-icon" data-icon="sidebar-right" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="15" height="14" rx="2"/><path d="M13 3v14"/></svg></button>
         </div>
       </header>
       <div id="diagram-viewport" class="diagram-viewport" tabindex="0">
@@ -597,12 +514,12 @@
           <g id="diagram-world"></g>
         </svg>
         <div id="canvas-tools" class="canvas-tools" role="toolbar" aria-label="캔버스 도구">
-          <button type="button" class="canvas-tool" data-tool="select" aria-label="선택 도구" aria-pressed="true" title="선택 도구">↖</button>
-          <button type="button" class="canvas-tool" data-tool="hand" aria-label="이동 도구" aria-pressed="false" title="이동 도구">✋</button>
+          <button type="button" class="canvas-tool" data-tool="select" aria-label="선택 도구" aria-pressed="true" title="선택 도구"><svg class="app-icon" data-icon="cursor" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.8 15.5 10l-5.1 1.2-2.8 4.5L4 2.8Z"/></svg></button>
+          <button type="button" class="canvas-tool" data-tool="hand" aria-label="이동 도구" aria-pressed="false" title="이동 도구"><svg class="app-icon" data-icon="hand" viewBox="0 0 20 20" aria-hidden="true"><path d="M6.2 9V5.2a1.2 1.2 0 0 1 2.4 0v3.1-4.4a1.2 1.2 0 1 1 2.4 0v4.4-3.6a1.2 1.2 0 1 1 2.4 0v3.9-2.3a1.2 1.2 0 1 1 2.4 0v5.2c0 3.2-2.1 5.3-5.3 5.3H9c-2 0-3.5-.9-4.6-2.5L2.6 11.7a1.3 1.3 0 0 1 2-1.6L6.2 12V9Z"/></svg></button>
           <span id="zoom-value" class="canvas-zoom-value" aria-label="현재 확대 비율">100%</span>
-          <button type="button" class="canvas-tool" data-action="zoom-out" aria-label="축소" title="축소">−</button>
-          <button type="button" class="canvas-tool" data-action="fit-view" aria-label="화면에 맞추기" title="화면에 맞추기">Fit</button>
-          <button type="button" class="canvas-tool" data-action="zoom-in" aria-label="확대" title="확대">+</button>
+          <button type="button" class="canvas-tool" data-action="zoom-out" aria-label="축소" title="축소"><svg class="app-icon" data-icon="minus" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
+          <button type="button" class="canvas-tool" data-action="fit-view" aria-label="화면에 맞추기" title="화면에 맞추기"><svg class="app-icon" data-icon="fit" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M7 17H3v-4M13 17h4v-4"/></svg></button>
+          <button type="button" class="canvas-tool" data-action="zoom-in" aria-label="확대" title="확대"><svg class="app-icon" data-icon="plus" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
         </div>
         <div class="canvas-legend" aria-label="다이어그램 범례">
           <span><i class="legend-swatch"></i>내부</span>
@@ -615,7 +532,10 @@
 
     <aside id="right-inspector" class="side-panel right-inspector" aria-live="polite" aria-label="선택한 요소 정보" inert aria-hidden="true">
       <div class="inspector-toolbar">
-        <button id="right-panel-toggle" class="panel-toggle" type="button" aria-controls="right-inspector" aria-expanded="false" aria-label="인스펙터 닫기">닫기</button>
+        <div class="inspector-context">
+          <p id="inspector-eyebrow" class="inspector-eyebrow">현재 보기</p>
+          <h2 id="inspector-title" class="inspector-title">엇박 리듬 훈련 시스템</h2>
+        </div>
       </div>
       <div id="inspector-content"></div>
     </aside>
@@ -718,14 +638,14 @@
         "title": "Container Diagram",
         "scopeName": "엇박 리듬 훈련 시스템",
         "description": "배포·실행되는 iPhone 앱과 Watch 앱의 책임과 통신 경계를 보여줍니다.",
-        "worldSize": {"width": 1400, "height": 600},
-        "boundaries": [{"id":"rhythm-boundary","name":"엇박 리듬 훈련 시스템","type":"Software System","members":["iphone-app","watch-app"],"x":320,"y":50,"w":700,"h":370}],
+        "worldSize": {"width": 2160, "height": 1300},
+        "boundaries": [{"id":"rhythm-boundary","name":"엇박 리듬 훈련 시스템","type":"Software System","members":["iphone-app","watch-app"],"x":600,"y":100,"w":1380,"h":760}],
         "nodes": [
           {
             "id": "learner", "name": "리듬을 연습하는 사용자", "type": "Person", "visualRole": "person", "technology": "",
             "description": "곡을 고르고 연습을 시작해 결과를 확인하는 사람입니다.", "status": "person", "evidence": ["README.md"],
             "inputs": ["연습 진행", "실시간 경고", "세션 결과"], "outputs": ["곡 선택", "연습 시작·종료", "팔 움직임"],
-            "x": 20, "y": 20, "w": 180, "h": 190
+            "x": 120, "y": 330, "w": 300, "h": 360
           },
           {
             "id": "file-store",
@@ -737,7 +657,7 @@
             "evidence": ["RhythmTrainer/Services/SongUploadService.swift"],
             "inputs": ["사용자 오디오 파일"],
             "outputs": ["Security-scoped audio URL"],
-            "x": 50, "y": 185, "w": 210, "h": 140
+            "x": 760, "y": 940, "w": 390, "h": 240
           },
           {
             "id": "iphone-app",
@@ -750,7 +670,7 @@
             "evidence": ["RhythmTrainer/RhythmTrainerApp.swift", "RhythmTrainer/ViewModels/AppFlowViewModel.swift", "RhythmTrainer.xcodeproj/project.pbxproj"],
             "inputs": ["오디오 URL", "Watch 시작·이탈·결과"],
             "outputs": ["Song + BeatGrid", "예약 오디오 재생", "결과 화면"],
-            "x": 355, "y": 135, "w": 270, "h": 240
+            "x": 760, "y": 300, "w": 390, "h": 420
           },
           {
             "id": "watch-app",
@@ -763,7 +683,7 @@
             "evidence": ["RhythmTrainerWatch Watch App/RhythmTrainerWatchApp.swift", "RhythmTrainerWatch Watch App/ContentView.swift", "RhythmTrainer.xcodeproj/project.pbxproj"],
             "inputs": ["Song ID + BeatGrid", "팔 스윙", "세션 종료 신호"],
             "outputs": ["곡 시작 시각", "이탈 상태", "SessionResult"],
-            "x": 720, "y": 135, "w": 250, "h": 240
+            "x": 1430, "y": 300, "w": 390, "h": 420
           }
         ],
         "relationships": [
@@ -1018,7 +938,7 @@
 
     const SPACIOUS_LAYOUTS = {
       context: { outer: 96, x: 1.85, y: 1.7, nodeWidth: 1.35, nodeHeight: 1.75, personHeight: 2.1, text: 1 },
-      containers: { outer: 96, x: 1.85, y: 3.7, nodeWidth: 1.4, nodeHeight: 1.7, personHeight: 2.2, dataStoreHeight: 2, text: 1 },
+      containers: { outer: 0, x: 1, y: 1, nodeWidth: 1, nodeHeight: 1, personHeight: 1, dataStoreHeight: 1, text: 1 },
       "iphone-components": { outer: 0, x: 1, y: 1, nodeWidth: 1, nodeHeight: 1, personHeight: 1, dataStoreHeight: 1, text: 1 },
       "watch-components": { outer: 0, x: 1, y: 1, nodeWidth: 1, nodeHeight: 1, personHeight: 1, dataStoreHeight: 1, text: 1 }
     };
@@ -1036,7 +956,8 @@
           const source = nodes.get(relationship.from);
           const target = nodes.get(relationship.to);
           if (!source || !target) return;
-          const laneOffset = (index - (relationships.length - 1) / 2) * 76;
+          const laneSpacing = view.level === 2 ? 92 : 76;
+          const laneOffset = (index - (relationships.length - 1) / 2) * laneSpacing;
           const sourceCenter = { x: source.x + source.w / 2, y: source.y + source.h / 2 };
           const targetCenter = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
           const horizontal = Math.abs(targetCenter.x - sourceCenter.x) >= Math.abs(targetCenter.y - sourceCenter.y);
@@ -1107,6 +1028,10 @@
             textScale: layout.text
           };
         });
+        if (view.level === 1) {
+          const bottomBaseline = Math.max(...view.nodes.map((node) => node.y + node.h));
+          view.nodes = view.nodes.map((node) => ({ ...node, y: bottomBaseline - node.h }));
+        }
         const transformedNodes = new Map(view.nodes.map((node) => [node.id, node]));
         const transformAnchor = (anchor, nodeId) => {
           if (!anchor) return undefined;
@@ -1139,7 +1064,7 @@
           }
           return prepared;
         });
-        if (view.level === 3) normalizeDenseRelationshipGeometry(view);
+        if (view.level >= 2) normalizeDenseRelationshipGeometry(view);
       }
       return model;
     }
@@ -1182,7 +1107,6 @@
         leftPanelOpen: true,
         rightPanelOpen: false,
         leftTab: "views",
-        inspectorTab: "overview",
         tool: "select",
         relationshipMode: "focus",
         viewports: {}
@@ -1202,14 +1126,13 @@
         next.rightPanelOpen = false;
       }
       if (action.type === "set-left-tab" && ["views", "layers"].includes(action.tab)) next.leftTab = action.tab;
-      if (action.type === "set-inspector-tab" && ["overview", "flow", "evidence", "model"].includes(action.tab)) next.inspectorTab = action.tab;
       if (action.type === "set-tool" && ["select", "hand"].includes(action.tool)) next.tool = action.tool;
       if (action.type === "set-relationship-mode" && ["focus", "all"].includes(action.mode)) next.relationshipMode = action.mode;
       return next;
     }
 
     function normalizePanelsForWidth(state, width, openedPanel) {
-      if (width > 1199 || !(state.leftPanelOpen && state.rightPanelOpen)) return state;
+      if (width > 1599 || !(state.leftPanelOpen && state.rightPanelOpen)) return state;
       return openedPanel === "left"
         ? { ...state, leftPanelOpen: true, rightPanelOpen: false }
         : { ...state, leftPanelOpen: false, rightPanelOpen: true };
@@ -1488,20 +1411,41 @@
       </g>`;
     }
 
+    function getDrilldownFooterGeometry(node, layout = getSvgTextLayout(node)) {
+      const scale = node.textScale ?? 1;
+      const semanticRoles = ["person", "softwareSystem", "dataStore"];
+      const host = semanticRoles.includes(node.visualRole)
+        ? getSemanticCardGeometry(node).content
+        : { x: 0, y: 0, width: node.w, height: node.h };
+      const height = 34 * scale;
+      const bottomInset = 16 * scale;
+      return {
+        x: layout.bounds.x,
+        y: host.y + host.height - bottomInset - height,
+        width: layout.bounds.width,
+        height,
+        bottomInset
+      };
+    }
+
     function buildSvgNodeMarkup(node, selected) {
       const layout = getSvgTextLayout(node);
       const textScale = node.textScale ?? 1;
       const clipId = `node-text-clip-${String(node.id).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-      const drilldown = node.drilldown
-        ? `<g class="node-open" data-open-node-id="${escapeHTML(node.id)}"><text x="${layout.bounds.x}" y="${node.h - 24 * textScale}">Open L${node.type === "Software System" ? 2 : 3} →</text></g>`
+      const drilldownLevel = node.drilldown ? (node.type === "Software System" ? 2 : 3) : null;
+      const drilldownLabel = drilldownLevel === 2 ? "L2 컨테이너 열기" : drilldownLevel === 3 ? "L3 컴포넌트 열기" : "";
+      const drilldownGeometry = drilldownLevel ? getDrilldownFooterGeometry(node, layout) : null;
+      const drilldown = drilldownLevel
+        ? `<g class="node-open node-open-footer" data-variant="integrated" data-open-node-id="${escapeHTML(node.id)}" role="button" tabindex="0" aria-label="${drilldownLabel}" aria-keyshortcuts="Enter Space"><rect class="node-open-surface" x="${drilldownGeometry.x}" y="${drilldownGeometry.y}" width="${drilldownGeometry.width}" height="${drilldownGeometry.height}" rx="${6 * textScale}"/><line class="node-open-divider" x1="${drilldownGeometry.x}" y1="${drilldownGeometry.y}" x2="${drilldownGeometry.x + drilldownGeometry.width}" y2="${drilldownGeometry.y}"/><text class="node-open-label" x="${drilldownGeometry.x + 13 * textScale}" y="${drilldownGeometry.y + 22 * textScale}">${drilldownLabel}</text><text class="node-open-chevron" x="${drilldownGeometry.x + drilldownGeometry.width - 13 * textScale}" y="${drilldownGeometry.y + 22 * textScale}" text-anchor="end">→</text></g>`
         : "";
       const status = node.status === "gap"
         ? `<text class="node-status" x="${layout.bounds.x}" y="${node.h - 24 * textScale}">구현됨 · 미배선</text>`
         : "";
-      return `<g class="diagram-node status-${escapeHTML(node.status)} role-${escapeHTML(node.visualRole)}"
-          transform="translate(${node.x} ${node.y})" data-node-id="${escapeHTML(node.id)}"
-          role="button" tabindex="0" aria-pressed="${selected ? "true" : "false"}"
-          style="--node-name-size:${layout.name.fontSize}px;--node-meta-size:${layout.meta.fontSize}px;--node-description-size:${layout.description.fontSize}px;--node-affordance-size:${10 * textScale}px">
+      return `<g class="diagram-node status-${escapeHTML(node.status)} role-${escapeHTML(node.visualRole)}${drilldownLevel ? " is-drilldown" : ""}"
+          transform="translate(${node.x} ${node.y})" data-node-id="${escapeHTML(node.id)}"${drilldownLevel ? ` data-drilldown-level="${drilldownLevel}"` : ""}
+          aria-label="${escapeHTML(drilldownLevel ? `${node.name}, ${drilldownLabel} 가능` : `${node.name}, ${node.type}`)}"
+          role="button" tabindex="0" aria-pressed="${selected ? "true" : "false"}" aria-keyshortcuts="Enter O"
+          style="--node-name-size:${layout.name.fontSize}px;--node-meta-size:${layout.meta.fontSize}px;--node-description-size:${layout.description.fontSize}px;--node-affordance-size:${11 * textScale}px">
         <title>${escapeHTML(`${node.name}, ${node.type}, ${node.description}`)}</title>
         ${buildShapeGeometry(node)}
         <defs><clipPath id="${clipId}"><rect x="${layout.bounds.x}" y="${layout.bounds.top}" width="${layout.bounds.width}" height="${Math.max(1, layout.bounds.bottom - layout.bounds.top)}"/></clipPath></defs>
@@ -1531,17 +1475,15 @@
         ? '<p class="status-note"><strong>구현됨 · 미배선</strong><br>타입과 저장 로직은 존재하지만 현재 앱 진입점과 연습 흐름에서 생성·주입되지 않습니다.</p>'
         : "";
       const meta = node.technology ? `${node.type} · ${node.technology}` : node.type;
-      return `<div class="evidence-head"><p class="evidence-kicker">Selected element</p><h3 class="evidence-title">${escapeHTML(node.name)}</h3><p class="evidence-meta">[${escapeHTML(meta)}]</p></div><div class="evidence-body"><p class="evidence-description">${escapeHTML(node.description)}</p>${statusNote}<section class="evidence-section"><h4>입력</h4>${listMarkup(node.inputs)}</section><section class="evidence-section"><h4>출력</h4>${listMarkup(node.outputs)}</section><section class="evidence-section"><h4>코드 근거</h4><div class="evidence-files">${(node.evidence ?? []).map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div></section></div>`;
+      return `<div class="evidence-head"><p class="evidence-kicker">선택한 요소</p><h3 class="evidence-title">${escapeHTML(node.name)}</h3><p class="evidence-meta">[${escapeHTML(meta)}]</p></div><div class="evidence-body"><p class="evidence-description">${escapeHTML(node.description)}</p>${statusNote}<section class="evidence-section"><h4>입력</h4>${listMarkup(node.inputs)}</section><section class="evidence-section"><h4>출력</h4>${listMarkup(node.outputs)}</section><section class="evidence-section"><h4>코드 근거</h4><div class="evidence-files">${(node.evidence ?? []).map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div></section></div>`;
     }
-
-    const INSPECTOR_TABS = ["overview", "flow", "evidence", "model"];
 
     function buildViewsMarkup(model, state) {
       const order = ["context", "containers", "iphone-components", "watch-components"];
-      return `<nav class="view-list" aria-label="C4 Views">${order.map((viewId) => {
+      return `<nav class="view-list" aria-label="C4 보기">${order.map((viewId) => {
         const view = model.views[viewId];
-        return `<button type="button" data-view-id="${viewId}"${state.currentView === viewId ? ' aria-current="page"' : ""}>
-          <strong>L${view.level} · ${escapeHTML(VIEW_LABELS[viewId])}</strong><small>${escapeHTML(view.scopeName)}</small>
+        return `<button class="view-row" type="button" data-view-id="${viewId}"${state.currentView === viewId ? ' aria-current="page"' : ""}>
+          <span class="view-level">L${view.level}</span><span class="view-copy"><strong>${escapeHTML(VIEW_LABELS[viewId])}</strong><small>${escapeHTML(view.scopeName)}</small></span>
         </button>`;
       }).join("")}</nav>`;
     }
@@ -1551,15 +1493,15 @@
       const nodes = view.nodes.map((node) => `<li><button type="button" data-node-id="${escapeHTML(node.id)}"${state.selectedNode === node.id ? ' aria-current="true"' : ""}>${escapeHTML(node.name)}<small>[${escapeHTML(node.type)}]</small></button></li>`).join("");
       const relationships = view.relationships.map((relationship) => `<li>${escapeHTML(relationship.description)}${relationship.technology ? `<small>[${escapeHTML(relationship.technology)}]</small>` : ""}</li>`).join("");
       const relationshipMode = state.relationshipMode ?? "focus";
-      const relationshipControls = view.level === 3 ? `<section><h3>Relationship visibility</h3><div class="relationship-mode-control" role="group" aria-label="관계 표시 방식">
+      const relationshipControls = view.level >= 2 ? `<section><h3>관계 표시</h3><div class="relationship-mode-control" role="group" aria-label="관계 표시 방식">
         <button type="button" data-relationship-mode="focus" aria-pressed="${relationshipMode === "focus"}"><strong>선택 중심</strong><small>연결된 관계만 강조</small></button>
         <button type="button" data-relationship-mode="all" aria-pressed="${relationshipMode === "all"}"><strong>전체 보기</strong><small>모든 라벨 표시</small></button>
       </div></section>` : "";
       return `<div class="layer-groups">
         ${relationshipControls}
-        <section><h3>Boundaries</h3><ul>${boundaries}</ul></section>
-        <section><h3>Elements</h3><ul>${nodes}</ul></section>
-        <section><h3>Relationships</h3><ul>${relationships}</ul></section>
+        <section><h3>경계</h3><ul>${boundaries}</ul></section>
+        <section><h3>요소</h3><ul>${nodes}</ul></section>
+        <section><h3>관계</h3><ul>${relationships}</ul></section>
       </div>`;
     }
 
@@ -1574,49 +1516,35 @@
         <div id="left-tabpanel-layers" role="tabpanel" aria-labelledby="left-tab-layers"${state.leftTab === "layers" ? "" : " hidden"}>${buildLayersMarkup(view, state)}</div>`;
     }
 
-    function formatRelationshipFlow(model, view, relationship) {
-      const source = getNodeById(model, view.id, relationship.from);
-      const target = getNodeById(model, view.id, relationship.to);
-      return `<p class="flow-item"><strong>${escapeHTML(source?.name ?? relationship.from)} → ${escapeHTML(target?.name ?? relationship.to)}</strong><span>${escapeHTML(relationship.description)}</span>${relationship.technology ? `<small>[${escapeHTML(relationship.technology)}]</small>` : ""}</p>`;
+    function getInspectorHeader(model, state) {
+      const view = model.views[state.currentView];
+      const node = state.selectedNode ? getNodeById(model, state.currentView, state.selectedNode) : null;
+      return node
+        ? { eyebrow: "선택한 요소", title: node.name }
+        : { eyebrow: "현재 보기", title: view?.scopeName ?? "아키텍처" };
     }
 
     function buildInspectorMarkup(model, state) {
       const view = model.views[state.currentView];
       const node = state.selectedNode ? getNodeById(model, state.currentView, state.selectedNode) : null;
-      const tabs = INSPECTOR_TABS.map((tab) => `<button type="button" id="inspector-tab-${tab}" role="tab" data-inspector-tab="${tab}" aria-controls="inspector-tabpanel-${tab}" aria-selected="${state.inspectorTab === tab}" tabindex="${state.inspectorTab === tab ? "0" : "-1"}">${escapeHTML(tab)}</button>`).join("");
-      const validation = validateModel(model);
-      const modelContent = `<h2>${escapeHTML(view.title)}</h2><p>${escapeHTML(view.scopeName)}</p><code>${escapeHTML(model.meta.analyzedCommit)}</code><code>${escapeHTML(model.meta.sourceRoot)}</code><section><h3>모델 검증</h3>${validation.errors.length ? listMarkup(validation.errors) : "<p>검증 경고 없음</p>"}</section>`;
-      const emptyContent = {
-        overview: "<p class=\"evidence-empty\">요소를 선택해 책임과 구현 상태를 확인하세요.</p>",
-        flow: "<p class=\"evidence-empty\">요소를 선택해 들어오고 나가는 관계를 확인하세요.</p>",
-        evidence: "<p class=\"evidence-empty\">요소를 선택해 입력, 출력, 코드 근거를 확인하세요.</p>",
-        model: modelContent
-      };
-      const contents = node ? (() => {
-        const incoming = view.relationships.filter((relationship) => relationship.to === node.id);
-        const outgoing = view.relationships.filter((relationship) => relationship.from === node.id);
-        const meta = node.technology ? `${node.type}: ${node.technology}` : node.type;
-        const status = node.status === "gap" ? "구현됨 · 미배선" : "구현·연결됨";
-        return {
-          overview: `<h2>${escapeHTML(node.name)}</h2><p>[${escapeHTML(meta)}]</p><p>${escapeHTML(node.description)}</p><p>${status}</p><div class="overview-evidence">${(node.evidence ?? []).map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div>${node.drilldown && model.views[node.drilldown] ? `<button type="button" data-open-node-id="${escapeHTML(node.id)}">Open L${model.views[node.drilldown].level}</button>` : ""}`,
-          flow: `<h2>Flow</h2>${[...incoming, ...outgoing].map((relationship) => formatRelationshipFlow(model, view, relationship)).join("") || "<p>연결된 관계가 없습니다.</p>"}`,
-          evidence: `<h2>Evidence</h2><section><h3>입력</h3>${listMarkup(node.inputs)}</section><section><h3>출력</h3>${listMarkup(node.outputs)}</section><section><h3>코드 근거</h3><div class="evidence-files">${(node.evidence ?? []).map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div></section>`,
-          model: modelContent
-        };
-      })() : emptyContent;
-      const panels = INSPECTOR_TABS.map((tab) => `<div id="inspector-tabpanel-${tab}" class="inspector-tabpanel" role="tabpanel" aria-labelledby="inspector-tab-${tab}"${state.inspectorTab === tab ? "" : " hidden"}>${contents[tab]}</div>`).join("");
-      return `<div class="inspector-tabs" role="tablist">${tabs}</div>${panels}`;
+      if (!node) return '<div class="inspector-overview"><p class="evidence-empty">요소를 선택해 책임과 구현 상태를 확인하세요.</p></div>';
+      const meta = node.technology ? `${node.type}: ${node.technology}` : node.type;
+      const status = node.status === "gap" ? "구현됨 · 미배선" : "구현·연결됨";
+      const drilldown = node.drilldown && model.views[node.drilldown]
+        ? `<button class="inspector-drilldown" type="button" data-open-node-id="${escapeHTML(node.id)}"><span>L${model.views[node.drilldown].level} 열기</span><span aria-hidden="true">→</span></button>`
+        : "";
+      return `<div class="inspector-overview"><h2 class="sr-only">${escapeHTML(node.name)}</h2><section class="inspector-section inspector-summary"><p class="inspector-meta">[${escapeHTML(meta)}]</p><p class="inspector-description">${escapeHTML(node.description)}</p></section><section class="inspector-section inspector-state"><h3>상태</h3><p class="inspector-state-row"><span>구현 상태</span><strong>${status}</strong></p></section><section class="inspector-section inspector-evidence"><h3>코드 근거</h3><div class="overview-evidence">${(node.evidence ?? []).map((path) => `<code>${escapeHTML(path)}</code>`).join("")}</div></section>${drilldown}</div>`;
     }
 
     function switchView(state, viewId) {
       if (!architectureModel?.views?.[viewId]) return state;
-      return { ...state, currentView: viewId, selectedNode: null, rightPanelOpen: false, inspectorTab: "overview" };
+      return { ...state, currentView: viewId, selectedNode: null, rightPanelOpen: false };
     }
 
     function openDrilldown(model, state, nodeId) {
       const node = getNodeById(model, state.currentView, nodeId);
       if (!node?.drilldown || !model.views[node.drilldown]) return state;
-      return { ...state, currentView: node.drilldown, selectedNode: null, rightPanelOpen: false, inspectorTab: "overview" };
+      return { ...state, currentView: node.drilldown, selectedNode: null, rightPanelOpen: false };
     }
 
     function getLayoutMode(width) {
@@ -1667,6 +1595,7 @@
     let workspaceState = createWorkspaceState();
     const relationshipMarkupCache = new Map();
     let resizeFrame = null;
+    let panelTransitionRevision = 0;
     // Kept as a compatibility snapshot for callers of the original navigation helpers.
     let navigationState = { currentView: workspaceState.currentView, selectedNode: workspaceState.selectedNode };
 
@@ -1685,6 +1614,25 @@
       return { width: Math.max(1, rect?.width ?? 1), height: Math.max(1, rect?.height ?? 1) };
     }
 
+    function currentViewportScreenFrame() {
+      if (typeof document === "undefined") return { left: 0, top: 0, width: 1, height: 1 };
+      const rect = document.getElementById("diagram-viewport")?.getBoundingClientRect();
+      return {
+        left: rect?.left ?? 0,
+        top: rect?.top ?? 0,
+        width: Math.max(1, rect?.width ?? 1),
+        height: Math.max(1, rect?.height ?? 1)
+      };
+    }
+
+    function preserveViewportScreenPosition(viewportState, beforeFrame, afterFrame) {
+      return {
+        x: viewportState.x + beforeFrame.left - afterFrame.left,
+        y: viewportState.y + beforeFrame.top - afterFrame.top,
+        scale: viewportState.scale
+      };
+    }
+
     function syncSvgCoordinateSystem() {
       const svg = document.getElementById("diagram-svg");
       if (!svg) return;
@@ -1697,6 +1645,28 @@
       const sync = () => syncSvgCoordinateSystem();
       window.requestAnimationFrame?.(sync);
       window.setTimeout?.(sync, 220);
+    }
+
+    function preserveCanvasDuringPanelTransition(beforeFrame, viewId, duration = 260) {
+      if (typeof window === "undefined" || typeof document === "undefined" || !window.requestAnimationFrame) return;
+      const revision = ++panelTransitionRevision;
+      let previousFrame = beforeFrame;
+      let startedAt = null;
+      const step = (timestamp) => {
+        if (revision !== panelTransitionRevision || workspaceState.currentView !== viewId) return;
+        if (startedAt === null) startedAt = timestamp;
+        const nextFrame = currentViewportScreenFrame();
+        const compensated = preserveViewportScreenPosition(currentViewport(), previousFrame, nextFrame);
+        workspaceState = {
+          ...workspaceState,
+          viewports: { ...workspaceState.viewports, [viewId]: compensated }
+        };
+        syncSvgCoordinateSystem();
+        applyViewportTransform(compensated);
+        previousFrame = nextFrame;
+        if (timestamp - startedAt < duration) window.requestAnimationFrame(step);
+      };
+      window.requestAnimationFrame(step);
     }
 
     function applyViewportTransform(viewportState) {
@@ -1715,7 +1685,8 @@
     function setViewport(viewportState) {
       if (!architectureModel || typeof document === "undefined") return;
       const frame = currentViewportFrame();
-      const worldSize = architectureModel.views[workspaceState.currentView].worldSize;
+      const view = architectureModel.views[workspaceState.currentView];
+      const worldSize = view.worldSize;
       const finite = [viewportState.x, viewportState.y, viewportState.scale].every(Number.isFinite);
       const safeViewport = constrainViewport(
         finite ? viewportState : fitViewport(worldSize, frame, 72),
@@ -1752,11 +1723,18 @@
     }
 
     function applyWorkspaceState(next, openedPanel) {
+      const previousState = workspaceState;
+      const beforeFrame = currentViewportScreenFrame();
       const width = typeof window === "undefined" ? 1200 : window.innerWidth;
       workspaceState = normalizePanelsForWidth(next, width, openedPanel);
       navigationState = { currentView: workspaceState.currentView, selectedNode: workspaceState.selectedNode };
       renderWorkspaceChrome();
       renderCanvasTools();
+      const panelChanged = previousState.leftPanelOpen !== workspaceState.leftPanelOpen
+        || previousState.rightPanelOpen !== workspaceState.rightPanelOpen;
+      if (panelChanged && previousState.currentView === workspaceState.currentView) {
+        preserveCanvasDuringPanelTransition(beforeFrame, workspaceState.currentView);
+      }
     }
 
     function workspaceAnnouncement(model, state, action) {
@@ -1787,7 +1765,7 @@
       if (typeof document === "undefined") return;
       const focus = () => {
         let target = null;
-        if (action.type === "toggle-left-panel" && previousState.leftPanelOpen) target = document.getElementById("toolbar-left-panel-toggle");
+        if (action.type === "toggle-left-panel") target = document.getElementById(previousState.leftPanelOpen ? "toolbar-left-panel-toggle" : "left-panel-close");
         if (action.type === "toggle-right-panel" && previousState.rightPanelOpen) target = document.getElementById("toolbar-right-panel-toggle");
         if (action.type === "view" || action.type === "up") target = document.getElementById("diagram-viewport");
         if (action.type === "select-node") target = document.querySelector(`#diagram-world [data-node-id="${CSS.escape(action.nodeId)}"]`) ?? document.getElementById("diagram-viewport");
@@ -1795,7 +1773,6 @@
           ? document.querySelector(`#diagram-world [data-node-id="${CSS.escape(previousState.selectedNode)}"]`)
           : document.getElementById("diagram-viewport");
         if (action.type === "set-left-tab") target = document.getElementById(`left-tab-${action.tab}`);
-        if (action.type === "set-inspector-tab") target = document.getElementById(`inspector-tab-${action.tab}`);
         target?.focus?.({ preventScroll: true });
       };
       if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(focus);
@@ -1911,6 +1888,11 @@
       const content = document.getElementById("inspector-content");
       if (!content) return;
       content.innerHTML = buildInspectorMarkup(architectureModel, workspaceState);
+      const header = getInspectorHeader(architectureModel, workspaceState);
+      const eyebrow = document.getElementById("inspector-eyebrow");
+      const title = document.getElementById("inspector-title");
+      if (eyebrow) eyebrow.textContent = header.eyebrow;
+      if (title) title.textContent = header.title;
     }
 
     function getNextTabIndex(tabCount, currentIndex, key) {
@@ -1937,22 +1919,45 @@
       });
     }
 
+    function getNodeKeyboardAction(key, isSelected, hasDrilldown) {
+      if ((key === "o" || key === "O") && hasDrilldown) return "open";
+      if (key !== "Enter") return null;
+      if (!isSelected) return "select";
+      return hasDrilldown ? "open" : null;
+    }
+
+    function handleNodeKeyboardAction(event, nodeId) {
+      const node = getNodeById(architectureModel, workspaceState.currentView, nodeId);
+      const action = getNodeKeyboardAction(event.key, workspaceState.selectedNode === nodeId, Boolean(node?.drilldown));
+      if (!action) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (action === "open") openNodeDrilldown(nodeId);
+      else dispatchWorkspace({ type: "select-node", nodeId });
+    }
+
+    function isDrilldownActivationKey(key) {
+      return key === "Enter" || key === " ";
+    }
+
+    function handleDrilldownControlKeyboardAction(event, nodeId) {
+      if (!isDrilldownActivationKey(event.key)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      openNodeDrilldown(nodeId);
+    }
+
     function bindRenderedControls() {
       document.querySelectorAll("#left-panel-content [role=tablist]").forEach((tablist) => bindRovingTablist(tablist, (tab) => updateWorkspace({ type: "set-left-tab", tab: tab.dataset.leftTab })));
       document.querySelectorAll("#left-panel-content [data-view-id]").forEach((button) => button.addEventListener("click", () => navigateTo(button.dataset.viewId)));
       document.querySelectorAll("#left-panel-content [data-node-id]").forEach((element) => {
         element.addEventListener("click", () => dispatchWorkspace({ type: "select-node", nodeId: element.dataset.nodeId }));
         element.addEventListener("dblclick", () => openNodeDrilldown(element.dataset.nodeId));
-        element.addEventListener("keydown", (event) => {
-          if (event.key !== "Enter") return;
-          event.preventDefault();
-          openNodeDrilldown(element.dataset.nodeId);
-        });
+        element.addEventListener("keydown", (event) => handleNodeKeyboardAction(event, element.dataset.nodeId));
       });
       document.querySelectorAll("#left-panel-content [data-relationship-mode]").forEach((button) => {
         button.addEventListener("click", () => updateWorkspace({ type: "set-relationship-mode", mode: button.dataset.relationshipMode }));
       });
-      document.querySelectorAll("#inspector-content [role=tablist]").forEach((tablist) => bindRovingTablist(tablist, (tab) => updateWorkspace({ type: "set-inspector-tab", tab: tab.dataset.inspectorTab })));
       document.querySelectorAll("#inspector-content [data-open-node-id]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();
         openNodeDrilldown(button.dataset.openNodeId);
@@ -1991,25 +1996,11 @@
       document.querySelectorAll("[data-left-tab]").forEach((button) => {
         button.setAttribute("aria-selected", String(button.dataset.leftTab === workspaceState.leftTab));
       });
-      document.querySelectorAll("[data-inspector-tab]").forEach((button) => {
-        button.setAttribute("aria-selected", String(button.dataset.inspectorTab === workspaceState.inspectorTab));
-      });
       document.querySelectorAll("[data-tool]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.tool === workspaceState.tool));
       });
-      const leftToggle = document.getElementById("left-panel-toggle");
-      const rightToggle = document.getElementById("right-panel-toggle");
       const toolbarLeftToggle = document.getElementById("toolbar-left-panel-toggle");
       const toolbarRightToggle = document.getElementById("toolbar-right-panel-toggle");
-      if (leftToggle) {
-        leftToggle.setAttribute("aria-expanded", String(workspaceState.leftPanelOpen));
-        leftToggle.setAttribute("aria-label", workspaceState.leftPanelOpen ? "왼쪽 패널 닫기" : "왼쪽 패널 열기");
-        leftToggle.textContent = workspaceState.leftPanelOpen ? "패널 닫기" : "패널 열기";
-      }
-      if (rightToggle) {
-        rightToggle.setAttribute("aria-expanded", String(workspaceState.rightPanelOpen));
-        rightToggle.setAttribute("aria-label", workspaceState.rightPanelOpen ? "인스펙터 닫기" : "인스펙터 열기");
-      }
       if (toolbarLeftToggle) {
         toolbarLeftToggle.setAttribute("aria-expanded", String(workspaceState.leftPanelOpen));
         toolbarLeftToggle.setAttribute("aria-label", workspaceState.leftPanelOpen ? "왼쪽 패널 닫기" : "왼쪽 패널 열기");
@@ -2033,7 +2024,17 @@
       if (event.code !== "Space") return false;
       const tagName = activeElement?.tagName?.toUpperCase() ?? "";
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(tagName)) return false;
-      return !activeElement?.closest?.("[data-node-id], button, [role=button], a[href]");
+      if (activeElement?.isContentEditable || activeElement?.closest?.('[contenteditable="true"]')) return false;
+      return true;
+    }
+
+    function shouldSuppressCanvasActivation(spaceHeld, panClickPending) {
+      return Boolean(spaceHeld || panClickPending);
+    }
+
+    function shouldStartCanvasPan(target, tool, spaceHeld, button) {
+      if (target?.closest?.("#canvas-tools")) return false;
+      return tool === "hand" || spaceHeld || button === 1;
     }
 
     function shouldClearSelectionOnCanvasTap(target, tool, button = 0) {
@@ -2055,6 +2056,7 @@
       if (!viewport) return;
       let drag = null;
       let spaceHeld = false;
+      let suppressNextCanvasClick = false;
 
       viewport.addEventListener("wheel", (event) => {
         event.preventDefault();
@@ -2071,14 +2073,21 @@
       }, { passive: false });
 
       viewport.addEventListener("click", (event) => {
+        if (shouldSuppressCanvasActivation(spaceHeld, suppressNextCanvasClick)) {
+          event.preventDefault();
+          event.stopPropagation();
+          suppressNextCanvasClick = false;
+          return;
+        }
         if (!workspaceState.selectedNode || !shouldClearSelectionOnCanvasTap(event.target, workspaceState.tool, event.button)) return;
         dispatchWorkspace({ type: "clear-selection" });
-      });
+      }, true);
 
       viewport.addEventListener("pointerdown", (event) => {
-        const canPan = workspaceState.tool === "hand" || spaceHeld || event.button === 1;
+        const canPan = shouldStartCanvasPan(event.target, workspaceState.tool, spaceHeld, event.button);
         if (!canPan) return;
         event.preventDefault();
+        suppressNextCanvasClick = true;
         viewport.setPointerCapture(event.pointerId);
         viewport.dataset.panning = "true";
         drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
@@ -2095,26 +2104,34 @@
         drag = null;
       };
       viewport.addEventListener("pointerup", endDrag);
-      viewport.addEventListener("pointercancel", endDrag);
+      viewport.addEventListener("pointercancel", (event) => {
+        endDrag(event);
+        suppressNextCanvasClick = false;
+      });
 
       window.addEventListener("keydown", (event) => {
-        const editable = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? "");
+        const editable = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? "")
+          || document.activeElement?.isContentEditable;
         if (shouldUseTemporaryHand(event, document.activeElement)) {
           event.preventDefault();
+          event.stopPropagation();
           spaceHeld = true;
           viewport.dataset.tool = "hand";
+          return;
         }
         if ((event.metaKey || event.ctrlKey) && event.code === "Equal") { event.preventDefault(); zoomBy(1.15); }
         if ((event.metaKey || event.ctrlKey) && event.code === "Minus") { event.preventDefault(); zoomBy(1 / 1.15); }
         if ((event.metaKey || event.ctrlKey) && event.code === "Digit0") { event.preventDefault(); resetViewportToFit(); }
         if (!editable && event.key.toLowerCase() === "v") updateWorkspace({ type: "set-tool", tool: "select" });
         if (!editable && event.key.toLowerCase() === "h") updateWorkspace({ type: "set-tool", tool: "hand" });
-      });
+      }, { capture: true });
       window.addEventListener("keyup", (event) => {
         if (event.code !== "Space" || !spaceHeld) return;
+        event.preventDefault();
+        event.stopPropagation();
         spaceHeld = false;
         viewport.dataset.tool = workspaceState.tool;
-      });
+      }, { capture: true });
     }
 
     function renderEvidence(nodeId) {
@@ -2129,7 +2146,7 @@
       const guidance = view.level < 3
         ? "화살표가 있는 파란 노드를 선택하면 다음 C4 수준으로 내려갑니다. 회색 노드는 시스템 경계 밖의 의존성입니다."
         : "컴포넌트를 선택하면 책임, 입력·출력, 그리고 실제 소스 파일 근거를 확인할 수 있습니다.";
-      panel.innerHTML = `<div class="evidence-head"><p class="evidence-kicker">How to explore</p><h3 class="evidence-title">${escapeHTML(view.scopeName)}</h3><p class="evidence-meta">C4 Level ${view.level}</p></div><p class="evidence-empty">${escapeHTML(guidance)}</p>`;
+      panel.innerHTML = `<div class="evidence-head"><p class="evidence-kicker">탐색 방법</p><h3 class="evidence-title">${escapeHTML(view.scopeName)}</h3><p class="evidence-meta">C4 L${view.level}</p></div><p class="evidence-empty">${escapeHTML(guidance)}</p>`;
     }
 
     function anchorFor(node, other, override) {
@@ -2473,7 +2490,7 @@
     }
 
     function relationshipPresentation(view, relationship, state) {
-      if (view.level !== 3 || (state.relationshipMode ?? "focus") === "all") return "emphasized";
+      if (view.level < 2 || (state.relationshipMode ?? "focus") === "all") return "emphasized";
       if (!state.selectedNode) return "ambient";
       return [relationship.from, relationship.to].includes(state.selectedNode) ? "emphasized" : "muted";
     }
@@ -2532,7 +2549,7 @@
           points
         };
       });
-      if (view.level !== 3) return items;
+      if (view.level < 2) return items;
       const occupiedRects = [];
       const visibleItems = items.filter((item) => item.labelVisible).sort((first, second) => {
         const routeLength = (item) => item.points.slice(1).reduce((sum, point, index) => sum + Math.hypot(point.x - item.points[index].x, point.y - item.points[index].y), 0);
@@ -2554,13 +2571,15 @@
       const label = options.labelPoint ?? relationshipLabelPoint(points, relationship.labelPosition);
       const statusClass = relationship.status === "gap" ? " status-gap" : "";
       const { descriptionLines, technologyLines, width: labelWidth, height: labelHeight } = getRelationshipLabelLayout(relationship);
-      const descriptionStart = -labelHeight / 2 + 19;
-      const technologyY = descriptionStart + (descriptionLines.length - 1) * 16 + 15;
+      const technologyStart = -labelHeight / 2 + 17;
+      const descriptionStart = technologyLines.length
+        ? technologyStart + (technologyLines.length - 1) * 13 + 20
+        : -labelHeight / 2 + 19;
       const descriptionText = `<text class="relationship-description" aria-label="${escapeHTML(relationship.description)}" x="0" y="${descriptionStart}" text-anchor="middle">${descriptionLines.map((line, index) =>
         `<tspan x="0" dy="${index ? 16 : 0}">${escapeHTML(line)}</tspan>`
       ).join("")}</text>`;
       const technologyText = technologyLines.length
-        ? `<text class="relationship-technology" aria-label="[${escapeHTML(relationship.technology)}]" x="0" y="${technologyY}" text-anchor="middle">${technologyLines.map((line, index) =>
+        ? `<text class="relationship-technology" aria-label="[${escapeHTML(relationship.technology)}]" x="0" y="${technologyStart}" text-anchor="middle">${technologyLines.map((line, index) =>
           `<tspan x="0" dy="${index ? 13 : 0}">${escapeHTML(line)}</tspan>`
         ).join("")}</text>`
         : "";
@@ -2568,7 +2587,7 @@
         <path class="relationship-path${statusClass}" d="${relationshipPath(points)}" marker-end="url(#arrow${relationship.status === "gap" ? "-gap" : ""})"/>
         <g class="relationship-label" aria-hidden="${!labelVisible}" transform="translate(${label.x} ${label.y})">
           <rect class="relationship-label-surface" x="${-labelWidth / 2}" y="${-labelHeight / 2}" width="${labelWidth}" height="${labelHeight}" rx="8"/>
-          ${descriptionText}${technologyText}
+          ${technologyText}${descriptionText}
         </g>
       </g>`;
     }
@@ -2618,20 +2637,14 @@
       diagramWorld.querySelectorAll("[data-node-id]").forEach((node) => {
         node.addEventListener("click", () => dispatchWorkspace({ type: "select-node", nodeId: node.dataset.nodeId }));
         node.addEventListener("dblclick", () => openNodeDrilldown(node.dataset.nodeId));
-        node.addEventListener("keydown", (event) => {
-          if (event.key === " ") {
-            event.preventDefault();
-            dispatchWorkspace({ type: "select-node", nodeId: node.dataset.nodeId });
-            return;
-          }
-          if (event.key !== "Enter") return;
-          event.preventDefault();
-          openNodeDrilldown(node.dataset.nodeId);
-        });
+        node.addEventListener("keydown", (event) => handleNodeKeyboardAction(event, node.dataset.nodeId));
       });
       diagramWorld.querySelectorAll("[data-open-node-id]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();
         openNodeDrilldown(button.dataset.openNodeId);
+      }));
+      diagramWorld.querySelectorAll("[data-open-node-id]").forEach((button) => button.addEventListener("keydown", (event) => {
+        handleDrilldownControlKeyboardAction(event, button.dataset.openNodeId);
       }));
       drawRelationships(view);
       ensureViewportForCurrentView();
@@ -2645,10 +2658,7 @@
         if (!validation.valid) throw new Error(`치명적인 모델 오류: ${validation.fatalErrors.join(", ")}`);
         if (validation.recoverableErrors.length) console.warn("Recoverable C4 relationship errors", validation.recoverableErrors);
         document.getElementById("back-button").addEventListener("click", navigateUp);
-        document.getElementById("left-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-left-panel" }));
-        document.getElementById("right-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-right-panel" }));
-        document.getElementById("toolbar-left-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-left-panel" }));
-        document.getElementById("toolbar-right-panel-toggle").addEventListener("click", () => dispatchWorkspace({ type: "toggle-right-panel" }));
+        document.querySelectorAll("[data-panel-toggle]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: `toggle-${button.dataset.panelToggle}-panel` })));
         document.querySelectorAll("[data-left-tab]").forEach((button) => button.addEventListener("click", () => dispatchWorkspace({ type: "set-left-tab", tab: button.dataset.leftTab })));
         document.querySelectorAll("[data-tool]").forEach((button) => button.addEventListener("click", () => updateWorkspace({ type: "set-tool", tool: button.dataset.tool })));
         bindToolbarActions();
@@ -2689,6 +2699,7 @@
       wrapSvgText,
       getNodeTextBounds,
       getSvgTextLayout,
+      getDrilldownFooterGeometry,
       buildSvgNodeMarkup,
       getBoundaryLabelBounds,
       buildBoundaryMarkup,
@@ -2697,6 +2708,7 @@
       buildViewsMarkup,
       buildLayersMarkup,
       buildLeftPanelMarkup,
+      getInspectorHeader,
       buildInspectorMarkup,
       workspaceAnnouncement,
       restoreWorkspaceFocus,
@@ -2704,6 +2716,8 @@
       openDrilldown,
       renderTopToolbar,
       getNextTabIndex,
+      getNodeKeyboardAction,
+      isDrilldownActivationKey,
       bindRovingTablist,
       bindRenderedControls,
       setPanelAccessibility,
@@ -2731,6 +2745,8 @@
       localPoint,
       currentViewport,
       currentViewportFrame,
+      currentViewportScreenFrame,
+      preserveViewportScreenPosition,
       syncSvgCoordinateSystem,
       scheduleCanvasCoordinateSync,
       setViewport,
@@ -2739,6 +2755,8 @@
       renderCanvasTools,
       updateWorkspace,
       shouldUseTemporaryHand,
+      shouldSuppressCanvasActivation,
+      shouldStartCanvasPan,
       shouldClearSelectionOnCanvasTap,
       bindToolbarActions,
       bindViewportInteractions,
